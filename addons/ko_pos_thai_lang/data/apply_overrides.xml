@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- รันทุกครั้งที่ install/upgrade module นี้ เพื่อโหลดคำแปลทับเข้า db -->
+    <function model="ko.thai.lang" name="_apply_overrides"/>
+</odoo>
