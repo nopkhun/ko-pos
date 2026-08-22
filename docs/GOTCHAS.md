@@ -156,16 +156,26 @@ model: "pos.payment.method", method: "read",
 args: [[5], ["name", "open_session_ids"]]
 ```
 
-**Fix:** the only route is the normal one — open the session, then close it. For an empty
-session (0 orders, 0.00 opening cash) this is harmless: the close dialog shows all zeros
-and no revenue is posted. It does consume a session number, so a
-`My Company/000NN` with zeros will appear in the session list; that is expected, not a bug.
+For an empty session (0 orders, 0.00 opening cash), opening and closing is financially
+harmless: the close dialog shows all zeros and no revenue is posted. It does consume a
+session number, so a `My Company/000NN` with zeros appears in the session list.
 
 Path: Dashboard → **เปิดรอบ** → POS loads → dismiss the order-type dialog **without
 creating an order** → ☰ menu → **ปิดรอบ** → confirm the zeros → **ปิดรอบ**.
 
-**Do not** try to work around this by deleting the row through the ORM. The UI omission is
-intentional, and a human should decide anything that touches session records.
+**New Odoo 19 trap (verified 2026-08-23):** frontend close calls
+`pos.config.close_ui()`, whose implementation returns `open_ui()`. After the numbered
+session closes, `/pos/ui/<config>/login` creates a fresh unnumbered `opening_control`
+session. Repeating the path above therefore creates more zero-valued session numbers but
+still leaves one new opening row. Do not loop trying to reach zero open sessions.
+
+For ordinary service this row is safe to leave for the next staff opening, but it still
+blocks payment-method configuration. If a maintenance task genuinely requires no open
+session, stop and agree a maintenance procedure with the owner; do not invent a direct
+state write or delete the row through the ORM.
+
+The UI omission is intentional, and a human should decide anything that touches session
+records.
 
 ---
 

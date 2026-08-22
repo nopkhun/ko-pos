@@ -41,7 +41,9 @@ The reviewable files are under `addons/ko_pos_ui/`, but production still deploys
    - tapping a product adds it once and updates the visible cart;
    - payment button is prominent, but do not complete a payment during UI QA;
    - no browser console error is introduced by `ko_pos_ui`.
-5. Remove any empty test order/session without closing a session that contains real sales.
+5. Confirm the closing dialog says `0 ออเดอร์: 0.00 ฿` before closing a QA session.
+   Odoo 19 may immediately create a fresh unnumbered `opening_control` session after
+   frontend close; do not loop open/close trying to remove it. See `GOTCHAS.md`.
 
 ## Last local visual baseline (2026-08-22)
 
@@ -58,14 +60,18 @@ Repeat the production checklist after every deploy.
 ## Last production deploy (2026-08-23)
 
 - Snapshot action `110737091` completed before the change.
-- Final deploy action `110737887` completed and the project is running: Postgres healthy,
+- Final deploy action `110739168` completed and the project is running: Postgres healthy,
   Odoo up, and both init services exited 0.
 - `addons-init` listed `ko_pos_ui`; `odoo-upgrade` logged `Loading module ko_pos_ui
   (88/88)` and `Module ko_pos_ui loaded` with no upgrade error or traceback.
 - Thai overrides still reported exactly 57 files.
-- The public Thai login page responds normally.
-- Authenticated `/pos/ui` visual and console QA is still required; do not treat the local
-  baseline above as a substitute.
+- Authenticated `/pos/ui` QA passed at `1280×720`: no document overflow, Thai workflow
+  headings and menu prices render, the selected category is green with white text, and
+  inactive categories remain visually distinct. No product or payment was created.
+- Local responsive QA remains the evidence for `1024×768` and `390×844`; the production
+  browser surface used for final verification could not be resized.
+- QA sessions through `My Company/00011` closed with 0 orders and 0.00. One fresh
+  unnumbered `opening_control` session remains by Odoo design after frontend close.
 
 ## Rollback
 

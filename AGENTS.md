@@ -264,18 +264,23 @@ Working and confirmed against the live system:
   `pos.payment.method` id 5). This was DB row data, renamed through the Odoo UI, not a
   `.po` change. Verified in both `th_TH` and `en_US` — the record has a single stored
   name, so it reads `บัตรเครดิต` in both.
-- All POS sessions are closed; none open. Note `My Company/00005` in the session list is
-  an empty open-then-close cycle (0 orders, 0.00) performed only to clear the
-  payment-method edit lock — see §9 note and `docs/GOTCHAS.md`.
+- Closed QA sessions through `My Company/00011` contain 0 orders and 0.00. Odoo 19 now
+  leaves one new unnumbered session in `opening_control` (`เช็คเงินก่อนเปิดรอบ`) after
+  closing from the POS because `pos.config.close_ui()` calls `open_ui()` again. It has
+  no orders or payments and is ready for the next staff opening, but it counts as an
+  open session for configuration locks. Do not repeat open/close trying to remove it;
+  see `docs/GOTCHAS.md`.
 - `ko_pos_ui` is deployed as the sixth custom addon. Production log on 2026-08-23
   confirms `Loading module ko_pos_ui (88/88)` and `Module ko_pos_ui loaded` with no
   upgrade error, traceback, invalid-module warning, or missing manifest.
 - The touch-first UI keeps the order on the left and menu on the right on tablets,
   adds Thai workflow headings, horizontal categories, larger product cards with current
-  prices, a prominent payment action, and a two-column mobile menu. Local visual QA
-  passed at `1024×768` and `390×844`; authenticated production-screen QA remains below.
+  prices, a prominent payment action, and a two-column mobile menu. Authenticated live
+  QA passed at `1280×720` with no page overflow: the active category is green with white
+  text, inactive categories remain distinct, and Thai product names/prices render. Local
+  responsive QA also passed at `1024×768` and `390×844`.
 - Production Compose now passes `/mnt/extra-addons` explicitly to both Odoo processes
-  and makes the mounted addon tree readable. Final deploy action `110737887` completed;
+  and makes the mounted addon tree readable. Final deploy action `110739168` completed;
   Postgres is healthy, Odoo is running, both init services exited 0, and the Thai override
   success signal remains exactly 57 files.
 
@@ -290,12 +295,9 @@ Working and confirmed against the live system:
    attach it to the payment method, and test against the Beam playground before live use.
 3. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close.
-4. **Final authenticated UI QA:** open `/pos/ui` at tablet and mobile widths, confirm the
-   live asset bundle and browser console, and tap a product only if it will not create or
-   close a real-sales session. Do not complete a payment.
-5. **Refactor (recommended):** fold `patch/thai_v2` + `patch/thai_v3` back into
+4. **Refactor (recommended):** fold `patch/thai_v2` + `patch/thai_v3` back into
    `addons.tar.gz`, delete the patch directories, and simplify `addons-init`. See §4.
-6. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
+5. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
 > ✅ Completed 2026-08-22: the `การ์ด` → `บัตรเครดิต` payment-method rename. Odoo blocks
 > payment-method writes while any POS session is not `closed`, and it offers **no UI to
