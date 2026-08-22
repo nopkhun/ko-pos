@@ -29,7 +29,7 @@ change, or simply discovering a new trap — do all of this before reporting bac
 5. **Update the relevant `docs/RUNBOOK-*.md`** if the procedure itself changed.
 6. **Update `CREDENTIALS.local.md`** if a password, key, ID, or placeholder changed.
 7. **Update *both* copies.** These docs exist in the owner's local `KO-DOO` folder *and*
-   in this repo. Update both in the same session or they drift apart silently.
+   in the repo. Update both in the same session or they drift apart silently.
 8. **Update your own persistent memory**, if your tool has one.
 
 Then say plainly what you verified and what you did **not**. "Project deployed
@@ -41,7 +41,7 @@ successfully" is not verification — it only means containers started. See §6.
 
 ## 1. What this is
 
-An Odoo 19 restaurant point-of-sale deployment for a Thai restaurant, with five
+An Odoo 19 restaurant point-of-sale deployment for a Thai restaurant, with six
 custom addons and a hand-built Thai translation layer that replaces Odoo's stock
 Thai with real Thai restaurant vocabulary.
 
@@ -71,7 +71,7 @@ addons-init (alpine/git, one-shot)
   └─ appends patch/thai_v3/*.append.po onto the matching .po files
         ↓ (service_completed_successfully)
 odoo-upgrade (odoo:19, one-shot)
-  └─ -d kopos --stop-after-init -i/-u <5 modules> --load-language=th_TH
+  └─ -d kopos --stop-after-init -i/-u <6 modules> --load-language=th_TH
   └─ this is where translations actually land in the database
         ↓ (service_completed_successfully)
 odoo (odoo:19, long-running)
@@ -88,7 +88,7 @@ Never hand-edit files inside that volume expecting them to survive — put chang
 
 ---
 
-## 3. The five custom addons
+## 3. The six custom addons
 
 All live in `addons.tar.gz` at the repo root.
 
@@ -96,17 +96,19 @@ All live in `addons.tar.gz` at the repo root.
 | --- | --- |
 | `ko_pos_setup` | Restaurant seed data: POS categories, floors/tables, demo products |
 | `ko_pos_thai_receipt` | Thai abbreviated tax invoice (ใบกำกับภาษีอย่างย่อ) receipt layout |
-| `ko_pos_kds` | Kitchen Display System (จอครัว) at `/kds` |
+| `ko_pos_kds` | Kitchen Display System (jaw-krua / จอครัว) at `/kds` |
 | `ko_pos_beam_bolt` | Beam Bolt+ card-terminal payment integration (not yet configured with a live merchant key) |
 | `ko_pos_thai_lang` | The Thai translation override layer — see §5. Depends on all four above. |
+| `ko_pos_ui` | Touch-first restaurant POS interface: clearer menu/category grid, current-order panel, prices, payment emphasis, responsive tablet/mobile layout. Presentation only; it does not change order, tax, or payment logic. |
 
 ---
 
 ## 4. Repository layout (`nopkhun/ko-pos`, branch `main`)
 
 ```
-addons.tar.gz              ← THE source of truth for addon code (all 5 modules)
-addons/                    ← ⚠️ STALE. Only a partial copy of ko_pos_thai_lang.
+addons.tar.gz              ← THE deployment source of truth (all 6 modules)
+addons/                    ← ⚠️ NOT read by deployment. Contains a partial copy of
+                              ko_pos_thai_lang and a reviewable source copy of ko_pos_ui.
                               The deploy script prefers addons.tar.gz and never reads this.
                               Do not "fix" a bug by editing addons/ — it has no effect.
 patch/thai_v2/*.b64        ← gzip+base64 chunks of a tarball that overwrites

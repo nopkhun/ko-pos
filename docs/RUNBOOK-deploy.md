@@ -71,6 +71,7 @@ Check, in order:
    ko_pos_setup
    ko_pos_thai_lang
    ko_pos_thai_receipt
+   ko_pos_ui
    applying thai_v2 patch...
    thai_v2 patch applied, override files:
    57

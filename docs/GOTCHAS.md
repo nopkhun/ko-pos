@@ -51,8 +51,9 @@ sandbox fetch, and do not try to route around the block with other HTTP clients.
 **Symptom:** Code edited in `addons/`, pushed, deployed — no effect.
 
 **Cause:** `addons-init` prefers `addons.tar.gz` and only falls back to `addons/` if the
-tarball is absent. The tarball is present, so `addons/` is dead code. It also contains
-only a partial copy of one module, which makes it look deceptively real.
+tarball is absent. The tarball is present, so deployment ignores `addons/`. That folder
+currently contains a partial copy of `ko_pos_thai_lang` plus a reviewable source copy of
+`ko_pos_ui`, which makes it look deceptively authoritative.
 
 **Fix:** edit inside `addons.tar.gz`. Better: do the AGENTS.md §4 cleanup and remove the
 ambiguity for good.

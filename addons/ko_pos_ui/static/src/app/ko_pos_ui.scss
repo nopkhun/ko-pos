@@ -1,0 +1,470 @@
+// KO POS — touch-first restaurant layout inspired by familiar Thai restaurant workflows.
+// This stylesheet only changes presentation. Order, price, tax, and payment logic stay in Odoo.
+
+.pos {
+    --ko-primary: #087f5b;
+    --ko-primary-dark: #056647;
+    --ko-primary-soft: #e7f6ef;
+    --ko-accent: #f59f00;
+    --ko-danger: #d9485f;
+    --ko-ink: #24312d;
+    --ko-muted: #6b7773;
+    --ko-canvas: #f4f7f5;
+    --ko-surface: #ffffff;
+    --ko-border: #dfe7e3;
+    --ko-shadow: 0 2px 10px rgba(25, 55, 45, 0.08);
+    --ko-shadow-active: 0 1px 3px rgba(25, 55, 45, 0.14);
+    font-family: -apple-system, BlinkMacSystemFont, "Noto Sans Thai", "Leelawadee UI", sans-serif;
+    color: var(--ko-ink);
+    background: var(--ko-canvas);
+}
+
+.pos button,
+.pos [role="button"] {
+    min-height: 48px;
+}
+
+.pos .pos-topheader {
+    min-height: 64px;
+    padding: 8px 12px !important;
+    background: var(--ko-surface) !important;
+    border-color: var(--ko-border) !important;
+    box-shadow: 0 1px 0 rgba(25, 55, 45, 0.04);
+    z-index: 5;
+}
+
+.pos .pos-topheader .btn {
+    border-radius: 10px;
+    font-weight: 650;
+}
+
+.pos .navbar-menu {
+    padding: 4px;
+    border-radius: 12px;
+    background: #eef3f0;
+}
+
+.pos .navbar-menu .btn {
+    min-height: 44px;
+    border: 0;
+    background: transparent;
+}
+
+.pos .navbar-menu .btn.active {
+    color: var(--ko-primary-dark);
+    background: var(--ko-surface);
+    box-shadow: var(--ko-shadow-active);
+}
+
+.pos .ko-pos-product-screen {
+    gap: 0;
+    background: var(--ko-canvas);
+}
+
+.pos .ko-pos-product-screen .leftpane {
+    width: clamp(360px, 36vw, 500px);
+    max-width: 44vw;
+    padding-bottom: 10px !important;
+    background: var(--ko-surface) !important;
+    border-color: var(--ko-border) !important;
+}
+
+.pos .ko-pos-product-screen .rightpane {
+    min-width: 0;
+    background: var(--ko-canvas) !important;
+}
+
+.pos .ko-order-heading,
+.pos .ko-menu-heading {
+    min-height: 48px;
+    padding: 10px 14px 8px;
+    background: var(--ko-surface);
+    border-bottom: 1px solid var(--ko-border);
+    letter-spacing: 0.01em;
+}
+
+.pos .ko-menu-heading {
+    margin: 10px 10px 0;
+    border: 1px solid var(--ko-border);
+    border-bottom: 0;
+    border-radius: 14px 14px 0 0;
+}
+
+.pos .ko-step-badge {
+    display: inline-grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 800;
+    border-radius: 50%;
+    background: var(--ko-primary);
+}
+
+.pos .leftpane > .d-flex.flex-column,
+.pos .leftpane > .order-container {
+    min-height: 0;
+}
+
+.pos .leftpane .order-container {
+    padding: 8px;
+    gap: 6px;
+    background: #fbfcfb;
+}
+
+.pos .leftpane .orderline {
+    min-height: 58px;
+    padding: 9px 10px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: var(--ko-surface);
+    box-shadow: 0 1px 2px rgba(25, 55, 45, 0.05);
+}
+
+.pos .leftpane .orderline.selected {
+    border-color: var(--ko-primary);
+    background: var(--ko-primary-soft);
+    box-shadow: 0 0 0 2px rgba(8, 127, 91, 0.12);
+}
+
+.pos .leftpane .orderline .product-name {
+    font-size: 1rem;
+    font-weight: 650;
+}
+
+.pos .leftpane .orderline .qty {
+    color: var(--ko-primary-dark);
+    font-size: 1.05rem;
+}
+
+.pos .leftpane .order-summary {
+    padding: 12px 14px !important;
+    border-top: 1px solid var(--ko-border);
+    border-bottom: 0 !important;
+    background: #f7faf8;
+}
+
+.pos .leftpane .order-summary .total {
+    color: var(--ko-primary-dark);
+    font-size: 1.7rem;
+}
+
+.pos .leftpane .pads {
+    padding-inline: 10px !important;
+    background: var(--ko-surface);
+}
+
+.pos .leftpane .control-buttons .btn,
+.pos .leftpane .numpad .btn {
+    border-color: var(--ko-border);
+    border-radius: 10px;
+    background: #f6f8f7;
+    font-weight: 650;
+}
+
+.pos .leftpane .numpad .btn:active {
+    color: var(--ko-primary-dark);
+    background: var(--ko-primary-soft);
+}
+
+.pos .pay-order-button,
+.pos .pay-button {
+    min-height: 68px !important;
+    border: 0 !important;
+    border-radius: 12px !important;
+    color: #fff !important;
+    background: var(--ko-primary) !important;
+    box-shadow: 0 4px 12px rgba(8, 127, 91, 0.22);
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
+.pos .pay-order-button:hover,
+.pos .pay-button:hover {
+    background: var(--ko-primary-dark) !important;
+}
+
+.pos .pay-order-button:active,
+.pos .pay-button:active {
+    transform: translateY(1px);
+    box-shadow: var(--ko-shadow-active);
+}
+
+.pos .category-list {
+    display: flex !important;
+    grid-template-columns: none !important;
+    max-height: none !important;
+    margin: 0 10px 10px;
+    padding: 8px !important;
+    gap: 8px !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+    border: 1px solid var(--ko-border);
+    border-top: 0;
+    border-radius: 0 0 14px 14px;
+    background: var(--ko-surface);
+}
+
+.pos .category-list .category-button {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 128px;
+    height: 56px;
+    padding: 8px 12px !important;
+    border: 1px solid var(--ko-border) !important;
+    border-radius: 10px !important;
+    color: var(--ko-ink);
+    background: #f7f9f8;
+    font-size: 0.98rem;
+    font-weight: 700;
+}
+
+.pos .category-list .category-button:not(.opacity-75) {
+    color: #fff;
+    border-color: var(--ko-primary) !important;
+    background: var(--ko-primary) !important;
+    opacity: 1 !important;
+    box-shadow: 0 3px 8px rgba(8, 127, 91, 0.18);
+}
+
+.pos .rightpane .product-list:not(.category-list) {
+    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+    gap: 12px !important;
+    padding: 2px 10px 14px !important;
+}
+
+.pos .rightpane .ko-product-card {
+    min-height: 126px;
+    overflow: hidden;
+    border: 1px solid var(--ko-border) !important;
+    border-bottom: 1px solid var(--ko-border) !important;
+    border-radius: 14px !important;
+    background: var(--ko-surface) !important;
+    box-shadow: var(--ko-shadow);
+    transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.pos .rightpane .ko-product-card:hover {
+    border-color: #b9cec5 !important;
+    box-shadow: 0 5px 16px rgba(25, 55, 45, 0.12);
+}
+
+.pos .rightpane .ko-product-card:active {
+    transform: scale(0.975);
+    border-color: var(--ko-primary) !important;
+    box-shadow: 0 0 0 3px rgba(8, 127, 91, 0.16);
+}
+
+.pos .ko-product-card .product-img {
+    overflow: hidden;
+    border-radius: 13px 13px 0 0 !important;
+    background: #edf2ef;
+}
+
+.pos .ko-product-card .product-img img {
+    border-radius: 13px 13px 0 0;
+}
+
+.pos .ko-product-card .product-content {
+    min-height: 58px;
+    padding: 9px 10px !important;
+    gap: 8px;
+    align-items: flex-start;
+    background: var(--ko-surface);
+}
+
+.pos .ko-product-card .product-name {
+    flex: 1 1 auto;
+    color: var(--ko-ink);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.32 !important;
+}
+
+.pos .ko-product-card .ko-product-price {
+    color: var(--ko-primary-dark);
+    font-size: 0.95rem;
+}
+
+.pos .ko-product-card .product-cart-qty {
+    inset: 8px 8px auto auto !important;
+    min-width: 34px;
+    margin: 0 !important;
+    padding: 5px 9px !important;
+    border: 2px solid #fff;
+    border-radius: 999px !important;
+    background: var(--ko-primary) !important;
+    box-shadow: 0 2px 7px rgba(25, 55, 45, 0.22);
+}
+
+// Payment and order-history screens keep the same visual hierarchy as the selling screen.
+.pos .payment-screen,
+.pos .ticket-screen {
+    background: var(--ko-canvas);
+}
+
+.pos .payment-screen .left-content,
+.pos .payment-screen .right-content,
+.pos .ticket-screen .leftpane,
+.pos .ticket-screen .rightpane {
+    border-color: var(--ko-border) !important;
+    background: var(--ko-surface) !important;
+}
+
+.pos .payment-screen .paymentmethod,
+.pos .payment-screen .paymentline,
+.pos .ticket-screen .order-row {
+    min-height: 58px;
+    margin-bottom: 8px;
+    border: 1px solid var(--ko-border) !important;
+    border-radius: 10px !important;
+    background: var(--ko-surface);
+}
+
+.pos .payment-screen .paymentmethod.selected,
+.pos .payment-screen .paymentline.selected,
+.pos .ticket-screen .order-row.highlight {
+    border-color: var(--ko-primary) !important;
+    background: var(--ko-primary-soft) !important;
+}
+
+.pos .payment-screen .next,
+.pos .payment-screen .validate {
+    min-height: 64px;
+    border-radius: 12px !important;
+    background: var(--ko-primary) !important;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+// Restaurant floor: clearer zones and occupied-table emphasis without changing table state logic.
+.pos .floor-screen {
+    background: var(--ko-canvas) !important;
+}
+
+.pos .floor-screen .floor-map,
+.pos .floor-screen .floor-map-container {
+    background-color: #f8faf9 !important;
+    background-image: radial-gradient(#dfe8e3 1px, transparent 1px);
+    background-size: 18px 18px;
+}
+
+.pos .floor-screen .table {
+    border: 2px solid #bdd0c7 !important;
+    box-shadow: var(--ko-shadow);
+    font-weight: 800;
+}
+
+.pos .floor-screen .table:active {
+    transform: scale(0.98);
+}
+
+.pos .modal-content,
+.pos .o_dialog .modal-content {
+    border: 1px solid var(--ko-border);
+    border-radius: 16px;
+    box-shadow: 0 18px 48px rgba(25, 55, 45, 0.2);
+}
+
+.pos .modal-footer .btn-primary,
+.pos .o_dialog .btn-primary {
+    border-color: var(--ko-primary);
+    background: var(--ko-primary);
+}
+
+@media (max-width: 992px) {
+    .pos .ko-pos-product-screen .leftpane {
+        width: 42vw;
+        min-width: 330px;
+        max-width: 46vw;
+    }
+
+    .pos .rightpane .product-list:not(.category-list) {
+        grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+        gap: 9px !important;
+    }
+
+    .pos .ko-menu-heading small,
+    .pos .ko-order-heading small {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .pos .pos-topheader {
+        min-height: 56px;
+        padding: 6px 8px !important;
+    }
+
+    .pos .ko-pos-product-screen .leftpane {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+    }
+
+    .pos .ko-order-heading,
+    .pos .ko-menu-heading {
+        min-height: 42px;
+        padding: 7px 10px;
+    }
+
+    .pos .ko-menu-heading {
+        margin: 7px 7px 0;
+    }
+
+    .pos .ko-step-badge {
+        width: 24px;
+        height: 24px;
+        font-size: 0.8rem;
+    }
+
+    .pos .category-list {
+        margin: 0 7px 7px;
+        padding: 6px !important;
+    }
+
+    .pos .category-list .category-button {
+        min-width: 108px;
+        height: 50px;
+        font-size: 0.9rem;
+    }
+
+    .pos .rightpane .product-list:not(.category-list) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px !important;
+        padding: 1px 7px 10px !important;
+    }
+
+    .pos .rightpane .ko-product-card {
+        min-height: 112px;
+    }
+
+    .pos .ko-product-card .product-content {
+        min-height: 54px;
+        padding: 8px !important;
+    }
+
+    .pos .switchpane {
+        gap: 8px !important;
+        padding: 8px !important;
+        border-color: var(--ko-border) !important;
+        background: var(--ko-surface) !important;
+        box-shadow: 0 -4px 14px rgba(25, 55, 45, 0.08);
+    }
+
+    .pos .btn-switchpane {
+        min-height: 64px;
+        border-radius: 12px;
+        font-weight: 750;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pos button,
+    .pos .ko-product-card {
+        transition: none !important;
+    }
+}
