@@ -225,8 +225,9 @@ means containers started. Verify the translation count line from §5 and check t
    changing router names or rules can take unrelated sites down.
 5. **Do not pass `--i18n-overwrite`** on the Odoo update command. Our hook runs last and
    manages overwriting itself; that flag lets stock Thai clobber our overrides.
-6. **Do not close a POS session** (`รอบขาย`) to unblock an edit. Closing a session posts
-   real accounting entries and is the restaurant's decision, never the agent's.
+6. **Do not close a POS session that has real sales** (`รอบขาย`) to unblock an edit.
+   Closing such a session posts real accounting entries and is the restaurant's decision,
+   never the agent's. An empty session is a different matter — see `docs/GOTCHAS.md`.
 7. **Ask before deleting the `ko_pos` / `kodoo` databases.**
 8. The agent sandbox **cannot reach `kodoo.viakuma.com` directly** (egress blocked, 403).
    Verify the live site through the browser tooling or WebFetch instead. Do not
@@ -250,33 +251,38 @@ Working and confirmed against the live system:
 - `account.move` still has ~29 untranslated deep technical fields (reconciliation
   internals, deprecated fields). Odoo upstream does not translate these either and they
   are not visible in normal use. Low priority.
+- The POS payment method formerly named `การ์ด` is now **`บัตรเครดิต`** (record
+  `pos.payment.method` id 5). This was DB row data, renamed through the Odoo UI, not a
+  `.po` change. Verified in both `th_TH` and `en_US` — the record has a single stored
+  name, so it reads `บัตรเครดิต` in both.
+- All POS sessions are closed; none open. Note `My Company/00005` in the session list is
+  an empty open-then-close cycle (0 orders, 0.00) performed only to clear the
+  payment-method edit lock — see §9 note and `docs/GOTCHAS.md`.
 
 ---
 
 ## 9. Outstanding work
 
-1. **Rename the POS payment method "การ์ด" → "บัตรเครดิต".** It is DB row data
-   (`pos.payment.method` id 5, no XML ID), so no `.po` change can fix it. Odoo refuses
-   the edit while a POS session is open — it returns
-   *"กรุณาปิดและยืนยันรอบขายที่เปิดอยู่ก่อนแก้ไขวิธีชำระเงินนี้"*. Do it after the
-   restaurant closes the day's session: การตั้งค่า → วิธีการชำระเงิน → rename → save.
-2. **Real business data from the owner:** shop name, address, 13-digit tax ID, real
+1. **Real business data from the owner:** shop name, address, 13-digit tax ID, real
    PromptPay number (currently the placeholder `0812345678`), the real menu, and the
    kitchen printer's IP (Epson).
-3. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
+2. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
    attach it to the payment method, and test against the Beam playground before live use.
-4. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
+3. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close.
-5. **Refactor (recommended):** fold `patch/thai_v2` + `patch/thai_v3` back into
+4. **Refactor (recommended):** fold `patch/thai_v2` + `patch/thai_v3` back into
    `addons.tar.gz`, delete the patch directories, and simplify `addons-init`. See §4.
-6. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
+5. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
----
+> ✅ Completed 2026-08-22: the `การ์ด` → `บัตรเครดิต` payment-method rename. Odoo blocks
+> payment-method writes while any POS session is not `closed`, and it offers **no UI to
+> cancel or delete a session** — the Action menu exposes only Export. The only route is
+> to open the session and close it normally. See `docs/GOTCHAS.md`.
 
 ## 10. Where things live
 
 The owner's local project folder (`KO-DOO`, synced via OneDrive) holds the secrets and
-build artefacts that are deliberately kept out of this repo. The `.md` docs exist in
+build artefacts that are deliberately kept out of the repo. The `.md` docs exist in
 **both** places and must be updated in both — see §0.
 
 | File | Contents |
@@ -284,4 +290,4 @@ build artefacts that are deliberately kept out of this repo. The `.md` docs exis
 | `CREDENTIALS.local.md` | Passwords and IDs. **Local only — never commit.** |
 | `deploy-secrets.zip` | Working Compose files incl. the SSH deploy key |
 | `ko-pos-full.zip` | Full addon source + translation tooling |
-| `addons.tar.gz` | The deployable addon bundle (same file as this repo's root) |
+| `addons.tar.gz` | The deployable addon bundle (same file as the repo's root) |
