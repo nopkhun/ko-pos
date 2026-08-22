@@ -79,11 +79,55 @@ database. Translation machinery never touches them.
 
 **Cause:** Odoo locks payment-method edits while a POS session is open.
 
-**Fix:** wait until the restaurant closes the session. **Do not close it yourself** —
-closing a session posts accounting entries and is a business decision.
+**Fix:** wait until the restaurant closes the session. **Do not close a session with real
+sales yourself** — that posts accounting entries and is a business decision.
 
 Also note: after a refused save the form stays dirty. Reload the page to discard cleanly
 rather than leaving half-entered data in the UI.
+
+---
+
+### There is no way to cancel or delete a POS session
+
+**Symptom:** A session sits in `opening_control` ("เช็คเงินก่อนเปิดรอบ") with 0 orders,
+blocking payment-method edits, and you cannot find a way to get rid of it.
+
+**Cause:** Odoo 19 deliberately exposes no cancel or delete for `pos.session` — it guards
+the accounting trail. Checked and confirmed empty in all three places:
+the session form's cog menu (only "รายละเอียดการขาย"), the dashboard card's ⋮ menu
+(only views, reports, settings), and the list view's Action menu (only "ส่งออก").
+
+The guard on `pos.payment.method.write()` reads `open_session_ids`, which counts **any**
+session whose state is not `closed` — including one that was never actually opened.
+Check it directly rather than guessing:
+
+```js
+model: "pos.payment.method", method: "read",
+args: [[5], ["name", "open_session_ids"]]
+```
+
+**Fix:** the only route is the normal one — open the session, then close it. For an empty
+session (0 orders, 0.00 opening cash) this is harmless: the close dialog shows all zeros
+and no revenue is posted. It does consume a session number, so a
+`My Company/000NN` with zeros will appear in the session list; that is expected, not a bug.
+
+Path: Dashboard → **เปิดรอบ** → POS loads → dismiss the order-type dialog **without
+creating an order** → ☰ menu → **ปิดรอบ** → confirm the zeros → **ปิดรอบ**.
+
+**Do not** try to work around this by deleting the row through the ORM. The UI omission is
+intentional, and a human should decide anything that touches session records.
+
+---
+
+### A record reads the same in Thai and English
+
+**Symptom:** You rename something to Thai and `en_US` shows the Thai text too.
+
+**Cause:** it is not translated — it is a plain stored value. Record names created at
+runtime (payment methods, products, floors) have one value, not one per language.
+
+**Fix:** nothing to fix; this is correct. Only add a `.po` entry when the string is a
+label Odoo ships in English. See `RUNBOOK-translations.md` Step 0.
 
 ---
 
