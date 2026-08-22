@@ -269,15 +269,17 @@
 }
 
 .pos .ko-product-card .product-content {
-    min-height: 58px;
+    min-height: 72px;
     padding: 9px 10px !important;
-    gap: 8px;
-    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+    align-items: stretch;
     background: var(--ko-surface);
 }
 
 .pos .ko-product-card .product-name {
     flex: 1 1 auto;
+    width: 100%;
     color: var(--ko-ink);
     font-size: 1rem;
     font-weight: 700;
@@ -285,6 +287,7 @@
 }
 
 .pos .ko-product-card .ko-product-price {
+    margin-left: auto;
     color: var(--ko-primary-dark);
     font-size: 0.95rem;
 }
@@ -443,7 +446,7 @@
     }
 
     .pos .ko-product-card .product-content {
-        min-height: 54px;
+        min-height: 68px;
         padding: 8px !important;
     }
 

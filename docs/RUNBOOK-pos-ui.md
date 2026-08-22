@@ -41,6 +41,18 @@ The reviewable files are under `addons/ko_pos_ui/`, but production still deploys
    - no browser console error is introduced by `ko_pos_ui`.
 5. Remove any empty test order/session without closing a session that contains real sales.
 
+## Last local visual baseline (2026-08-22)
+
+- Tablet `1024×768`: no document overflow; order pane ~369 px, menu pane ~655 px,
+  four menu cards per row, and the payment button remains fully inside the viewport.
+- Mobile `390×844`: no document overflow; two menu cards per row (~176 px each),
+  horizontal category scrolling, and the payment/cart bar remains visible at the bottom.
+- A first-pass issue where Thai names were squeezed beside the price was fixed by placing
+  the full-width name above a right-aligned price.
+
+This is a static layout baseline, not evidence that Odoo assets installed in production.
+Repeat the production checklist after every deploy.
+
 ## Rollback
 
 Remove `ko_pos_ui` from both `-i` and `-u` lists in the saved Compose, redeploy, and
