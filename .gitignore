@@ -1,0 +1,11 @@
+# Local-only secrets — never commit
+CREDENTIALS.local.md
+deploy-secrets.zip
+deploy_key
+deploy_key.pub
+*vps-compose*.yaml
+
+# Local scratch
+.DS_Store
+__pycache__/
+*.pyc
