@@ -34,6 +34,41 @@ The existing file already does this for `$$@` and `$$(grep -c …)` — follow t
 
 ---
 
+### Every custom addon becomes “manifest not found” after an image refresh
+
+**Symptom:** `addons-init` lists all custom addon directories, but `odoo-upgrade` says
+`invalid module names, ignored: ko_pos_ui`, then reports every existing KO module as
+`manifest not found` / `not installable`.
+
+**Cause:** the `odoo:19` image pulled on 2026-08-22 logged an addon namespace that did
+not include the mounted `/mnt/extra-addons` directory. Relying on an image default made
+the deployment non-reproducible.
+
+**Fix:** pass the full `--addons-path` explicitly on both the long-running `odoo` command
+and the one-shot `odoo-upgrade` command, ending with `/mnt/extra-addons`. Verify the first
+startup lines of both services include that path.
+
+If this immediately fails with `PermissionError: [Errno 13] Permission denied:
+'/mnt/extra-addons'`, make `addons-init` finish with `chmod -R a+rX /mnt/extra-addons`.
+The init container writes as root; Odoo runs as a non-root user.
+
+---
+
+### Hostinger action says success while Compose actually failed
+
+**Symptom:** `VPS_getActionDetailsV1` returns `state: success`, but the project is not
+running or the build log says `Project deployment failed`.
+
+**Cause:** the Hostinger action tracks acceptance/completion of the API operation, not
+the exit status of every gated Compose service. On 2026-08-22 it returned success even
+though `odoo-upgrade` exited 1.
+
+**Fix:** treat action success only as permission to inspect the result. Always read the
+build log, require `Project deployed successfully`, confirm both init services exited 0,
+and inspect the `odoo-upgrade` log before calling a deploy healthy.
+
+---
+
 ### The site looks down from the sandbox
 
 **Symptom:** `curl https://kodoo.viakuma.com` from the agent container returns 403 or hangs.

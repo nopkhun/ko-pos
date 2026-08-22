@@ -43,11 +43,22 @@ The Compose YAML to send is the local file
 `deploy_real/vps-compose-thaiv2.yaml` inside `deploy-secrets.zip`. It embeds the SSH
 deploy key, which is why it is not in this repo.
 
+Before sending it, verify three invariants introduced after the 2026-08-22 Odoo image
+refresh:
+
+1. Both `odoo` and `odoo-upgrade` commands pass an explicit `--addons-path` ending in
+   `/mnt/extra-addons`.
+2. `addons-init` finishes with `chmod -R a+rX /mnt/extra-addons`.
+3. Both install/update module lists include `ko_pos_ui`.
+
 ### 3. Poll until the action finishes
 
 `VPS_getActionDetailsV1` with `virtualMachineId: 973354` and the `id` returned by the
 deploy call. Wait for `state: "success"` (typically 40–60 s). `state: "sent"` or
 `"started"` means keep waiting.
+
+Action success is not proof that Compose succeeded. Hostinger has returned success for
+an operation whose `odoo-upgrade` service exited 1; Step 4 remains mandatory.
 
 ### 4. Read the logs — this is the part people skip
 
@@ -89,8 +100,13 @@ Check, in order:
    Then `Modules loaded.` and a clean `Initiating shutdown` (this container is
    `--stop-after-init`; exiting is success, not failure).
 
-4. **`odoo` service.** `HTTP service (werkzeug) running on …:8069` and
-   `MASTER_PW_LINES=1`.
+   Its startup line must list `/mnt/extra-addons` in `addons paths`. For the UI addon,
+   also require `Loading module ko_pos_ui` followed by `Module ko_pos_ui loaded`. Any
+   `manifest not found`, `invalid module names`, or `PermissionError` means the deploy
+   did not install the custom modules even if the Hostinger action says success.
+
+4. **`odoo` service.** Its startup line must also list `/mnt/extra-addons`, followed by
+   `HTTP service (werkzeug) running on …:8069` and `MASTER_PW_LINES=1`.
 
 ### 5. Verify in the running app
 

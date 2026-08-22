@@ -55,6 +55,18 @@ The reviewable files are under `addons/ko_pos_ui/`, but production still deploys
 This is a static layout baseline, not evidence that Odoo assets installed in production.
 Repeat the production checklist after every deploy.
 
+## Last production deploy (2026-08-23)
+
+- Snapshot action `110737091` completed before the change.
+- Final deploy action `110737887` completed and the project is running: Postgres healthy,
+  Odoo up, and both init services exited 0.
+- `addons-init` listed `ko_pos_ui`; `odoo-upgrade` logged `Loading module ko_pos_ui
+  (88/88)` and `Module ko_pos_ui loaded` with no upgrade error or traceback.
+- Thai overrides still reported exactly 57 files.
+- The public Thai login page responds normally.
+- Authenticated `/pos/ui` visual and console QA is still required; do not treat the local
+  baseline above as a substitute.
+
 ## Rollback
 
 Remove `ko_pos_ui` from both `-i` and `-u` lists in the saved Compose, redeploy, and

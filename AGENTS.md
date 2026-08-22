@@ -8,7 +8,7 @@
 > https://kodoo.viakuma.com — ใช้งานจริงแล้ว มี addon ของเราเอง 5 ตัว และระบบคำแปลไทย
 > "ฉบับร้านอาหาร" ที่เขียนเอง อ่านหัวข้อ *Do not break these* ก่อนแก้อะไรทั้งสิ้น
 
-- **Last verified:** 2026-08-22
+- **Last verified:** 2026-08-23
 - **Status:** LIVE in production. A real restaurant will use this.
 - **Owner:** Nop (Thai speaker — user-facing strings and all UI copy must be natural Thai)
 
@@ -69,13 +69,16 @@ addons-init (alpine/git, one-shot)
   └─ wipes /mnt/extra-addons, unpacks addons.tar.gz
   └─ decodes patch/thai_v2/*.b64  → overwrites i18n_overrides/
   └─ appends patch/thai_v3/*.append.po onto the matching .po files
+  └─ makes /mnt/extra-addons readable by the non-root Odoo user
         ↓ (service_completed_successfully)
 odoo-upgrade (odoo:19, one-shot)
+  └─ uses an explicit --addons-path ending in /mnt/extra-addons
   └─ -d kopos --stop-after-init -i/-u <6 modules> --load-language=th_TH
   └─ this is where translations actually land in the database
         ↓ (service_completed_successfully)
 odoo (odoo:19, long-running)
   └─ -d kopos --db-filter=^kopos$ --proxy-mode, port 8069 behind Traefik
+  └─ uses the same explicit --addons-path as odoo-upgrade
   └─ entrypoint injects admin_passwd into /etc/odoo/odoo.conf
 
 db (postgres:17-alpine) — healthcheck gates all of the above
@@ -234,10 +237,14 @@ means containers started. Verify the translation count line from §5 and check t
 8. The agent sandbox **cannot reach `kodoo.viakuma.com` directly** (egress blocked, 403).
    Verify the live site through the browser tooling or WebFetch instead. Do not
    conclude the site is down from a sandbox `curl` failure.
+9. **Keep `/mnt/extra-addons` explicit and readable.** Both Odoo commands must pass an
+   `--addons-path` that includes `/mnt/extra-addons`, and `addons-init` must finish with
+   `chmod -R a+rX /mnt/extra-addons`. The `odoo:19` image pulled on 2026-08-22 did not
+   include the mounted path automatically; see `docs/GOTCHAS.md`.
 
 ---
 
-## 8. Current state (verified 2026-08-22)
+## 8. Current state (verified 2026-08-23)
 
 Working and confirmed against the live system:
 
@@ -260,6 +267,17 @@ Working and confirmed against the live system:
 - All POS sessions are closed; none open. Note `My Company/00005` in the session list is
   an empty open-then-close cycle (0 orders, 0.00) performed only to clear the
   payment-method edit lock — see §9 note and `docs/GOTCHAS.md`.
+- `ko_pos_ui` is deployed as the sixth custom addon. Production log on 2026-08-23
+  confirms `Loading module ko_pos_ui (88/88)` and `Module ko_pos_ui loaded` with no
+  upgrade error, traceback, invalid-module warning, or missing manifest.
+- The touch-first UI keeps the order on the left and menu on the right on tablets,
+  adds Thai workflow headings, horizontal categories, larger product cards with current
+  prices, a prominent payment action, and a two-column mobile menu. Local visual QA
+  passed at `1024×768` and `390×844`; authenticated production-screen QA remains below.
+- Production Compose now passes `/mnt/extra-addons` explicitly to both Odoo processes
+  and makes the mounted addon tree readable. Final deploy action `110737887` completed;
+  Postgres is healthy, Odoo is running, both init services exited 0, and the Thai override
+  success signal remains exactly 57 files.
 
 ---
 
@@ -272,9 +290,12 @@ Working and confirmed against the live system:
    attach it to the payment method, and test against the Beam playground before live use.
 3. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close.
-4. **Refactor (recommended):** fold `patch/thai_v2` + `patch/thai_v3` back into
+4. **Final authenticated UI QA:** open `/pos/ui` at tablet and mobile widths, confirm the
+   live asset bundle and browser console, and tap a product only if it will not create or
+   close a real-sales session. Do not complete a payment.
+5. **Refactor (recommended):** fold `patch/thai_v2` + `patch/thai_v3` back into
    `addons.tar.gz`, delete the patch directories, and simplify `addons-init`. See §4.
-5. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
+6. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
 > ✅ Completed 2026-08-22: the `การ์ด` → `บัตรเครดิต` payment-method rename. Odoo blocks
 > payment-method writes while any POS session is not `closed`, and it offers **no UI to
