@@ -14,6 +14,31 @@
 
 ---
 
+## 0. Definition of done — update everything, every time
+
+**A task on this project is not finished when the code works. It is finished when the
+written record matches reality.** After *any* change — a deploy, a wording fix, a config
+change, or simply discovering a new trap — do all of this before reporting back:
+
+1. **Push to the repo.** `addons-init` clones `main` on every deploy; anything unpushed
+   does not exist as far as production is concerned.
+2. **Update §8 *Current state*** with what is now verified true.
+3. **Update §9 *Outstanding work*** — delete what you finished, add what you uncovered.
+4. **Add to `docs/GOTCHAS.md`** if you lost time to something surprising. Write it
+   symptom-first. The next agent will hit the same wall otherwise.
+5. **Update the relevant `docs/RUNBOOK-*.md`** if the procedure itself changed.
+6. **Update `CREDENTIALS.local.md`** if a password, key, ID, or placeholder changed.
+7. **Update *both* copies.** These docs exist in the owner's local `KO-DOO` folder *and*
+   in this repo. Update both in the same session or they drift apart silently.
+8. **Update your own persistent memory**, if your tool has one.
+
+Then say plainly what you verified and what you did **not**. "Project deployed
+successfully" is not verification — it only means containers started. See §6.
+
+<sub>เจ้าของโปรเจคขอไว้ชัดเจน: ทำงานอะไรเสร็จ ให้อัปเดตเอกสารทุกไฟล์ให้ตรงกับของจริงทุกครั้ง</sub>
+
+---
+
 ## 1. What this is
 
 An Odoo 19 restaurant point-of-sale deployment for a Thai restaurant, with five
@@ -251,7 +276,8 @@ Working and confirmed against the live system:
 ## 10. Where things live
 
 The owner's local project folder (`KO-DOO`, synced via OneDrive) holds the secrets and
-build artefacts that are deliberately kept out of this repo:
+build artefacts that are deliberately kept out of this repo. The `.md` docs exist in
+**both** places and must be updated in both — see §0.
 
 | File | Contents |
 | --- | --- |
