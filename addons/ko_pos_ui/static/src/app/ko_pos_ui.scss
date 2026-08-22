@@ -222,7 +222,7 @@
     font-weight: 700;
 }
 
-.pos .category-list .category-button:not(.opacity-75) {
+.pos .category-list .category-button:not(.opacity-75):not(.border-0) {
     color: #fff;
     border-color: var(--ko-primary) !important;
     background: var(--ko-primary) !important;

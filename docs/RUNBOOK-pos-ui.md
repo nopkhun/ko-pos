@@ -9,6 +9,8 @@ logic.
 
 - Keep the current order visible on the left and the menu on the right on tablets.
 - Categories are a single horizontal, scrollable row with a clearly selected state.
+- Category highlighting must account for Odoo 19's separate inactive markers:
+  `opacity-75` for root categories and `border-0` for child categories.
 - Product cards have large touch targets, name, current display price, and cart quantity.
 - The primary green action is payment; secondary actions must not compete with it.
 - Thai helper copy must be short and natural for front-of-house staff.

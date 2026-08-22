@@ -60,6 +60,20 @@ ambiguity for good.
 
 ---
 
+### Every nested POS category turns green
+
+**Symptom:** Child categories that are not selected look identical to the active category.
+
+**Cause:** Odoo 19 marks an unselected root category with `opacity-75`, but an unselected
+child category uses `border-0` instead. Styling every `.category-button:not(.opacity-75)`
+therefore catches inactive child categories too.
+
+**Fix:** require both markers to be absent when styling the active path:
+`.category-button:not(.opacity-75):not(.border-0)`. Recheck this selector against the
+upstream `CategorySelector` template after an Odoo upgrade.
+
+---
+
 ### The translation won't apply no matter what I write in the .po
 
 **Symptom:** A `.po` entry looks perfect, deploy is clean, the wording does not change.
