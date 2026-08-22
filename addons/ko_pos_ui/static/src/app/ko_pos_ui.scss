@@ -223,7 +223,7 @@
 }
 
 .pos .category-list .category-button:not(.opacity-75):not(.border-0) {
-    color: #fff;
+    color: #fff !important;
     border-color: var(--ko-primary) !important;
     background: var(--ko-primary) !important;
     opacity: 1 !important;
