@@ -25,7 +25,7 @@ patch(ProductScreen.prototype, {
     },
 
     get koDirectSaleName() {
-        return this.currentOrder?.floatingOrderName || "";
+        return this.currentOrder?.preset_id?.name || this.pos.config?.name || "ขายหน้าร้าน";
     },
 
     get koSeatCount() {
@@ -35,10 +35,11 @@ patch(ProductScreen.prototype, {
     },
 
     get koSessionNumber() {
-        const sessionName = this.pos.session?.name || this.pos.session?.display_name;
+        const session = this.currentOrder?.session_id || this.pos.session;
+        const sessionName = session?.name || session?.display_name;
         if (sessionName) {
             return String(sessionName).split("/").at(-1);
         }
-        return this.pos.session?.id || "-";
+        return session?.id || "-";
     },
 });
