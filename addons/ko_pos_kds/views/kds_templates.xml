@@ -6,6 +6,17 @@
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
                 <title>จอครัว · KO KDS</title>
+                <!-- web.assets_frontend starts Odoo's asset watchdog. A raw standalone
+                     page must seed the same session info as web.frontend_layout;
+                     otherwise every bundle_changed event compares against an empty
+                     server version and shows a false "page out of date" warning. -->
+                <script type="text/javascript">
+                    var odoo = {
+                        csrf_token: "<t t-esc="request.csrf_token(None)"/>",
+                        debug: "",
+                    };
+                    odoo.__session_info__ = <t t-out="json.dumps(request.env['ir.http'].get_frontend_session_info())"/>;
+                </script>
                 <t t-call-assets="web.assets_frontend"/>
                 <style>
                     @font-face {
@@ -492,7 +503,7 @@
                 <!-- This script is served directly rather than through an Odoo asset
                      bundle. Keep a version query so browsers cannot reuse an older KDS
                      runtime after an addon upgrade. -->
-                <script src="/ko_pos_kds/static/src/kds/kds.js?v=19.0.4.0.1"/>
+                <script src="/ko_pos_kds/static/src/kds/kds.js?v=19.0.4.0.2"/>
             </body>
         </html>
     </template>

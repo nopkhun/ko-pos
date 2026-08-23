@@ -109,7 +109,7 @@ Repeat the production checklist after every deploy.
 
 The first completion claim in commit `ffeb880` was code-presence only and failed real
 Odoo 19 runtime checks. `ko_pos_ui` version `19.0.4.0.0` and `ko_pos_kds` version
-`19.0.4.0.1` replace it with the following verified, deployed implementation:
+`19.0.4.0.2` replace it with the following verified implementation:
 
 - **§2 Item options:** reads real `product.attribute` / PTAV records, respects variants,
   `price_extra` and custom values, and supports add/edit/remove, notes and quantity.
@@ -133,7 +133,7 @@ the complete cash sale/receipt/bills/refund/edit flow at `390×844`, KDS lifecyc
 views at `1024×768`, no browser console error, and exactly 57 Thai override files. The
 backend KDS test reports `0 failed, 0 errors of 1 tests`.
 The verified root/repo `addons.tar.gz` SHA-256 is
-`67d144d209895e36cd4a25a8e85725f572a1e9895cbf683d4bcb42163fb07eca`.
+`ee3b072283b97bcd1b49599eecc2c60860357c5e5f77c99d610f9d377db0a68f`.
 
 ### Production verification for §2–§9 (2026-08-23)
 
@@ -144,9 +144,13 @@ The verified root/repo `addons.tar.gz` SHA-256 is
 - At `1280×720`, authenticated safe-path QA passed empty current order, category filter,
   Thai search, persisted paid Bills, Sell/Bills/Kitchen navigation, KDS SLA/ticket data,
   history tabs, order/menu views, and station filtering with no console warning/error.
-- The direct KDS runtime is cache-busted as `kds.js?v=19.0.4.0.1`; this fixed the live-only
-  stale-script symptom where SLA stayed loading and tab clicks raised
-  `kdsSetTab is not defined`.
+- The production direct KDS runtime was cache-busted as `kds.js?v=19.0.4.0.1`; this fixed
+  the live-only stale-script symptom where SLA stayed loading and tab clicks raised
+  `kdsSetTab is not defined`. The 19.0.4.0.2 candidate advances that key again.
+- KDS 19.0.4.0.2 additionally initializes Odoo's frontend session info before loading
+  `web.assets_frontend`, preventing the asset watchdog from raising a false “page out of
+  date” warning on every fresh standalone KDS page. Disposable Odoo 19 rendered-page QA
+  passed; production deployment and delayed live watchdog verification are pending.
 - No product was added or sent, no payment/refund/cancellation was performed, and the
   live session was not closed. KDS ticket K0003 / queue 1003 was observed but not changed.
 

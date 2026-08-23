@@ -300,7 +300,7 @@ Working and confirmed against the live system:
   not production-ready: the options were hard-coded instead of using Odoo attributes,
   payment/receipt retained stock mobile UI, billed orders disappeared after reload, and
   KDS failed on two Odoo 19 model assumptions. These defects are corrected and deployed
-  in `ko_pos_ui` **19.0.4.0.0** and `ko_pos_kds` **19.0.4.0.1**.
+  in `ko_pos_ui` **19.0.4.0.0** and `ko_pos_kds` **19.0.4.0.2**.
 - Final local QA uses a disposable Odoo 19/PostgreSQL database with the real addon and
   asset pipeline. It passed configurable-product add/edit/remove with real
   `product.attribute` values and `price_extra`, notes and quantity, phone cart,
@@ -328,31 +328,37 @@ Working and confirmed against the live system:
   the live session was not closed.
 - KDS currently shows pre-existing active ticket **K0003 / queue 1003**
   (`ข้าวผัดกุ้ง`) as over SLA. QA did not change its state because ownership is unknown.
-- A per-browser Odoo “หน้านี้เลิกใช้งานแล้ว” asset notification left by the deploy was
-  dismissed during authenticated KDS QA. KDS continued polling, SLA/ticket data remained
-  live, and both browser console and current server logs were error-free. This notification
-  is not a backend failure; see `docs/GOTCHAS.md` if it appears in another open browser.
+- The recurring Odoo “หน้านี้เลิกใช้งานแล้ว” warning on fresh KDS pages was traced to
+  the standalone template loading `web.assets_frontend` without initializing
+  `odoo.__session_info__`. The asset watchdog therefore compared the bus notification
+  against an empty `session.server_version` and raised a false warning. Version
+  **19.0.4.0.2** seeds Odoo's standard frontend session info before assets load and bumps
+  the direct-script cache key. Static checks and disposable Odoo 19 render/integration QA
+  passed; production deploy and the delayed live watchdog check are still pending.
 
 ---
 
 ## 9. Outstanding work
 
-1. **Finish data-backed §1 QA:** once real menu data has an English
+1. **Deploy and live-QA KDS 19.0.4.0.2:** after owner confirmation, deploy the false
+   asset-watchdog warning fix, open a fresh authenticated `/kds`, wait through the
+   watchdog delay, and confirm the warning does not return while SLA/tickets keep polling.
+2. **Finish data-backed §1 QA:** once real menu data has an English
    `public_description` and a configurable item, verify English search and Odoo's
    configurator path live.
-2. **Production phone-width spot check:** final §2–§9 production QA used the fixed
+3. **Production phone-width spot check:** final §2–§9 production QA used the fixed
    1280×720 browser surface. Local 390×844 and the earlier §1 live phone checks passed,
    but repeat the final production flow at 390 px when a resizable live browser is
    available; do not complete payment or change kitchen state.
-3. **Owner/staff review:** decide whether pre-existing KDS ticket K0003 / queue 1003 is a
+4. **Owner/staff review:** decide whether pre-existing KDS ticket K0003 / queue 1003 is a
    real kitchen ticket or old QA data before marking it served or cancelled.
-4. **Real business data from the owner:** real PromptPay number (currently the placeholder
+5. **Real business data from the owner:** real PromptPay number (currently the placeholder
    `0812345678`), the real menu items & prices, and the kitchen printer's IP (Epson).
-5. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
+6. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
    attach it to the payment method, and test against the Beam playground before live use.
-6. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
+7. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close.
-7. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
+8. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
 > ✅ Completed 2026-08-23: audited and replaced the incomplete §2–§9 implementation from
 > `ffeb880`, completed disposable-database QA, deployed it, and passed production

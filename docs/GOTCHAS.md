@@ -117,15 +117,21 @@ missing global function.
 bundle. A browser can reuse the older script at the same URL after an addon upgrade.
 
 **Fix:** append the addon version to the direct script URL and bump it whenever that
-runtime changes (currently `kds.js?v=19.0.4.0.1`). Verify with a fresh tab that SLA loads
+runtime changes (currently `kds.js?v=19.0.4.0.2`). Verify with a fresh tab that SLA loads
 and active/served/cancelled plus order/menu controls work.
 
-An Odoo banner saying `หน้านี้เลิกใช้งานแล้ว` can remain in a browser session after an
-asset-changing deploy even when the new KDS runtime is healthy. First verify that SLA and
-ticket data update, controls work, and console/server logs are clean; then dismiss the
-banner with `ปิด`. It is browser-local and does not mean the KDS backend failed. If a tab
-still raises `kdsSetTab is not defined`, close that tab and open `/kds` again so the
-versioned runtime is requested.
+If an Odoo banner saying `หน้านี้เลิกใช้งานแล้ว` returns on every fresh KDS page,
+do not treat it as ordinary post-deploy cache. The standalone KDS template loads
+`web.assets_frontend`, whose asset watchdog compares `bundle_changed.server_version`
+with `session.server_version`. Without the `odoo.__session_info__` initialization that
+Odoo's standard `web.frontend_layout` performs, the local value is empty and every bus
+event looks stale. Seed `request.env['ir.http'].get_frontend_session_info()` before the
+asset call; KDS 19.0.4.0.2 includes this fix. Preserve the bus and polling fallback.
+
+After deploying, open a fresh authenticated `/kds`, wait at least 60 seconds for the
+watchdog's randomized delay, and confirm the banner does not return while SLA and ticket
+data continue updating. If a tab still raises `kdsSetTab is not defined`, close that tab
+and open `/kds` again so the versioned runtime is requested.
 
 ---
 
