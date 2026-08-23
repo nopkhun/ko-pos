@@ -11,6 +11,11 @@ STATIONS = [
 ]
 
 
+def kds_channel(config_id):
+    """One bus channel per POS. A kitchen screen must never be woken by another shop."""
+    return 'ko_pos_kds_%s' % (int(config_id) if config_id else 0)
+
+
 def _clean_note(note):
     if not note:
         return ''
@@ -65,6 +70,23 @@ class KdsStation(models.Model):
         string='หมวดสินค้าที่แสดง',
         help='ใช้กรองรายการบนจอของสถานีนี้ (เว้นว่าง = แสดงทุกหมวด)',
     )
+    config_ids = fields.Many2many(
+        'pos.config',
+        string='จุดขาย (POS) ที่ใช้สถานีนี้',
+        help='สถานีนี้จะเลือกได้เฉพาะจอครัวของจุดขายที่ระบุ (เว้นว่าง = ใช้ได้ทุกจุดขาย)',
+    )
+    company_id = fields.Many2one(
+        'res.company',
+        string='บริษัท',
+        help='เว้นว่าง = ใช้ร่วมกันทุกบริษัท',
+    )
+
+    def _available_for_config(self, config):
+        """Stations usable by one POS: unscoped ones plus ones naming this POS."""
+        return self.filtered(
+            lambda station: (not station.config_ids or config in station.config_ids)
+            and (not station.company_id or station.company_id == config.company_id)
+        )
 
 
 class KdsTicket(models.Model):
@@ -76,7 +98,15 @@ class KdsTicket(models.Model):
     pos_order_uuid = fields.Char(index=True)
     pos_reference = fields.Char(string='เลขที่ออเดอร์')
     tracking_number = fields.Char(string='คิว')
-    config_id = fields.Many2one('pos.config', string='POS')
+    config_id = fields.Many2one('pos.config', string='POS', index=True)
+    company_id = fields.Many2one(
+        'res.company',
+        string='บริษัท',
+        related='config_id.company_id',
+        store=True,
+        index=True,
+        readonly=True,
+    )
     table_name = fields.Char(string='โต๊ะ')
     floor_name = fields.Char(string='โซน')
     order_type = fields.Selection([
@@ -108,8 +138,16 @@ class KdsTicket(models.Model):
         return super().create(vals_list)
 
     def _notify_kds(self, event='refresh'):
-        payload = {'event': event, 'ticket_ids': self.ids}
-        self.env['bus.bus']._sendone('ko_pos_kds', 'ko_pos_kds_update', payload)
+        """Notify only the screens of the POS each ticket belongs to."""
+        by_config = {}
+        for ticket in self:
+            by_config.setdefault(ticket.config_id.id or 0, []).append(ticket.id)
+        for config_id, ticket_ids in by_config.items():
+            self.env['bus.bus']._sendone(
+                kds_channel(config_id),
+                'ko_pos_kds_update',
+                {'event': event, 'ticket_ids': ticket_ids, 'config_id': config_id},
+            )
 
     @api.model
     def _station_for_product(self, product):
@@ -141,10 +179,12 @@ class KdsTicket(models.Model):
         if not order_uuid:
             return False
 
-        ticket = self.sudo().search([
-            ('pos_order_uuid', '=', order_uuid),
-            ('remake', '=', False),
-        ], order='id desc', limit=1)
+        config_id = payload.get('config_id') or False
+        # Scope the upsert to the sending POS so two shops can never share a ticket.
+        domain = [('pos_order_uuid', '=', order_uuid), ('remake', '=', False)]
+        if config_id:
+            domain.append(('config_id', '=', config_id))
+        ticket = self.sudo().search(domain, order='id desc', limit=1)
         metadata = {
             'pos_reference': payload.get('pos_reference'),
             'tracking_number': str(payload.get('tracking_number') or ''),
@@ -257,11 +297,14 @@ class KdsTicket(models.Model):
         return True
 
     @api.model
-    def get_pos_status(self, order_uuids):
-        tickets = self.sudo().search([
+    def get_pos_status(self, order_uuids, config_id=None):
+        domain = [
             ('pos_order_uuid', 'in', order_uuids or []),
             ('remake', '=', False),
-        ])
+        ]
+        if config_id:
+            domain.append(('config_id', '=', int(config_id)))
+        tickets = self.sudo().search(domain)
         result = {}
         for ticket in tickets:
             result[ticket.pos_order_uuid] = {
@@ -315,6 +358,14 @@ class KdsTicketLine(models.Model):
     _order = 'id'
 
     ticket_id = fields.Many2one('ko.kds.ticket', required=True, ondelete='cascade', index=True)
+    company_id = fields.Many2one(
+        'res.company',
+        string='บริษัท',
+        related='ticket_id.company_id',
+        store=True,
+        index=True,
+        readonly=True,
+    )
     pos_order_line_uuid = fields.Char(index=True)
     product_id = fields.Many2one('product.product')
     full_name = fields.Char()
