@@ -528,3 +528,108 @@ for (const n of await caches.keys()) { await caches.delete(n); }
 
 then reload. **Never conclude a UI fix failed until you have done this** — and tell the
 owner that every till already sitting on the POS needs one hard refresh after a UI deploy.
+
+**The JS bundle needs one more step (seen 2026-08-23).** Clearing the service workers and
+caches was not enough: `point_of_sale.assets_prod.js` was still served from the browser's
+ordinary HTTP cache, so `posmodel` existed but the KO patches (`koKdsChanges`,
+`koSendToKds`) were `undefined` while the same URL fetched with `cache: 'reload'` clearly
+contained them. Revalidate the bundle first, then reload:
+
+```js
+for (const s of [...document.querySelectorAll('script[src]')].map(s => s.src)) {
+    await fetch(s, { cache: 'reload' });
+}
+location.reload();
+```
+
+Checking `typeof posmodel.koSendToKds === 'function'` is the quickest proof that the tab is
+running the deployed code.
+
+---
+
+### There is no ส่งครัว button at all, so orders can never reach the kitchen
+
+**Symptom:** staff key an order in the POS and there is simply no way to send it to the
+kitchen. On a table order the green action button says only ชำระเงิน. The KDS board stays
+on "ไม่มีออเดอร์ค้าง" no matter what is rung up.
+
+**Cause:** Odoo decides whether an order "has anything to send" from
+`pos.config.preparationCategories`, which is derived **only** from the product categories
+attached to a `pos.printer` record — see `addons/point_of_sale/static/src/app/models/pos_config.js`.
+The restaurant `ActionpadWidget` renders the Send button behind
+`t-if="… and this.displayCategoryCount.length"`. With no printer linked to the POS
+(`pos.config.printer_ids` empty — which was true of **both** KO shops), that set is empty,
+`categoryCount` is `[]`, the button never renders, and `order.hasChange` is always false so the
+"send to preparation?" prompt before payment never fires either.
+
+**Second half of the same trap:** even with a printer attached, only the categories listed
+on that printer count. The KO seed printer lists อาหารจานเดียว / กับข้าว / ของหวาน but **not**
+เครื่องดื่ม, so a drinks-only order was unsendable even on a till that had a printer.
+
+**Fix (ko_pos_kds 19.0.6.0.0):** the KDS no longer borrows the printer's configuration.
+`PosStore.getOrderChanges` is patched to use every POS category when `ko_kds_enabled` is on,
+and `getCategoryCount` falls back to a single ครัว bucket so a product with no POS category
+at all still shows the button. Printing keeps using `printerCategories` — untouched.
+
+**Rule of thumb:** on this project the kitchen display and the kitchen printer are
+independent. Never gate a KDS behaviour on `pos.printer`.
+
+---
+
+### The order was paid but the kitchen never saw it
+
+**Symptom:** a takeaway is keyed and paid straight away. The receipt prints, the sale is in
+บิลแล้ว, and the kitchen has no idea the food was ordered.
+
+**Cause:** `OrderPaymentValidation.afterOrderValidation` in
+`addons/point_of_sale/static/src/app/utils/order_payment_validation.js` sends the order to
+preparation **only when `!config.module_pos_restaurant`**. In restaurant mode Odoo instead
+asks, in `pos_restaurant`'s `pay()`, "It seems that the order has not been sent. Would you
+like to send it to preparation?" — and **Discard is a valid answer**. Press Discard (or have
+`hasChange` be false, see the gotcha above) and the money is taken while the kitchen is
+never told.
+
+**Fix (ko_pos_kds 19.0.6.0.0):** `afterOrderValidation` is patched to send in restaurant mode
+too, and `_askForPreparation` is suppressed while
+`pos.config.ko_kds_auto_send_on_payment` is on, so there is no dialog to dismiss. The two
+supported paths are now: press ส่งครัว, or pay — either one reaches the kitchen.
+
+---
+
+### The kitchen board has two station rows that disagree
+
+**Symptom:** `/kds/pos/<id>` shows a row of chips (ครัวร้อน / ครัวเย็น / เครื่องดื่ม) *and* a
+"สถานี:" row of links. Picking a chip and picking a link give different results, and adding
+a real station such as ครัวขนม is impossible.
+
+**Cause:** two independent station concepts shipped at once. `pos.category.ko_kds_station`
+was a hard-coded `Selection` of exactly three values that decided the badge on each dish and
+the chip filter in the browser; `ko.kds.station` was a real model whose `category_ids`
+filtered the same board on the server. Neither knew about the other.
+
+**Fix (ko_pos_kds 19.0.6.0.0):** the selection field and the chips are gone.
+`ko.kds.station` is the only station concept: `ko.kds.ticket.line.station_id` points at one,
+routing is menu-item → category → catch-all, and the station bar is rendered from the real
+records. A dish that matches no station is shown on **every** board as ไม่ได้กำหนดสถานี so a
+configuration gap can never hide an order.
+
+**If you upgrade a database that already had stations:** `ko_pos_setup` seeds ครัวร้อน /
+บาร์น้ำ / ครัวขนม, which will sit next to whatever the shop already created. Decide which set
+is real, map the survivors to their categories, and deactivate the rest (do not delete —
+`noupdate="1"` data is recreated on the next upgrade if the record is missing).
+
+---
+
+### A legacy KDS line lands on the wrong station right after the upgrade
+
+**Symptom:** immediately after deploying 19.0.6.0.0, an old ticket line shows a station that
+has nothing to do with the dish.
+
+**Cause:** `data/kds_migrate.xml` runs inside `ko_pos_kds`, which Odoo loads *before*
+`ko_pos_setup` (73…88 order in the upgrade log). The stations that `ko_pos_setup` seeds do
+not exist yet, so the migration can only put the line on whatever catch-all is already
+there.
+
+**Fix:** it only affects lines that existed before the upgrade. Re-point them by hand in
+หลังบ้าน → ประวัติออเดอร์ครัว, or clear `station_id` and run the migration again once the
+stations exist.
