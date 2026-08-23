@@ -49,7 +49,9 @@
             <list editable="bottom">
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
+                <field name="config_ids" widget="many2many_tags"/>
                 <field name="category_ids" widget="many2many_tags"/>
+                <field name="company_id" groups="base.group_multi_company"/>
             </list>
         </field>
     </record>
@@ -67,6 +69,8 @@
             <list create="false">
                 <field name="create_date"/>
                 <field name="name"/>
+                <field name="config_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
                 <field name="table_name"/>
                 <field name="floor_name"/>
                 <field name="pos_reference"/>

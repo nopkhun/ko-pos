@@ -11,7 +11,9 @@ import { changesToOrder } from "@point_of_sale/app/models/utils/order_change";
 patch(PosStore.prototype, {
     async setup() {
         await super.setup(...arguments);
-        this.bus.addChannel("ko_pos_kds");
+        // Listen only to this POS's kitchen channel — another shop's kitchen
+        // activity must not trigger a refresh here.
+        this.bus.addChannel(`ko_pos_kds_${this.config.id}`);
         this.bus.subscribe("ko_pos_kds_update", () => this.koRefreshKdsStatus());
         await this.koRefreshKdsStatus();
     },
@@ -25,7 +27,7 @@ patch(PosStore.prototype, {
             const status = await this.data.call(
                 "ko.kds.ticket",
                 "get_pos_status",
-                [orders.map((order) => order.uuid)]
+                [orders.map((order) => order.uuid), this.config.id]
             );
             for (const order of orders) {
                 const orderStatus = status[order.uuid];

@@ -34,6 +34,9 @@ export class KoBottomNav extends Component {
     }
 
     goKitchen() {
-        window.location.assign("/kds");
+        // Open the kitchen board of THIS POS, not the shop picker, so staff never
+        // land on another shop's board.
+        const configId = this.pos.config?.id;
+        window.location.assign(configId ? `/kds/pos/${configId}` : "/kds");
     }
 }
