@@ -8,7 +8,7 @@
 > https://kodoo.viakuma.com — ใช้งานจริงแล้ว มี addon ของเราเอง 5 ตัว และระบบคำแปลไทย
 > "ฉบับร้านอาหาร" ที่เขียนเอง อ่านหัวข้อ *Do not break these* ก่อนแก้อะไรทั้งสิ้น
 
-- **Last verified:** 2026-08-23 (Sell menu list rows)
+- **Last verified:** 2026-08-23 (order control buttons)
 - **Status:** LIVE in production. A real restaurant will use this.
 - **Owner:** Nop (Thai speaker — user-facing strings and all UI copy must be natural Thai)
 
@@ -395,6 +395,26 @@ Working and confirmed against the live system:
   a 1 px `--ko-line` divider, in-cart rows tinted `--ko-primary-soft`.
   **Not verified:** payment, kitchen state and session close were not touched; the English
   subline still cannot be checked because the seed menu has no `public_description`.
+- **Order control buttons show their full Thai labels (fixed and verified live 2026-08-23).**
+  `ko_pos_ui` **19.0.4.3.0**. Odoo 19 renders the row under the current order
+  (`ลูกค้า` / `โน้ต` / the preset `ทานที่ร้าน` / `คอร์ส` / save / `⋮`) as `.text-truncate`
+  buttons inside a single non-wrapping `d-flex justify-content-between` row that is sized
+  for short English labels. The left pane is a fixed 380 px (363 px of usable row), the six
+  buttons needed about 396 px at Odoo's 17.5 px font, so Thai labels were cut to `ลู…` and
+  `ทา…`. New file `static/src/app/ko_pos_ui_control_buttons.scss` restyles them as KO pill
+  chips (14 px, 40 px tall, `nowrap`, `text-overflow: clip`, `overflow: visible`, `margin`
+  reset so Odoo's `ms-auto` cannot stretch the row), lets the row `flex-wrap` when a long
+  partner or preset name needs a second line, tints the active preset with
+  `--ko-primary-soft`, keeps only a selected partner's name ellipsised at 150 px, and hides
+  Odoo's own `.more-btn` — `ko-order-heading` already renders the KO `⋯` button bound to the
+  same `displayAllControlPopup` handler, so it was a duplicate that pushed the row over its
+  width. Deploy action **110902588**: `DEPLOYED_ko_pos_ui: "version": "19.0.4.3.0"`,
+  `KDS_SECURITY_PRESENT=yes`, translations still exactly 57 files, `ko_pos_ui` loaded.
+  Verified live at `kodoo.viakuma.com` (POS 2, ร้านชอบแกง, table 1) after a hard refresh:
+  all five buttons fit one 50 px row with rendered width ≥ scroll width (no truncation), the
+  KO `⋯` still opens the full `การดำเนินการ` popup, and the row wraps instead of clipping
+  when a 40-character partner name is injected. The QA draft line added for the check was
+  removed; nothing was sent to the kitchen, paid, or closed.
 - **After any `ko_pos_ui` deploy, every browser that already had the POS open keeps the old
   assets** until a hard refresh: the POS service workers cache `odoo-sw-cache` /
   `odoo-pos-cache` and the stylesheet URL has no version segment. See `docs/GOTCHAS.md`.
@@ -418,6 +438,10 @@ Working and confirmed against the live system:
    session close.
 6. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
+> ✅ Completed 2026-08-23: stopped the order control buttons truncating their Thai labels
+> (`ko_pos_ui` 19.0.4.3.0) by restyling Odoo's `.control-buttons` row as wrapping KO chips
+> and hiding its duplicate `⋮`. Deploy action `110902588`; verified live after a hard refresh.
+>
 > ✅ Completed 2026-08-23: made the Sell menu render one row per dish (`ko_pos_ui`
 > 19.0.4.2.0) by overriding Odoo 19's Bootstrap `flex-column` product-card utility.
 > Deploy action `110899755`; verified live after clearing the POS service-worker cache.
