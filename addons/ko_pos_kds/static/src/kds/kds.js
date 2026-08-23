@@ -13,15 +13,24 @@
     const toastMsg = document.getElementById("toast-msg");
     const slaLabel = document.getElementById("sla-label");
 
+    // Issue sheet elements
+    const issueBackdrop = document.getElementById("issue-backdrop");
+    const issueTarget = document.getElementById("issue-target");
+    const issueNote = document.getElementById("issue-note");
+    const issueSend = document.getElementById("issue-send");
+    const issueCancel = document.getElementById("issue-cancel");
+
     let currentTab = "active"; // 'active' | 'served' | 'cancelled'
     let currentView = "order"; // 'order' | 'menu'
-    let currentStation = "all"; // 'all' | 'hot' | 'cold' | 'drink'
+    // Station filtering happens on the server (one screen = one station, chosen
+    // in the station bar). There is deliberately no second client-side filter.
 
     let rawData = { active: [], served: [], cancelled: [], now_utc: new Date().toISOString() };
-    let knownTicketIds = new Set();
+    let knownLineIds = new Set();
     let firstLoad = true;
     let audioCtx = null;
     let toastTimer = null;
+    let issueState = { lineId: null, type: null };
 
     function toast(msg) {
         if (toastTimer) {
@@ -35,34 +44,62 @@
         }, 2600);
     }
 
-    function beep() {
+    function getAudioCtx() {
         try {
             audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.type = "sine";
-            osc.frequency.value = 880;
-            gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.5);
+            if (audioCtx.state === "suspended") {
+                audioCtx.resume();
+            }
+            return audioCtx;
         } catch (e) {
-            /* autoplay policy */
+            return null;
         }
     }
+
+    function beep(times) {
+        const ctx = getAudioCtx();
+        if (!ctx) {
+            return;
+        }
+        const count = times || 1;
+        for (let i = 0; i < count; i++) {
+            try {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                const start = ctx.currentTime + i * 0.28;
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = "sine";
+                osc.frequency.value = 880;
+                gain.gain.setValueAtTime(0.35, start);
+                gain.gain.exponentialRampToValueAtTime(0.001, start + 0.25);
+                osc.start(start);
+                osc.stop(start + 0.26);
+            } catch (e) {
+                /* autoplay policy */
+            }
+        }
+    }
+
+    // Browsers keep AudioContext suspended until the page has been interacted
+    // with. A kitchen screen is often left untouched, so unlock on the first
+    // touch of the shift and tell staff when sound is still silent.
+    let audioUnlocked = false;
+    function unlockAudio() {
+        const ctx = getAudioCtx();
+        if (ctx && ctx.state === "running") {
+            audioUnlocked = true;
+            document.removeEventListener("click", unlockAudio);
+            document.removeEventListener("touchstart", unlockAudio);
+        }
+    }
+    document.addEventListener("click", unlockAudio);
+    document.addEventListener("touchstart", unlockAudio);
 
     function esc(s) {
         return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
             return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
         });
-    }
-
-    function fmtElapsed(ms) {
-        const mins = Math.floor(ms / 60000);
-        const secs = Math.floor((ms % 60000) / 1000);
-        return (mins < 10 ? "0" + mins : mins) + ":" + (secs < 10 ? "0" + secs : secs);
     }
 
     function post(url, params) {
@@ -99,18 +136,6 @@
         render();
     };
 
-    window.kdsSetStation = function (stn) {
-        currentStation = stn;
-        document.querySelectorAll(".stn-chip").forEach(function (chip) {
-            chip.classList.remove("active");
-        });
-        const activeChip = document.getElementById("stn-" + stn);
-        if (activeChip) {
-            activeChip.classList.add("active");
-        }
-        render();
-    };
-
     window.kdsToggleLine = function (ev, lineId) {
         ev.stopPropagation();
         post("/kds/toggle_line", { line_id: lineId });
@@ -136,18 +161,113 @@
         toast("ส่งกลับเข้าครัวแล้ว (ทำใหม่)");
     };
 
-    function renderOrderView(tickets, skew) {
-        const filtered = tickets.filter(function (t) {
-            if (currentStation === "all") return true;
-            return (t.lines || []).some(function (l) { return l.station === currentStation; });
-        });
+    // ------------------------------------------------------------------
+    // Issue reporting (kitchen → front of house)
+    // ------------------------------------------------------------------
 
-        if (!filtered.length) {
+    window.kdsOpenIssue = function (ev, lineId) {
+        ev.stopPropagation();
+        issueState = { lineId: lineId, type: null };
+        // The label is read from the DOM, never interpolated into the onclick
+        // attribute: a dish name with a quote would otherwise break the handler.
+        issueTarget.textContent = ev.currentTarget.dataset.label || "";
+        issueNote.value = "";
+        issueSend.disabled = true;
+        document.querySelectorAll(".issue-opt").forEach(function (btn) {
+            btn.classList.remove("active");
+        });
+        issueBackdrop.style.display = "flex";
+    };
+
+    window.kdsClearIssue = function (ev, lineId) {
+        ev.stopPropagation();
+        post("/kds/clear_issue", { line_id: lineId });
+        toast("ยกเลิกการแจ้งปัญหาแล้ว");
+    };
+
+    function closeIssue() {
+        issueBackdrop.style.display = "none";
+        issueState = { lineId: null, type: null };
+    }
+
+    document.querySelectorAll(".issue-opt").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            document.querySelectorAll(".issue-opt").forEach(function (other) {
+                other.classList.remove("active");
+            });
+            btn.classList.add("active");
+            issueState.type = btn.dataset.issue;
+            issueSend.disabled = false;
+        });
+    });
+
+    issueCancel.addEventListener("click", closeIssue);
+    issueBackdrop.addEventListener("click", function (ev) {
+        if (ev.target === issueBackdrop) {
+            closeIssue();
+        }
+    });
+
+    issueSend.addEventListener("click", function () {
+        if (!issueState.lineId || !issueState.type) {
+            return;
+        }
+        const payload = {
+            line_id: issueState.lineId,
+            issue_type: issueState.type,
+            note: issueNote.value || "",
+        };
+        closeIssue();
+        post("/kds/line_issue", payload);
+        toast("แจ้งหน้าร้านแล้ว");
+    });
+
+    // ------------------------------------------------------------------
+    // Rendering
+    // ------------------------------------------------------------------
+
+    function stationBadge(line) {
+        const name = line.station || "ไม่ได้กำหนดสถานี";
+        const color = line.station_color;
+        const cls = color ? "stn-label" : "stn-label stn-none";
+        const style = color ? ' style="color:' + esc(color) + '"' : "";
+        return '<span class="' + cls + '"' + style + ">" + esc(name) + "</span>";
+    }
+
+    function issueBlock(line) {
+        if (!line.issue) {
+            return "";
+        }
+        const cls = line.issue.ack ? "line-issue acked" : "line-issue";
+        const ackText = line.issue.ack ? " · หน้าร้านรับทราบแล้ว" : " · รอหน้าร้านรับทราบ";
+        const note = line.issue.note ? ": " + esc(line.issue.note) : "";
+        return (
+            '<div class="' + cls + '">⚠ ' + esc(line.issue.label) + note + ackText +
+            ' <button type="button" class="line-issue-btn" onclick="kdsClearIssue(event,' +
+            line.id + ')">ยกเลิกการแจ้ง</button></div>'
+        );
+    }
+
+    function ticketHeadLabel(t) {
+        if (t.table) {
+            return "โต๊ะ " + esc(t.table);
+        }
+        if (t.customer) {
+            return "กลับบ้าน · " + esc(t.customer);
+        }
+        if (t.tracking) {
+            return "คิว " + esc(t.tracking);
+        }
+        return esc(t.name);
+    }
+
+    function renderOrderView(tickets, skew) {
+        if (!tickets.length) {
             board.innerHTML = '<div class="empty-board">ไม่มีออเดอร์ค้าง · All caught up 🎉</div>';
             return;
         }
 
-        const html = filtered.map(function (t) {
+        const html = tickets.map(function (t) {
             const created = new Date(t.created_utc).getTime() + skew;
             const elapsedMs = Math.max(0, Date.now() - created);
             const mins = elapsedMs / 60000;
@@ -158,26 +278,27 @@
             const elapsedText = isLate ? Math.floor(mins) + " นาที · เกิน SLA" : Math.floor(mins) + " นาที";
             const slaPct = Math.min(100, Math.round((mins / slaMinutes) * 100)) + "%";
 
-            const lines = (t.lines || []).filter(function (l) {
-                return currentStation === "all" || l.station === currentStation;
-            }).map(function (l) {
+            const lines = (t.lines || []).map(function (l) {
                 const isCancelled = l.state === "cancelled" || l.cancelled;
                 const isReady = ["ready", "served"].includes(l.state) || l.done;
                 const stCls = isCancelled ? "st-cancelled" : isReady ? "st-ready" : "st-cooking";
                 const stLabel = isCancelled ? "ยกเลิก" : isReady ? "เสร็จแล้ว" : "กำลังทำ";
-                const stnCls = "stn-" + (l.station || "hot");
-                const stnLabel = l.station === "drink" ? "เครื่องดื่ม" : l.station === "cold" ? "ครัวเย็น" : "ครัวร้อน";
                 const note = [l.attrs, l.note].filter(Boolean).join(" · ");
+                const label = l.qty + "× " + l.name;
 
                 return (
-                    '<div class="line-item" ' + (isCancelled ? '' : 'onclick="kdsToggleLine(event,' + l.id + ')"') + '>' +
-                        '<div class="line-top">' +
+                    '<div class="line-item">' +
+                        '<div class="line-top" ' + (isCancelled ? '' : 'onclick="kdsToggleLine(event,' + l.id + ')"') + '>' +
                             '<span class="line-qty">' + esc(l.qty) + '×</span>' +
                             '<span class="line-name">' + esc(l.name) + '</span>' +
-                            '<span class="stn-label ' + stnCls + '">' + esc(stnLabel) + '</span>' +
+                            stationBadge(l) +
                             '<span class="st-chip ' + stCls + '">' + esc(stLabel) + '</span>' +
+                            (l.issue ? '' :
+                                '<button type="button" class="line-issue-btn" data-label="' + esc(label) +
+                                '" onclick="kdsOpenIssue(event,' + l.id + ')">แจ้งปัญหา</button>') +
                         '</div>' +
                         (note ? '<div class="line-note">โน้ต: ' + esc(note) + '</div>' : '') +
+                        issueBlock(l) +
                     '</div>'
                 );
             }).join("");
@@ -195,19 +316,20 @@
                 actionBtn = '<button class="card-action-btn btn-waiting">รอเสิร์ฟหน้าร้าน · Ready to serve</button>';
             }
 
-            const tableLabel = t.table ? "โต๊ะ " + esc(t.table) : (t.tracking ? "คิว " + esc(t.tracking) : esc(t.name));
             const shortNo = esc(t.name);
 
             return (
                 '<div class="card ' + cardCls + '" data-created="' + created + '">' +
                     '<div class="card-head">' +
                         '<div class="table-group">' +
-                            '<div class="table-no">' + shortNo + ' · ' + tableLabel + '</div>' +
+                            '<div class="table-no">' + shortNo + ' · ' + ticketHeadLabel(t) + '</div>' +
                             (t.remake ? '<span class="badge-remake">ทำใหม่</span>' : '') +
+                            (t.paid ? '<span class="badge-remake">จ่ายแล้ว</span>' : '') +
                         '</div>' +
                         '<div class="elapsed-label">' + elapsedText + '</div>' +
                     '</div>' +
                     '<div class="sla-bar-wrap"><div class="sla-bar" style="width:' + slaPct + '"></div></div>' +
+                    (t.note ? '<div class="line-note">โน้ตออเดอร์: ' + esc(t.note) + '</div>' : '') +
                     '<div class="lines">' + lines + '</div>' +
                     actionBtn +
                 '</div>'
@@ -221,14 +343,14 @@
         const groupMap = {};
         tickets.forEach(function (t) {
             (t.lines || []).forEach(function (l) {
-                if (currentStation !== "all" && l.station !== currentStation) return;
                 if (l.cancelled || l.state === "cancelled") return;
                 const key = l.name + "|" + (l.attrs || "") + "|" + (l.note || "");
                 if (!groupMap[key]) {
                     groupMap[key] = {
                         name: l.name,
                         note: [l.attrs, l.note].filter(Boolean).join(" · "),
-                        station: l.station || "hot",
+                        station: l.station,
+                        station_color: l.station_color,
                         total: 0,
                         lines: [],
                     };
@@ -238,7 +360,7 @@
                     id: l.id,
                     ticketId: t.id,
                     ticketName: t.name,
-                    table: t.table ? "โต๊ะ " + t.table : (t.tracking ? "คิว " + t.tracking : t.name),
+                    table: t.table ? "โต๊ะ " + t.table : (t.customer || (t.tracking ? "คิว " + t.tracking : t.name)),
                     qty: l.qty,
                     done: l.done || ["ready", "served"].includes(l.state),
                 });
@@ -252,8 +374,6 @@
         }
 
         const html = groups.map(function (g) {
-            const stnCls = "stn-" + g.station;
-            const stnLabel = g.station === "drink" ? "เครื่องดื่ม" : g.station === "cold" ? "ครัวเย็น" : "ครัวร้อน";
             const canAll = g.lines.some(function (l) { return !l.done; });
             const lineIds = g.lines.map(function (l) { return l.id; });
 
@@ -276,7 +396,7 @@
                         '<div>' +
                             '<div class="table-no">' + esc(g.name) + '</div>' +
                             (g.note ? '<div class="line-note" style="padding-left:0;">โน้ต: ' + esc(g.note) + '</div>' : '') +
-                            '<div class="stn-label ' + stnCls + '">' + esc(stnLabel) + '</div>' +
+                            stationBadge(g) +
                         '</div>' +
                         '<div style="font-size:20px; font-weight:700; color:var(--ko-primary-dark)">×' + esc(g.total) + '</div>' +
                     '</div>' +
@@ -304,11 +424,11 @@
                             '<span class="line-qty" style="color:var(--ko-muted);">' + esc(l.qty) + '×</span>' +
                             '<span class="line-name">' + esc(l.name) + '</span>' +
                         '</div>' +
+                        issueBlock(l) +
                     '</div>'
                 );
             }).join("");
 
-            const tableLabel = h.table ? "โต๊ะ " + esc(h.table) : (h.tracking ? "คิว " + esc(h.tracking) : esc(h.name));
             const finishedUtc = currentTab === "cancelled"
                 ? h.cancelled_utc
                 : (h.served_utc || h.done_utc);
@@ -328,7 +448,7 @@
             return (
                 '<div class="card ' + cardCls + '">' +
                     '<div class="card-head">' +
-                        '<div class="table-no">' + esc(h.name) + ' · ' + tableLabel + '</div>' +
+                        '<div class="table-no">' + esc(h.name) + ' · ' + ticketHeadLabel(h) + '</div>' +
                         '<div class="elapsed-label history-meta ' + (overSla ? 'late' : '') + '">' + meta + '</div>' +
                     '</div>' +
                     '<div class="lines">' + linesHtml + '</div>' +
@@ -380,12 +500,27 @@
                     slaLabel.textContent = "SLA เสิร์ฟใน " + Number(data.sla_minutes || 15) + " นาที";
                 }
                 const active = data.active || [];
-                const newIds = active.filter(function (t) { return !knownTicketIds.has(t.id); });
-                if (!firstLoad && newIds.length > 0) {
+                // Alert on any *dish* the station has not seen yet, not only on
+                // brand-new tickets: adding two more plates to table 5 has to
+                // wake the station too.
+                const seenNow = new Set();
+                let fresh = 0;
+                active.forEach(function (t) {
+                    (t.lines || []).forEach(function (l) {
+                        seenNow.add(l.id);
+                        if (!knownLineIds.has(l.id) && l.state !== "cancelled" && !l.cancelled) {
+                            fresh += 1;
+                        }
+                    });
+                });
+                if (!firstLoad && fresh > 0) {
                     beep();
-                    toast("มีออเดอร์ใหม่เข้ามา!");
+                    toast(fresh === 1 ? "มีรายการใหม่เข้าครัว!" : "มีรายการใหม่เข้าครัว " + fresh + " รายการ!");
+                    if (!audioUnlocked) {
+                        toast("มีรายการใหม่เข้าครัว — แตะหน้าจอหนึ่งครั้งเพื่อเปิดเสียงเตือน");
+                    }
                 }
-                knownTicketIds = new Set((active.concat(data.served || [])).map(function (t) { return t.id; }));
+                knownLineIds = seenNow;
                 firstLoad = false;
                 render();
             })
