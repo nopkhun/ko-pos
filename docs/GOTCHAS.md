@@ -480,3 +480,51 @@ file before extracting over it.
 **Fix:** extract into a scratch dir outside the mount (`/tmp/...`) and `cp -R /tmp/x/. dest/`
 — `cp` truncates in place and needs no unlink. Same trick for replacing
 `deploy-secrets.zip`: build the new zip in `/tmp`, then `cp` it over.
+
+---
+
+### The Sell menu still renders cards instead of one row per item
+
+**Symptom:** `ko_pos_ui` ships the list styling from `design_handoff_ko_pos_ui` §1 and the
+deploy is clean, yet every menu item is a block with the image above the name — the menu
+does not read as one dish per line.
+
+**Cause:** Odoo 19 passes `class="pos.productViewMode"` to every `ProductCard`. That getter
+returns the Bootstrap utility `flex-column` (and, when a small-screen list view is
+configured, `flex-row-reverse justify-content-between m-1`). Bootstrap utilities are
+`!important`, so they beat a plain `flex-direction` in the addon stylesheet. The KO rule
+set `display: flex` and `align-items: center` but never pinned the direction, so the card
+kept stacking.
+
+**Fix (`ko_pos_ui` 19.0.4.2.0):** state the row layout explicitly on `.ko-product-card` —
+`flex-direction: row !important`, `justify-content: flex-start !important`,
+`text-align: left !important`, `margin: 0 !important` — and keep `.product-content` /
+`.product-name` left-aligned, because Odoo centers the no-image variant. Odoo's own
+`.product-cart-qty` badge is hidden; the KO row shows the stepper instead.
+
+**Rule of thumb:** when styling anything Odoo renders through a `class="…"` prop, read what
+that prop actually contains. Any Bootstrap utility in it wins over a normal declaration,
+and the property it controls has to be restated with `!important`.
+
+---
+
+### A deployed POS CSS/JS change is invisible in a browser that already had the POS open
+
+**Symptom:** the deploy log shows the new `DEPLOYED_ko_pos_ui` version, fetching the bundle
+with `cache: 'reload'` returns the new CSS, but the open POS tab still renders the old UI
+after a normal reload.
+
+**Cause:** the POS registers service workers and keeps `odoo-sw-cache` / `odoo-pos-cache`,
+and its stylesheet URL (`/web/assets/debug/point_of_sale.assets_prod.css`) carries no
+version segment, so the browser happily reuses the copy it already has.
+
+**Fix / verification recipe:** hard-reload the POS tab (`Cmd/Ctrl + Shift + R`). To be
+certain, clear the caches first from the page console:
+
+```js
+for (const r of await navigator.serviceWorker.getRegistrations()) { await r.unregister(); }
+for (const n of await caches.keys()) { await caches.delete(n); }
+```
+
+then reload. **Never conclude a UI fix failed until you have done this** — and tell the
+owner that every till already sitting on the POS needs one hard refresh after a UI deploy.
