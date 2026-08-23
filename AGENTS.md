@@ -8,7 +8,7 @@
 > https://kodoo.viakuma.com — ใช้งานจริงแล้ว มี addon ของเราเอง 5 ตัว และระบบคำแปลไทย
 > "ฉบับร้านอาหาร" ที่เขียนเอง อ่านหัวข้อ *Do not break these* ก่อนแก้อะไรทั้งสิ้น
 
-- **Last verified:** 2026-08-23 (order control buttons)
+- **Last verified:** 2026-08-23 (kitchen display: stations, both order paths, kitchen alerts)
 - **Status:** LIVE in production. A real restaurant will use this.
 - **Owner:** Nop (Thai speaker — user-facing strings and all UI copy must be natural Thai)
 
@@ -102,7 +102,7 @@ All live in `addons.tar.gz` at the repo root.
 | --- | --- |
 | `ko_pos_setup` | Restaurant seed data: POS categories, floors/tables, demo products |
 | `ko_pos_thai_receipt` | Thai abbreviated tax invoice (ใบกำกับภาษีอย่างย่อ) receipt layout |
-| `ko_pos_kds` | Kitchen Display System (jaw-krua / จอครัว). One screen = one POS: `/kds` is a shop picker, the board is `/kds/pos/<config_id>` |
+| `ko_pos_kds` | Kitchen Display System (จอครัว). One screen = one POS (`/kds` picks the shop, the board is `/kds/pos/<config_id>`) and optionally one station (`?station_id=`). Owns station routing, both order-to-kitchen paths, and the kitchen→front-of-house alert. See `docs/RUNBOOK-kds.md` |
 | `ko_pos_beam_bolt` | Beam Bolt+ card-terminal payment integration (not yet configured with a live merchant key) |
 | `ko_pos_thai_lang` | The Thai translation override layer — see §5. Depends on all four above. |
 | `ko_pos_ui` | Touch-first restaurant POS interface: list-first Sell screen, current-order panel, prices, payment emphasis, responsive tablet/mobile layout. Presentation only; it does not change order, tax, or payment logic. |
@@ -118,7 +118,7 @@ addons.tar.gz              ← ⚠️ historical since 2026-08-23. NOT read by d
                               Kept as a convenience snapshot only; a repacked tarball
                               is NOT a deploy. Do not reintroduce a fallback to it.
 AGENTS.md                  ← this file
-docs/                      ← runbooks, see below
+docs/                      ← runbooks (deploy, translations, pos-ui, kds) + GOTCHAS
 ```
 
 **Why the flip:** an agent session can only push *text* through the GitHub MCP, so a
@@ -419,25 +419,100 @@ Working and confirmed against the live system:
   assets** until a hard refresh: the POS service workers cache `odoo-sw-cache` /
   `odoo-pos-cache` and the stylesheet URL has no version segment. See `docs/GOTCHAS.md`.
 
+- **The kitchen display now matches the owner's five requirements (deployed 2026-08-23,
+  `ko_pos_kds` 19.0.6.0.0 / `ko_pos_ui` 19.0.5.0.0, actions `110909249` + `110909727`).**
+  What changed and why:
+  - *Stations were two conflicting systems.* `pos.category.ko_kds_station` was a hard-coded
+    `hot`/`cold`/`drink` selection that drove a row of chips filtering in the browser, while
+    `ko.kds.station` records filtered the same board on the server. Both rows rendered at
+    once and disagreed, and ครัวขนม could not be added at all. The selection field and the
+    chips are deleted; `ko.kds.station` is the only station concept. A line carries
+    `station_id`, routing is *named menu item → category → catch-all*, and a dish matching
+    nothing shows on **every** board as ไม่ได้กำหนดสถานี rather than disappearing.
+  - *No order could reach the kitchen at all.* Odoo derives "is there anything to send" from
+    the categories of a `pos.printer`; **both** KO shops have `printer_ids = []`, so
+    `categoryCount` was empty, the ส่งครัว button never rendered, and `order.hasChange` was
+    permanently false. The KDS no longer borrows the printer's configuration — with
+    `ko_kds_enabled` on, every POS category counts, and a product with no category at all
+    falls back to a single ครัว bucket. Printing still uses `printerCategories`, untouched.
+  - *Paying did not send the order.* `afterOrderValidation` sends to preparation only when
+    `!module_pos_restaurant`; in restaurant mode Odoo instead asked a yes/no question before
+    payment whose Discard silently skipped the kitchen. Validation now sends in restaurant
+    mode too, and the dialog is suppressed while `ko_kds_auto_send_on_payment` is on.
+  - *Front of house could not tick off paid orders.* ออเดอร์ค้าง filtered on
+    `!order.finalized`, so a takeaway paid up front went straight to บิลแล้ว where no
+    per-dish serve button exists. The tab now lists every order with dishes still to hand
+    over, paid ones marked จ่ายแล้ว, and เสิร์ฟ is always available with a confirmation when
+    the kitchen has not marked the dish ready.
+  - *The kitchen had no way to report a problem.* Each dish on the board now has แจ้งปัญหา
+    (ของหมด / ล่าช้า / ขอเปลี่ยนรายการ / อื่น ๆ plus a note). The POS shows a red bar naming the
+    dish, table or customer and note, with a chime repeating every 20 s until someone presses
+    รับทราบ. ของหมด also cancels that dish on the board; it deliberately does **not** touch
+    the money.
+  - Two smaller defects fixed on the way: the KDS ticket stored the *delta* quantity, so
+    adding one more plate overwrote "3" with "1"; and the new-order chime keyed on ticket ids,
+    so dishes added to a table already on the board arrived silently. Both now use the line's
+    absolute quantity and per-dish ids.
+- Verification for that change: **17 module tests pass** on a disposable Odoo 19 + PostgreSQL
+  database (`0 failed, 0 error(s) of 17 tests`), covering station routing precedence, per-shop
+  scoping, absolute quantities on re-send, the takeaway customer name, and the issue
+  report/acknowledge lifecycle. On the same disposable database a full browser pass with the
+  real asset pipeline confirmed, with **zero console errors**: a drinks-only table order shows
+  `ส่ง เครื่องดื่ม 1` and lands on บาร์น้ำ; a walk-up sale paid immediately reaches the kitchen
+  with `paid: true` and no dialog; ออเดอร์ค้าง lists both the unpaid table order and the paid
+  takeaway with a เสิร์ฟ button each; แจ้งปัญหา → red bar on the POS → รับทราบ clears it; and
+  with `ko_kds_enabled` turned **off** the ส่งครัว button disappears again for every product,
+  which is the control proving the printer coupling was the original fault.
+- Live on `kodoo.viakuma.com` after both deploys: `/kds` lists both shops, `/kds/pos/2` serves
+  `kds.js?v=19.0.6.0.0` with no legacy chips, the station bar shows exactly ครัวร้อน /
+  เคานเตอร์บาร์ / ขนม, the per-station board returns only its own dishes, and a POS tab reports
+  `koSendToKds`/`koKdsChanges` as functions with `koKdsCategoryIds.size = 4` while Odoo's own
+  `preparationCategories.size` is still 0. **Not verified live:** no order was keyed, sent,
+  paid or served on production, and no station screen was operated by a person — the order
+  flow proof is the disposable-database pass above.
+- **Production station data was corrected by hand (2026-08-23).** The shop's three existing
+  stations (ครัวร้อน, เคานเตอร์บาร์, ขนม) had *no* category mapping — under the old design the
+  mapping lived on `pos.category` instead — so every station showed everything. They now map to
+  อาหารจานเดียว+กับข้าว, เครื่องดื่ม, and ของหวาน respectively. The three stations `ko_pos_setup`
+  seeds for a fresh database (ครัวร้อน / บาร์น้ำ / ครัวขนม) were **deactivated**, not deleted,
+  because `noupdate="1"` data is recreated on the next upgrade if the record is missing. The
+  one pre-existing ticket line was re-pointed to ครัวร้อน.
+
 ---
 
 ## 9. Outstanding work
 
-1. **Finish data-backed §1 QA:** once real menu data has an English
+1. **Operate the kitchen display once with a real order.** Everything below the browser
+   was proved on a disposable Odoo 19 copy; on production nothing was keyed, sent, paid or
+   served on purpose. Ring up one dish per station, press ส่งครัว, watch it appear, mark it
+   ready, serve it from บิล, and raise one แจ้งปัญหา — then close the session normally.
+2. **ร้านหวานอยู่ (POS 3) has only the ขนม station.** Anything it sells outside ของหวาน will
+   show as ไม่ได้กำหนดสถานี (visible everywhere, but unrouted). Add the stations that shop
+   actually has, or widen ขนม, in ตั้งค่า → สถานีครัว.
+3. **Stale ticket K0004 / queue 1011** (`ข้าวผัดกุ้ง`, 78 minutes over SLA) is still on the
+   ร้านชอบแกง board. It is leftover test data; deleting it is the owner's call — say so and it
+   goes, like K0003 did.
+4. **Finish data-backed §1 QA:** once real menu data has an English
    `public_description` and a configurable item, verify English search and Odoo's
    configurator path live.
-2. **Production phone-width spot check:** final §2–§9 production QA used the fixed
+5. **Production phone-width spot check:** final §2–§9 production QA used the fixed
    1280×720 browser surface. Local 390×844 and the earlier §1 live phone checks passed,
    but repeat the final production flow at 390 px when a resizable live browser is
    available; do not complete payment or change kitchen state.
-3. **Real business data from the owner:** real PromptPay number (currently the placeholder
+6. **Real business data from the owner:** real PromptPay number (currently the placeholder
    `0812345678`), the real menu items & prices, and the kitchen printer's IP (Epson).
-4. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
+7. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
    attach it to the payment method, and test against the Beam playground before live use.
-5. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
-   session close.
-6. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
+8. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
+   session close. `docs/RUNBOOK-kds.md` is written to be read straight to staff.
+9. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
+> ✅ Completed 2026-08-23: reworked the kitchen display against the owner's five
+> requirements — one configurable station model, both order-to-kitchen paths, per-dish serving
+> for paid orders too, and kitchen→front-of-house problem alerts (`ko_pos_kds` 19.0.6.0.0,
+> `ko_pos_ui` 19.0.5.0.0, `ko_pos_setup` 1.0.2). Deploy actions `110909249` and `110909727`.
+> Details in §8; how to operate it in `docs/RUNBOOK-kds.md`.
+>
 > ✅ Completed 2026-08-23: stopped the order control buttons truncating their Thai labels
 > (`ko_pos_ui` 19.0.4.3.0) by restyling Odoo's `.control-buttons` row as wrapping KO chips
 > and hiding its duplicate `⋮`. Deploy action `110902588`; verified live after a hard refresh.
