@@ -489,7 +489,10 @@
                     window.KDS_STATION_ID = <t t-esc="station.id if station else 0"/>;
                     window.KDS_CSRF = "<t t-esc="csrf_token"/>";
                 </script>
-                <script src="/ko_pos_kds/static/src/kds/kds.js"/>
+                <!-- This script is served directly rather than through an Odoo asset
+                     bundle. Keep a version query so browsers cannot reuse an older KDS
+                     runtime after an addon upgrade. -->
+                <script src="/ko_pos_kds/static/src/kds/kds.js?v=19.0.4.0.1"/>
             </body>
         </html>
     </template>

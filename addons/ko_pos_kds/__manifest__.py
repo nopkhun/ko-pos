@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KO Restaurant - Kitchen Display (KDS)',
-    'version': '19.0.4.0.0',
+    'version': '19.0.4.0.1',
     'category': 'Sales/Point of Sale',
     'summary': 'จอครัว (Kitchen Display System) สำหรับ Odoo Community',
     'description': """
