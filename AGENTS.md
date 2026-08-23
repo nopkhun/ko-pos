@@ -64,9 +64,10 @@ Four services in one Compose project. Two are one-shot init containers that must
 exit successfully before Odoo starts.
 
 ```
-addons-init (alpine/git, one-shot)
-  └─ clones the git repo with an embedded SSH deploy key
-  └─ wipes /mnt/extra-addons, unpacks addons.tar.gz (the single source of truth)
+addons-init (alpine, one-shot)
+  └─ wipes /mnt/extra-addons
+  └─ decodes and unpacks the addons.tar.gz snapshot embedded in the local
+     vps-compose-simplified.yaml
   └─ makes /mnt/extra-addons readable by the non-root Odoo user
       (the patch/thai_v2 + thai_v3 pipeline was folded into the tarball
        and deleted on 2026-08-23)
@@ -87,7 +88,8 @@ db (postgres:17-alpine) — healthcheck gates all of the above
 Named volumes: `odoo-data` (filestore), `odoo-addons` (`/mnt/extra-addons`), `db`.
 
 `/mnt/extra-addons` is **rebuilt from scratch on every deploy** (`rm -rf /mnt/extra-addons/*`).
-Never hand-edit files inside that volume expecting them to survive — put changes in the repo.
+Never hand-edit files inside that volume expecting them to survive. Change the reviewable
+source, repack `addons.tar.gz`, push it, and refresh the Compose snapshot before deploying.
 
 ---
 
@@ -109,11 +111,11 @@ All live in `addons.tar.gz` at the repo root.
 ## 4. Repository layout (`nopkhun/ko-pos`, branch `main`)
 
 ```
-addons.tar.gz              ← THE deployment source of truth (all 6 modules)
-addons/                    ← ⚠️ NOT read by deployment. Reviewable source copies of
-                              ko_pos_thai_lang (partial), ko_pos_ui and ko_pos_setup.
-                              The deploy script prefers addons.tar.gz and never reads this.
-                              Do not "fix" a bug by editing addons/ — it has no effect.
+addons.tar.gz              ← canonical deploy bundle (all 6 modules)
+addons/                    ← ⚠️ NOT read by deployment. Reviewable source copies of all
+                              six modules; repack the tarball after editing them.
+scripts/refresh_deploy_bundle.sh
+                           ← refreshes the tar snapshot embedded in the local Compose zip
 AGENTS.md                  ← this file
 docs/                      ← runbooks, see below
 ```
@@ -216,9 +218,10 @@ means containers started. Verify the translation count line from §5 and check t
    using `$m` matched nothing, the logs showed no error, and only the build-log warning
    `The "m" variable is not set. Defaulting to a blank string.` gave it away. Grep the
    build log for `variable is not set` after every deploy that touches a shell block.
-2. **Never commit the SSH deploy key or the Compose file that embeds it.** The working
-   Compose lives locally in `deploy-secrets.zip` (`deploy_real/vps-compose-thaiv2.yaml`).
-   The repo must never contain it.
+2. **Never commit the SSH deploy key or any local Compose file.** The current working
+   Compose lives in `deploy-secrets.zip` as
+   `deploy_real/vps-compose-simplified.yaml`; older files in that archive contain the
+   deploy key and are retained only for history. The repo must never contain them.
 3. **Never put passwords in the repo.** `CREDENTIALS.local.md` is local-only.
 4. **Do not touch the Traefik labels.** Traefik is shared with other projects on this VPS;
    changing router names or rules can take unrelated sites down.
@@ -313,9 +316,11 @@ Working and confirmed against the live system:
   load with no browser console error; the Thai override signal remains exactly 57 files.
   Repacked root/repo bundles match at SHA-256
   `38467384076f2bf3d2a4ff0b736f5decd725f51ac0e945b92ed750cfb7532495`.
-- Patch pipeline retired (2026-08-23): `addons.tar.gz` is now the verified single
-  source of truth; see §4 history and the §9 completion note. Deployment has not yet
-  been rerun with the simplified Compose — expect identical content when it is.
+- Patch pipeline retired (2026-08-23): `addons.tar.gz` is now the verified canonical
+  source; see §4 history and the §9 completion note. The inline snapshot in
+  `vps-compose-simplified.yaml` has been refreshed and verified against it at SHA-256
+  `38467384076f2bf3d2a4ff0b736f5decd725f51ac0e945b92ed750cfb7532495`.
+  Production has not yet been redeployed with this snapshot.
 
 ---
 

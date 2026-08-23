@@ -8,14 +8,24 @@ Prerequisite: read `../AGENTS.md` first, especially §0 *Definition of done* and
 There is no incremental deploy. `VPS_createNewProjectV1` with an existing
 `project_name` **replaces the entire Compose project**. Containers are recreated;
 named volumes (`db`, `odoo-data`) survive, so no data is lost. `/mnt/extra-addons`
-is deliberately wiped and rebuilt from the repo each time.
+is deliberately wiped and rebuilt from the `addons.tar.gz` snapshot embedded in the
+local Compose file each time.
 
 ## Procedure
 
 ### 1. Land your change in the repo first
 
-Nothing on the VPS is a source of truth. `addons-init` clones `main` on every deploy.
-Push before you deploy, or you will deploy the previous state and confuse yourself.
+Nothing on the VPS is a source of truth. Push the reviewable source and canonical
+`addons.tar.gz` before deploying.
+
+Then refresh the tar snapshot embedded in the local Compose zip and require its printed
+SHA-256 to match `shasum -a 256 addons.tar.gz`:
+
+```sh
+scripts/refresh_deploy_bundle.sh ../deploy-secrets.zip
+```
+
+Skipping this step deploys the previous snapshot even when `main` is current.
 
 ### 2. Call the deploy API
 
@@ -42,8 +52,8 @@ TRAEFIK_HOST=srv973354.hstgr.cloud
 The Compose YAML to send is the local file
 `deploy_real/vps-compose-simplified.yaml` inside `deploy-secrets.zip` (since
 2026-08-23; it replaced `vps-compose-thaiv2.yaml`, which is kept for history).
-It embeds the SSH
-deploy key, which is why it is not in this repo.
+It embeds the deployable addon bundle and lives beside historical Compose files that
+contain the SSH deploy key, which is why the zip is not in this repo.
 
 Before sending it, verify three invariants introduced after the 2026-08-22 Odoo image
 refresh:
@@ -52,6 +62,7 @@ refresh:
    `/mnt/extra-addons`.
 2. `addons-init` finishes with `chmod -R a+rX /mnt/extra-addons`.
 3. Both install/update module lists include `ko_pos_ui`.
+4. The embedded tar stream has the same SHA-256 as the repo's `addons.tar.gz`.
 
 ### 3. Poll until the action finishes
 
@@ -76,7 +87,7 @@ Check, in order:
    an empty string. Your shell logic silently did nothing. Fix by doubling the dollar
    sign (`$$VAR`) and redeploy. See `GOTCHAS.md`.
 
-2. **`addons-init` service.** Expect:
+2. **`addons-init` service.** It decodes the embedded tar snapshot. Expect:
    ```
    addons ready:
    ko_pos_beam_bolt

@@ -85,13 +85,13 @@ sandbox fetch, and do not try to route around the block with other HTTP clients.
 
 **Symptom:** Code edited in `addons/`, pushed, deployed — no effect.
 
-**Cause:** `addons-init` prefers `addons.tar.gz` and only falls back to `addons/` if the
-tarball is absent. The tarball is present, so deployment ignores `addons/`. That folder
-currently contains a partial copy of `ko_pos_thai_lang` plus a reviewable source copy of
-`ko_pos_ui`, which makes it look deceptively authoritative.
+**Cause:** Deployment ignores `addons/`. It unpacks the `addons.tar.gz` snapshot embedded
+inside the local `vps-compose-simplified.yaml`. Editing reviewable source, or even
+updating the repo tarball without refreshing that snapshot, leaves production unchanged.
 
-**Fix:** edit inside `addons.tar.gz`. Better: do the AGENTS.md §4 cleanup and remove the
-ambiguity for good.
+**Fix:** edit the reviewable source, repack `addons.tar.gz`, push it, then run
+`scripts/refresh_deploy_bundle.sh ../deploy-secrets.zip`. Require the printed SHA-256 to
+match `shasum -a 256 addons.tar.gz` before calling the Hostinger deploy API.
 
 ---
 
