@@ -64,10 +64,9 @@ Four services in one Compose project. Two are one-shot init containers that must
 exit successfully before Odoo starts.
 
 ```
-addons-init (alpine, one-shot)
-  └─ wipes /mnt/extra-addons
-  └─ decodes and unpacks the addons.tar.gz snapshot embedded in the local
-     vps-compose-simplified.yaml
+addons-init (alpine/git, one-shot)
+  └─ clones main with the read-only SSH deploy key embedded in the local Compose
+  └─ wipes /mnt/extra-addons and unpacks the repo's addons.tar.gz
   └─ makes /mnt/extra-addons readable by the non-root Odoo user
       (the patch/thai_v2 + thai_v3 pipeline was folded into the tarball
        and deleted on 2026-08-23)
@@ -89,7 +88,7 @@ Named volumes: `odoo-data` (filestore), `odoo-addons` (`/mnt/extra-addons`), `db
 
 `/mnt/extra-addons` is **rebuilt from scratch on every deploy** (`rm -rf /mnt/extra-addons/*`).
 Never hand-edit files inside that volume expecting them to survive. Change the reviewable
-source, repack `addons.tar.gz`, push it, and refresh the Compose snapshot before deploying.
+source, repack `addons.tar.gz`, and push it before deploying.
 
 ---
 
@@ -111,11 +110,9 @@ All live in `addons.tar.gz` at the repo root.
 ## 4. Repository layout (`nopkhun/ko-pos`, branch `main`)
 
 ```
-addons.tar.gz              ← canonical deploy bundle (all 6 modules)
+addons.tar.gz              ← deployment source of truth (all 6 modules)
 addons/                    ← ⚠️ NOT read by deployment. Reviewable source copies of all
                               six modules; repack the tarball after editing them.
-scripts/refresh_deploy_bundle.sh
-                           ← refreshes the tar snapshot embedded in the local Compose zip
 AGENTS.md                  ← this file
 docs/                      ← runbooks, see below
 ```
@@ -128,9 +125,11 @@ was a GitHub MCP tool that accepts **text content inline only**. There was also 
 third hidden delivery path: a base64 tarball of `ko_pos_setup` files embedded
 **inline in the Compose file itself**. On 2026-08-23 all three were folded into
 `addons.tar.gz`, the patch directories were deleted, and the deploy Compose
-(`vps-compose-simplified.yaml` in `deploy-secrets.zip`) no longer does any patch
-handling. Old mechanics remain in `docs/RUNBOOK-translations.md` for historical
-reference only.
+no longer does any patch handling. The working Compose is now
+`vps-compose-git.yaml` in `deploy-secrets.zip`; it clones `main` and unpacks only
+`addons.tar.gz`. The attempted inline `vps-compose-simplified.yaml` is historical and
+cannot be sent through Hostinger's 8,192-character API field. Old mechanics remain in
+`docs/RUNBOOK-translations.md` for historical reference only.
 
 ---
 
@@ -219,9 +218,9 @@ means containers started. Verify the translation count line from §5 and check t
    `The "m" variable is not set. Defaulting to a blank string.` gave it away. Grep the
    build log for `variable is not set` after every deploy that touches a shell block.
 2. **Never commit the SSH deploy key or any local Compose file.** The current working
-   Compose lives in `deploy-secrets.zip` as
-   `deploy_real/vps-compose-simplified.yaml`; older files in that archive contain the
-   deploy key and are retained only for history. The repo must never contain them.
+   Compose lives in `deploy-secrets.zip` as `deploy_real/vps-compose-git.yaml` and
+   contains the deploy key. Older Compose files are retained only for history. The repo
+   must never contain any of them.
 3. **Never put passwords in the repo.** `CREDENTIALS.local.md` is local-only.
 4. **Do not touch the Traefik labels.** Traefik is shared with other projects on this VPS;
    changing router names or rules can take unrelated sites down.
@@ -300,8 +299,8 @@ Working and confirmed against the live system:
 - The Antigravity §2–§9 completion claim from commit `ffeb880` was audited and found
   not production-ready: the options were hard-coded instead of using Odoo attributes,
   payment/receipt retained stock mobile UI, billed orders disappeared after reload, and
-  KDS failed on two Odoo 19 model assumptions. These defects are corrected locally in
-  `ko_pos_ui` / `ko_pos_kds` version **19.0.4.0.0**, pending production deploy.
+  KDS failed on two Odoo 19 model assumptions. These defects are corrected and deployed
+  in `ko_pos_ui` **19.0.4.0.0** and `ko_pos_kds` **19.0.4.0.1**.
 - Final local QA uses a disposable Odoo 19/PostgreSQL database with the real addon and
   asset pipeline. It passed configurable-product add/edit/remove with real
   `product.attribute` values and `price_extra`, notes and quantity, phone cart,
@@ -315,25 +314,30 @@ Working and confirmed against the live system:
   lifecycle test passes (`0 failed, 0 errors of 1 tests`). POS and KDS assets compile and
   load with no browser console error; the Thai override signal remains exactly 57 files.
   Repacked root/repo bundles match at SHA-256
-  `38467384076f2bf3d2a4ff0b736f5decd725f51ac0e945b92ed750cfb7532495`.
-- Patch pipeline retired (2026-08-23): `addons.tar.gz` is now the verified canonical
-  source; see §4 history and the §9 completion note. The inline snapshot in
-  `vps-compose-simplified.yaml` has been refreshed and verified against it at SHA-256
-  `38467384076f2bf3d2a4ff0b736f5decd725f51ac0e945b92ed750cfb7532495`.
-  Full `docker compose config` validation passes. Production has not yet been redeployed
-  with this snapshot.
+  `67d144d209895e36cd4a25a8e85725f572a1e9895cbf683d4bcb42163fb07eca`.
+- Production deploy actions **110883615** and hotfix **110885173** succeeded on
+  2026-08-23. Both init containers exited 0; the six addon directories were present;
+  `ko_pos_kds` and `ko_pos_ui` loaded; both Odoo processes included
+  `/mnt/extra-addons`; translations remained exactly 57 files; `MASTER_PW_LINES=1` and
+  HTTP on 8069 were confirmed; no build/runtime error signal remained.
+- Authenticated production QA at 1280×720 passed list-first Sell, empty current order,
+  category filtering, Thai search, Bills with persisted paid orders, and bottom
+  navigation. KDS loaded SLA 15 minutes and ticket data after the 19.0.4.0.1 cache-bust
+  hotfix; active/served/cancelled tabs, order/menu views, and station filtering worked
+  without a console error. No product was added, sent, paid, refunded, or cancelled, and
+  the live session was not closed.
+- KDS currently shows pre-existing active ticket **K0003 / queue 1003**
+  (`ข้าวผัดกุ้ง`) as over SLA. QA did not change its state because ownership is unknown.
 
 ---
 
 ## 9. Outstanding work
 
-1. **Deploy and production-QA `19.0.4.0.0`:** deploy the corrected bundle from `main`,
-   `vps-compose-simplified.yaml`, verify both init containers, exact 57 translations,
-   assets and browser console, then test safe non-payment paths at tablet/phone widths.
-   Do not complete a real payment or close the live session for QA.
-2. **Finish data-backed §1 QA:** once real menu data has an English
+1. **Finish data-backed §1 QA:** once real menu data has an English
    `public_description` and a configurable item, verify English search and Odoo's
    configurator path live.
+2. **Owner/staff review:** decide whether pre-existing KDS ticket K0003 / queue 1003 is a
+   real kitchen ticket or old QA data before marking it served or cancelled.
 3. **Real business data from the owner:** real PromptPay number (currently the placeholder
    `0812345678`), the real menu items & prices, and the kitchen printer's IP (Epson).
 4. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
@@ -342,15 +346,16 @@ Working and confirmed against the live system:
    session close.
 6. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
-> ✅ Corrected locally 2026-08-23: audited and replaced the incomplete §2–§9
-> implementation from `ffeb880`; full disposable-database QA is recorded above. This is
-> not a production completion claim until the pending deploy and live safe-path QA pass.
+> ✅ Completed 2026-08-23: audited and replaced the incomplete §2–§9 implementation from
+> `ffeb880`, completed disposable-database QA, deployed it, and passed production
+> safe-path QA. KDS direct-script caching found live was fixed in 19.0.4.0.1.
 >
 > ✅ Completed 2026-08-23: the patch-pipeline refactor. `patch/thai_v2`, `patch/thai_v3`,
 > and the inline base64 `ko_pos_setup` overlay that was embedded in the Compose file are
 > all folded into `addons.tar.gz` (verified: 57 i18n_overrides `.po` files, kds_views.xml
 > present, extraction matches the production tree). The deploy Compose is now
-> `vps-compose-simplified.yaml` in `deploy-secrets.zip`. Commit `8ef77ca`.
+> `vps-compose-git.yaml` in `deploy-secrets.zip`; it clones `main` and unpacks the one
+> tarball. Commit `8ef77ca`, deployed by action `110885173`.
 >
 > ✅ Completed 2026-08-23: Company name, address, and 13-digit tax ID configured (`บริษัท น็อกเอาต์ จำกัด`).
 >

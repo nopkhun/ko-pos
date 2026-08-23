@@ -85,29 +85,40 @@ sandbox fetch, and do not try to route around the block with other HTTP clients.
 
 **Symptom:** Code edited in `addons/`, pushed, deployed — no effect.
 
-**Cause:** Deployment ignores `addons/`. It unpacks the `addons.tar.gz` snapshot embedded
-inside the local `vps-compose-simplified.yaml`. Editing reviewable source, or even
-updating the repo tarball without refreshing that snapshot, leaves production unchanged.
+**Cause:** Deployment ignores `addons/`. The working Compose clones `main` and unpacks
+only the repo-root `addons.tar.gz`.
 
-**Fix:** edit the reviewable source, repack `addons.tar.gz`, push it, then run
-`scripts/refresh_deploy_bundle.sh ../deploy-secrets.zip`. Require the printed SHA-256 to
-match `shasum -a 256 addons.tar.gz` before calling the Hostinger deploy API.
+**Fix:** edit the reviewable source, repack `addons.tar.gz`, commit both, and verify the
+remote `main` tree before calling the Hostinger deploy API.
 
 ---
 
-### The embedded bundle checksum matches, but Compose YAML is invalid or the zip did not change
+### Hostinger rejects the deploy before changing anything because Compose is too large
 
-**Symptom:** The refresh step prints the expected SHA-256, but the archive still contains
-the old bundle, or `docker compose config` fails at the long base64 line with
-`could not find expected ':'`.
+**Symptom:** `VPS_createNewProjectV1` returns `The content field must not be greater than
+8192 characters`; no action ID is created and the existing project remains unchanged.
 
-**Cause:** A relative zip path was reused after changing into a temporary directory, so
-the updated archive was written under `/tmp` instead of over `deploy-secrets.zip`.
-Separately, an unindented base64 line and heredoc terminator escape the YAML block scalar.
+**Cause:** `vps-compose-simplified.yaml` embeds the whole addon tar as base64 and is about
+690 KB. Even valid YAML cannot pass Hostinger's API field limit.
 
-**Fix:** use `scripts/refresh_deploy_bundle.sh`; it normalizes the zip path, indents the
-embedded payload, compares both hashes, validates the complete Compose YAML, and tests the
-zip before reporting success. Do not hand-recreate its replacement command.
+**Fix:** use `deploy_real/vps-compose-git.yaml` from `deploy-secrets.zip`. It stays below
+the limit, clones remote `main` with the read-only deploy key, unpacks `addons.tar.gz`,
+and contains no obsolete patch pipeline.
+
+---
+
+### KDS clock works, but SLA stays on “กำลังโหลด” and new tabs raise `kdsSetTab is not defined`
+
+**Symptom:** A newly deployed KDS page polls `/kds/data` and the clock updates, but the
+new SLA label and tabs do not work. Clicking a tab opens an Odoo client error naming the
+missing global function.
+
+**Cause:** `kds.js` is loaded directly rather than through a fingerprinted Odoo asset
+bundle. A browser can reuse the older script at the same URL after an addon upgrade.
+
+**Fix:** append the addon version to the direct script URL and bump it whenever that
+runtime changes (currently `kds.js?v=19.0.4.0.1`). Verify with a fresh tab that SLA loads
+and active/served/cancelled plus order/menu controls work.
 
 ---
 

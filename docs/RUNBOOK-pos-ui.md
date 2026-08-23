@@ -108,8 +108,8 @@ Repeat the production checklist after every deploy.
 ## §2 through §9 corrected implementation status (2026-08-23)
 
 The first completion claim in commit `ffeb880` was code-presence only and failed real
-Odoo 19 runtime checks. Version `19.0.4.0.0` replaces it with the following verified
-implementation; it is locally complete but still awaits production deploy:
+Odoo 19 runtime checks. `ko_pos_ui` version `19.0.4.0.0` and `ko_pos_kds` version
+`19.0.4.0.1` replace it with the following verified, deployed implementation:
 
 - **§2 Item options:** reads real `product.attribute` / PTAV records, respects variants,
   `price_extra` and custom values, and supports add/edit/remove, notes and quantity.
@@ -133,7 +133,22 @@ the complete cash sale/receipt/bills/refund/edit flow at `390×844`, KDS lifecyc
 views at `1024×768`, no browser console error, and exactly 57 Thai override files. The
 backend KDS test reports `0 failed, 0 errors of 1 tests`.
 The verified root/repo `addons.tar.gz` SHA-256 is
-`38467384076f2bf3d2a4ff0b736f5decd725f51ac0e945b92ed750cfb7532495`.
+`67d144d209895e36cd4a25a8e85725f572a1e9895cbf683d4bcb42163fb07eca`.
+
+### Production verification for §2–§9 (2026-08-23)
+
+- Hostinger deploy action `110883615` and KDS cache hotfix action `110885173` succeeded.
+- Both init containers exited 0; six addons were present; KDS/UI loaded; translations
+  remained exactly 57 files; both Odoo processes included `/mnt/extra-addons`; no
+  build/runtime error signal remained.
+- At `1280×720`, authenticated safe-path QA passed empty current order, category filter,
+  Thai search, persisted paid Bills, Sell/Bills/Kitchen navigation, KDS SLA/ticket data,
+  history tabs, order/menu views, and station filtering with no console warning/error.
+- The direct KDS runtime is cache-busted as `kds.js?v=19.0.4.0.1`; this fixed the live-only
+  stale-script symptom where SLA stayed loading and tab clicks raised
+  `kdsSetTab is not defined`.
+- No product was added or sent, no payment/refund/cancellation was performed, and the
+  live session was not closed. KDS ticket K0003 / queue 1003 was observed but not changed.
 
 ## Rollback
 

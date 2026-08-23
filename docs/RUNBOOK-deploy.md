@@ -8,24 +8,15 @@ Prerequisite: read `../AGENTS.md` first, especially §0 *Definition of done* and
 There is no incremental deploy. `VPS_createNewProjectV1` with an existing
 `project_name` **replaces the entire Compose project**. Containers are recreated;
 named volumes (`db`, `odoo-data`) survive, so no data is lost. `/mnt/extra-addons`
-is deliberately wiped and rebuilt from the `addons.tar.gz` snapshot embedded in the
-local Compose file each time.
+is deliberately wiped and rebuilt by cloning `main` and unpacking its `addons.tar.gz`.
 
 ## Procedure
 
 ### 1. Land your change in the repo first
 
-Nothing on the VPS is a source of truth. Push the reviewable source and canonical
-`addons.tar.gz` before deploying.
-
-Then refresh the tar snapshot embedded in the local Compose zip and require its printed
-SHA-256 to match `shasum -a 256 addons.tar.gz`:
-
-```sh
-scripts/refresh_deploy_bundle.sh ../deploy-secrets.zip
-```
-
-Skipping this step deploys the previous snapshot even when `main` is current.
+Nothing on the VPS is a source of truth. Repack `addons.tar.gz`, commit the reviewable
+source with it, and push `main` before deploying. The deploy key is read-only, so the VPS
+always clones exactly the remote `main`; an unpushed change cannot reach production.
 
 ### 2. Call the deploy API
 
@@ -49,11 +40,12 @@ TRAEFIK_HOST=srv973354.hstgr.cloud
 > Postgres comes up with a different password than Odoo expects, and the stack fails
 > in a way that looks like a database problem. Always pass it.
 
-The Compose YAML to send is the local file
-`deploy_real/vps-compose-simplified.yaml` inside `deploy-secrets.zip` (since
-2026-08-23; it replaced `vps-compose-thaiv2.yaml`, which is kept for history).
-It embeds the deployable addon bundle and lives beside historical Compose files that
-contain the SSH deploy key, which is why the zip is not in this repo.
+The Compose YAML to send is `deploy_real/vps-compose-git.yaml` inside
+`deploy-secrets.zip`. It is deliberately below Hostinger's 8,192-character `content`
+limit, embeds the read-only SSH deploy key, clones `main`, unpacks `addons.tar.gz`, and
+does no patching. Never send `vps-compose-simplified.yaml`: its inline tar makes it about
+690 KB and Hostinger rejects the request before deployment. `vps-compose-thaiv2.yaml`
+and the other files are historical only.
 
 Before sending it, verify three invariants introduced after the 2026-08-22 Odoo image
 refresh:
@@ -62,7 +54,7 @@ refresh:
    `/mnt/extra-addons`.
 2. `addons-init` finishes with `chmod -R a+rX /mnt/extra-addons`.
 3. Both install/update module lists include `ko_pos_ui`.
-4. The embedded tar stream has the same SHA-256 as the repo's `addons.tar.gz`.
+4. The Compose is no more than 8,192 characters and contains no `patch/thai` handling.
 
 ### 3. Poll until the action finishes
 
@@ -87,7 +79,7 @@ Check, in order:
    an empty string. Your shell logic silently did nothing. Fix by doubling the dollar
    sign (`$$VAR`) and redeploy. See `GOTCHAS.md`.
 
-2. **`addons-init` service.** It decodes the embedded tar snapshot. Expect:
+2. **`addons-init` service.** It clones `main` and unpacks the tarball. Expect:
    ```
    addons ready:
    ko_pos_beam_bolt
