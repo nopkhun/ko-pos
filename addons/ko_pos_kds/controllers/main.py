@@ -143,7 +143,10 @@ class KdsController(http.Controller):
             for line in t.line_ids:
                 # One screen = one station. When a station is selected the board
                 # shows only its own dishes; "ทั้งหมด" shows every station.
-                if station and line.station_id != station:
+                # A dish that matched no station at all is shown on *every*
+                # board on purpose: a gap in the station setup must never make
+                # an order invisible to the whole kitchen.
+                if station and line.station_id and line.station_id != station:
                     continue
                 lines.append({
                     'id': line.id,
