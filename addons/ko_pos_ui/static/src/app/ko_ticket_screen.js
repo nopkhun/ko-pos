@@ -5,7 +5,7 @@ import { TicketScreen } from "@point_of_sale/app/screens/ticket_screen/ticket_sc
 import { formatCurrency } from "@web/core/currency";
 import { patch } from "@web/core/utils/patch";
 import { useService } from "@web/core/utils/hooks";
-import { makeAwaitable } from "@point_of_sale/app/utils/make_awaitable_dialog";
+import { ask, makeAwaitable } from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { PartnerList } from "@point_of_sale/app/screens/partner_list/partner_list";
 import { showKoToast } from "./ko_toast";
 import { KoBottomNav } from "./ko_bottom_nav";
@@ -46,6 +46,11 @@ patch(TicketScreen.prototype, {
                 this.pos.screenState.ticketSCreen.totalCount = 0;
                 this.pos.screenState.ticketSCreen.offsetByDomain = {};
                 await this._fetchSyncedOrders();
+                // Paid orders are only pulled from the server here, so their
+                // kitchen state has to be re-read afterwards — otherwise a
+                // takeaway that was paid on another device shows no dishes to
+                // serve until the next bus notification.
+                await this.pos.koRefreshKdsStatus?.();
             } catch (error) {
                 console.error("KO POS billed orders load failed", error);
                 showKoToast("โหลดบิลล่าสุดไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
@@ -83,40 +88,73 @@ patch(TicketScreen.prototype, {
     },
 
     get koOpenOrders() {
+        // Both ways an order can arrive belong in this tab. An unpaid table
+        // order is obviously still open; a takeaway that was paid up front is
+        // just as open until every dish has physically reached the customer.
+        // Before ko_pos_ui 19.0.5.0.0 a paid order dropped straight into
+        // "บิลแล้ว", where there is no per-dish serve button at all — so half
+        // the orders in the restaurant could never be ticked off.
         return this.koAllOrders
-            .filter((order) => !order.finalized && !order.isEmpty())
+            .filter((order) => {
+                if (order.isEmpty() || order.isRefund) {
+                    return false;
+                }
+                if (!order.finalized) {
+                    return true;
+                }
+                return order
+                    .getOrderlines()
+                    .some(
+                        (line) =>
+                            line.koKitchenState &&
+                            !["served", "cancelled"].includes(line.koKitchenState)
+                    );
+            })
             .map((order) => {
                 const lines = order.getOrderlines();
                 const isTakeaway = !order.table_id;
+                const partnerName = order.getPartner?.()?.name || "";
                 const elapsedMinutes = Math.max(
                     0,
                     Math.round((Date.now() - timestamp(order.server_create_date || order.date_order)) / 60000)
                 );
+                const typeLabel = isTakeaway ? "กลับบ้าน" : "ทานที่ร้าน";
                 return {
                     order,
                     no: `#${shortOrderNumber(order)}`,
-                    tableName: order.table_id ? `โต๊ะ ${order.table_id.table_number}` : "สั่งกลับบ้าน",
+                    tableName: order.table_id
+                        ? `โต๊ะ ${order.table_id.table_number}`
+                        : partnerName || "สั่งกลับบ้าน",
                     isTakeaway,
-                    typeLabel: isTakeaway ? "กลับบ้าน" : "ทานที่ร้าน",
+                    isPaid: Boolean(order.finalized),
+                    typeLabel: order.finalized ? `${typeLabel} · จ่ายแล้ว` : typeLabel,
                     elapsedMinutes,
                     isLate: elapsedMinutes >= (this.pos.config.ko_kds_sla_minutes || 15),
                     items: lines.map((line) => {
                         const kitchenState = line.koKitchenState || "not_sent";
-                        const station = line.koKitchenStation || "hot";
-                        const stationLabels = {
-                            hot: "ครัวร้อน",
-                            cold: "ครัวเย็น",
-                            drink: "เครื่องดื่ม",
-                        };
+                        const issue = line.koKitchenIssue || null;
+                        const isServed = kitchenState === "served" || Boolean(line.koServed);
+                        const isCancelled = kitchenState === "cancelled";
                         return {
                             line,
                             qty: line.getQuantity(),
                             name: line.getFullProductName(),
                             mods: line.getCustomerNote(),
-                            station,
-                            stationLabel: stationLabels[station] || stationLabels.hot,
-                            isServed: kitchenState === "served" || Boolean(line.koServed),
-                            canServe: kitchenState === "ready",
+                            // The station is a ko.kds.station name now, not one
+                            // of three hard-coded codes.
+                            station: "",
+                            stationLabel: line.koKitchenStation || "",
+                            isServed,
+                            isCancelled,
+                            isReady: kitchenState === "ready",
+                            // The owner asked for a serve button that is always
+                            // available, with a warning when the kitchen has not
+                            // marked the dish ready yet.
+                            canServe: !isServed && !isCancelled,
+                            issueLabel: issue
+                                ? `⚠ ${issue.label}${issue.note ? " · " + issue.note : ""}`
+                                : "",
+                            issueAck: Boolean(issue && issue.ack),
                             statusLabel:
                                 kitchenState === "ready"
                                     ? "พร้อมเสิร์ฟ"
@@ -170,6 +208,23 @@ patch(TicketScreen.prototype, {
     },
 
     async koServeLine(order, line) {
+        const kitchenState = line.koKitchenState || "not_sent";
+        if (!["ready", "served"].includes(kitchenState)) {
+            // Serving early is allowed — staff often carry a dish out before
+            // the station taps "เสร็จ" — but it should never be a slip.
+            const confirmed = await ask(this.dialog, {
+                title: "ครัวยังไม่แจ้งว่าเสร็จ",
+                body:
+                    kitchenState === "not_sent"
+                        ? `"${line.getFullProductName()}" ยังไม่ถูกส่งเข้าครัว ยืนยันว่าส่งมอบให้ลูกค้าแล้ว?`
+                        : `"${line.getFullProductName()}" ครัวยังทำอยู่ ยืนยันว่าส่งมอบให้ลูกค้าแล้ว?`,
+                confirmLabel: "ยืนยันว่าเสิร์ฟแล้ว",
+                cancelLabel: "ยังไม่เสิร์ฟ",
+            });
+            if (!confirmed) {
+                return;
+            }
+        }
         try {
             const served = await this.pos.data.call(
                 "ko.kds.ticket",
