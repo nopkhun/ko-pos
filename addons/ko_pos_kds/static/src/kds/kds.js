@@ -363,9 +363,18 @@
     }
 
     function refresh() {
-        return fetch("/kds/data?station_id=" + (window.KDS_STATION_ID || ""))
+        // config_id is mandatory: the board only ever shows one shop's tickets.
+        const params = new URLSearchParams({
+            config_id: window.KDS_CONFIG_ID || "",
+            station_id: window.KDS_STATION_ID || "",
+        });
+        return fetch("/kds/data?" + params.toString())
             .then(function (r) { return r.json(); })
             .then(function (data) {
+                if (data && data.error === "config_required") {
+                    board.innerHTML = '<div class="empty-board">ยังไม่ได้เลือกร้าน · <a href="/kds">เลือกร้าน</a></div>';
+                    return;
+                }
                 rawData = data;
                 if (slaLabel) {
                     slaLabel.textContent = "SLA เสิร์ฟใน " + Number(data.sla_minutes || 15) + " นาที";
