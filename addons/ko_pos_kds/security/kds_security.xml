@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!--
+          Multi-company isolation for the kitchen display.
+          Tickets carry company_id from their POS (stored related). Records with no
+          company (legacy tickets created before per-POS scoping) stay visible to
+          everyone so nothing disappears on upgrade.
+        -->
+        <record id="rule_kds_ticket_company" model="ir.rule">
+            <field name="name">KDS ticket: multi-company</field>
+            <field name="model_id" ref="model_ko_kds_ticket"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_kds_ticket_line_company" model="ir.rule">
+            <field name="name">KDS ticket line: multi-company</field>
+            <field name="model_id" ref="model_ko_kds_ticket_line"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_kds_station_company" model="ir.rule">
+            <field name="name">KDS station: multi-company</field>
+            <field name="model_id" ref="model_ko_kds_station"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+    </data>
+</odoo>
