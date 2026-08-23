@@ -155,7 +155,10 @@ The verified root/repo `addons.tar.gz` SHA-256 is
   the 19.0.4.0.2 runtime, passed read-only tab/station-filter checks, and showed no stale
   warning after more than 70 seconds; current server logs had no error signal.
 - No product was added or sent, no payment/refund/cancellation was performed, and the
-  live session was not closed. KDS ticket K0003 / queue 1003 was observed but not changed.
+  live session was not closed during UI QA. Later on 2026-08-23, after an explicit owner
+  request, stale KDS-only ticket K0003 / queue 1003 (POS reference `261-2-000003`) was
+  deleted from the KDS history list. The live board then showed zero active tickets;
+  K0001/K0002 and POS sale orders were not selected or deleted.
 
 ## Rollback
 

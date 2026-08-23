@@ -327,8 +327,10 @@ Working and confirmed against the live system:
   hotfix; active/served/cancelled tabs, order/menu views, and station filtering worked
   without a console error. No product was added, sent, paid, refunded, or cancelled, and
   the live session was not closed.
-- KDS currently shows pre-existing active ticket **K0003 / queue 1003**
-  (`ข้าวผัดกุ้ง`) as over SLA. QA did not change its state because ownership is unknown.
+- At the owner's explicit request, the stale KDS-only ticket **K0003 / queue 1003**
+  (`ข้าวผัดกุ้ง`, POS reference `261-2-000003`) was deleted from the KDS ticket-history
+  list on 2026-08-23. The live KDS then showed `กำลังทำ (0)` and `ไม่มีออเดอร์ค้าง`;
+  K0001/K0002 remained in history. No POS sale order was selected or deleted.
 - The recurring Odoo “หน้านี้เลิกใช้งานแล้ว” warning on fresh KDS pages was traced to
   the standalone template loading `web.assets_frontend` without initializing
   `odoo.__session_info__`. The asset watchdog therefore compared the bus notification
@@ -351,15 +353,17 @@ Working and confirmed against the live system:
    1280×720 browser surface. Local 390×844 and the earlier §1 live phone checks passed,
    but repeat the final production flow at 390 px when a resizable live browser is
    available; do not complete payment or change kitchen state.
-3. **Owner/staff review:** decide whether pre-existing KDS ticket K0003 / queue 1003 is a
-   real kitchen ticket or old QA data before marking it served or cancelled.
-4. **Real business data from the owner:** real PromptPay number (currently the placeholder
+3. **Real business data from the owner:** real PromptPay number (currently the placeholder
    `0812345678`), the real menu items & prices, and the kitchen printer's IP (Epson).
-5. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
+4. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
    attach it to the payment method, and test against the Beam playground before live use.
-6. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
+5. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close.
-7. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
+6. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
+
+> ✅ Completed 2026-08-23: deleted stale KDS-only ticket K0003 / queue 1003 after the
+> owner explicitly requested it. Live KDS verified empty; K0001/K0002 and POS sales were
+> left untouched.
 
 > ✅ Completed 2026-08-23: fixed the recurring false KDS stale-page warning in
 > `ko_pos_kds` 19.0.4.0.2 by initializing Odoo frontend session info before frontend
