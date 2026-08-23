@@ -320,7 +320,8 @@ Working and confirmed against the live system:
   source; see §4 history and the §9 completion note. The inline snapshot in
   `vps-compose-simplified.yaml` has been refreshed and verified against it at SHA-256
   `38467384076f2bf3d2a4ff0b736f5decd725f51ac0e945b92ed750cfb7532495`.
-  Production has not yet been redeployed with this snapshot.
+  Full `docker compose config` validation passes. Production has not yet been redeployed
+  with this snapshot.
 
 ---
 

@@ -95,6 +95,22 @@ match `shasum -a 256 addons.tar.gz` before calling the Hostinger deploy API.
 
 ---
 
+### The embedded bundle checksum matches, but Compose YAML is invalid or the zip did not change
+
+**Symptom:** The refresh step prints the expected SHA-256, but the archive still contains
+the old bundle, or `docker compose config` fails at the long base64 line with
+`could not find expected ':'`.
+
+**Cause:** A relative zip path was reused after changing into a temporary directory, so
+the updated archive was written under `/tmp` instead of over `deploy-secrets.zip`.
+Separately, an unindented base64 line and heredoc terminator escape the YAML block scalar.
+
+**Fix:** use `scripts/refresh_deploy_bundle.sh`; it normalizes the zip path, indents the
+embedded payload, compares both hashes, validates the complete Compose YAML, and tests the
+zip before reporting success. Do not hand-recreate its replacement command.
+
+---
+
 ### Every nested POS category turns green
 
 **Symptom:** Child categories that are not selected look identical to the active category.

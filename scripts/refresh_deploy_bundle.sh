@@ -6,6 +6,11 @@ zip_path=${1:-"$repo_dir/../deploy-secrets.zip"}
 compose_entry="deploy_real/vps-compose-simplified.yaml"
 temp_dir=$(mktemp -d /tmp/ko-pos-compose-refresh.XXXXXX)
 
+case "$zip_path" in
+    /*) ;;
+    *) zip_path=$(CDPATH= cd -- "$(dirname "$zip_path")" && pwd)/$(basename "$zip_path") ;;
+esac
+
 cleanup() {
     find "$temp_dir" -depth -delete
 }
@@ -23,16 +28,20 @@ perl -0777 -i -pe '
         $bundle = <$fh>;
         close $fh;
     }
-    s{(cat <<'"'"'TAR_EOF'"'"' \| base64 -d \| tar xzf - -C /mnt/extra-addons\n).*?(\nTAR_EOF)}{$1$bundle$2}s
+    s{(cat <<'"'"'TAR_EOF'"'"' \| base64 -d \| tar xzf - -C /mnt/extra-addons\n).*?\n\s*TAR_EOF}{$1        $bundle\n        TAR_EOF}s
         or die "inline tar marker not found\n";
 ' "$temp_dir/$compose_entry"
 
 source_sha=$(shasum -a 256 "$repo_dir/addons.tar.gz" | awk '{print $1}')
-embedded_sha=$(sed -n '40p' "$temp_dir/$compose_entry" | base64 -d | shasum -a 256 | awk '{print $1}')
+embedded_sha=$(sed -n '40p' "$temp_dir/$compose_entry" | sed 's/^        //' | base64 -d | shasum -a 256 | awk '{print $1}')
 if [ "$source_sha" != "$embedded_sha" ]; then
     echo "embedded bundle checksum mismatch" >&2
     exit 1
 fi
+
+DB_PASSWORD=validation-only \
+TRAEFIK_HOST=validation.invalid \
+docker compose -f "$temp_dir/$compose_entry" config -q
 
 (
     cd "$temp_dir"
