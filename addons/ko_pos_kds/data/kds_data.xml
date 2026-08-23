@@ -7,9 +7,17 @@
             <field name="prefix">K</field>
             <field name="padding">4</field>
         </record>
+        <!--
+          The one station every database gets. It names no category and no menu
+          item, so it is the catch-all: anything that no other station claims
+          still lands here instead of vanishing. Shop-specific stations
+          (ครัวร้อน / บาร์น้ำ / ครัวขนม …) are seeded by ko_pos_setup and can be
+          added freely in ตั้งค่า > สถานีครัว.
+        -->
         <record id="station_kitchen" model="ko.kds.station">
-            <field name="name">ครัว</field>
-            <field name="sequence">1</field>
+            <field name="name">ครัว (รับรายการที่เหลือ)</field>
+            <field name="sequence">99</field>
+            <field name="color">#5b6d70</field>
         </record>
     </data>
 </odoo>

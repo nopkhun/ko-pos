@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+          Seed stations for the KO menu. Each one claims the POS categories it
+          cooks; anything that matches none of them falls through to the
+          catch-all station shipped by ko_pos_kds, so no dish can disappear.
+          Shops are free to rename these, add more (เช่น ครัวเส้น, สเตชั่นย่าง),
+          or point them at individual menu items in ตั้งค่า > สถานีครัว.
+        -->
+        <record id="kds_station_hot" model="ko.kds.station">
+            <field name="name">ครัวร้อน</field>
+            <field name="sequence">10</field>
+            <field name="color">#c2410c</field>
+            <field name="category_ids" eval="[(6, 0, [ref('pos_categ_single_dish'), ref('pos_categ_main')])]"/>
+        </record>
+        <record id="kds_station_bar" model="ko.kds.station">
+            <field name="name">บาร์น้ำ</field>
+            <field name="sequence">20</field>
+            <field name="color">#0369a1</field>
+            <field name="category_ids" eval="[(6, 0, [ref('pos_categ_drink')])]"/>
+        </record>
+        <record id="kds_station_dessert" model="ko.kds.station">
+            <field name="name">ครัวขนม</field>
+            <field name="sequence">30</field>
+            <field name="color">#9333ea</field>
+            <field name="category_ids" eval="[(6, 0, [ref('pos_categ_dessert')])]"/>
+        </record>
+    </data>
+</odoo>

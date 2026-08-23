@@ -1,0 +1,75 @@
+// KO KDS — front-of-house alert bar (kitchen reported a problem).
+// Deliberately loud: it must survive a glance across a busy counter.
+.ko-kds-alert {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1080;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #b03a4e;
+    color: #fff;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.28);
+    font-family: "Prompt", -apple-system, "Noto Sans Thai", sans-serif;
+    animation: koKdsAlertIn 180ms ease-out;
+
+    .ko-kds-alert-icon {
+        font-size: 26px;
+        line-height: 1.1;
+        flex: none;
+    }
+
+    .ko-kds-alert-body {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .ko-kds-alert-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+
+    .ko-kds-alert-line {
+        font-size: 13.5px;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    .ko-kds-alert-where {
+        opacity: 0.85;
+        margin-left: 6px;
+    }
+
+    .ko-kds-alert-note {
+        opacity: 0.9;
+        font-style: italic;
+    }
+
+    .ko-kds-alert-ack {
+        flex: none;
+        align-self: center;
+        border: 0;
+        border-radius: 999px;
+        padding: 10px 22px;
+        font-size: 15px;
+        font-weight: 600;
+        font-family: inherit;
+        color: #b03a4e;
+        background: #fff;
+        cursor: pointer;
+    }
+}
+
+@keyframes koKdsAlertIn {
+    from {
+        transform: translateY(-100%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
+}

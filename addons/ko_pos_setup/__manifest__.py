@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KO Restaurant - Setup',
-    'version': '1.0.1',
+    'version': '1.0.2',
     'category': 'Sales/Point of Sale',
     'summary': 'ตั้งค่าเริ่มต้นร้านอาหาร KO: ผังโต๊ะ เมนู สต็อกวัตถุดิบ วิธีชำระเงิน ข้อมูลบริษัท',
     'description': """
@@ -18,6 +18,7 @@ Base configuration for KO Restaurant POS:
     'depends': [
         'point_of_sale',
         'pos_restaurant',
+        'ko_pos_kds',
         'pos_hr',
         'mrp',
         'purchase',
@@ -27,6 +28,7 @@ Base configuration for KO Restaurant POS:
     'data': [
         'data/company_data.xml',
         'data/pos_category_data.xml',
+        'data/kds_station_data.xml',
         'data/restaurant_data.xml',
         'data/product_data.xml',
     ],

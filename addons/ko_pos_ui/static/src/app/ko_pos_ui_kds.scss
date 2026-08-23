@@ -1,0 +1,34 @@
+// Kitchen feedback shown on the ออเดอร์ค้าง tab of the Orders screen.
+// Loaded after ko_pos_ui.scss (the manifest glob sorts "." before "_").
+
+.ko-item-issue {
+    margin-top: 3px;
+    padding: 4px 8px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ko-danger-text, #b03a4e);
+    background: var(--ko-danger-bg, #fdeef1);
+    border: 1px solid var(--ko-danger, #d9485f);
+    overflow-wrap: anywhere;
+
+    &.acked {
+        color: var(--ko-muted-2, #5b6d70);
+        background: #f2f5f5;
+        border-color: var(--ko-border, #e4ebeb);
+        font-weight: 500;
+    }
+}
+
+.ko-item-issue-ack {
+    font-weight: 400;
+    opacity: 0.85;
+}
+
+// A dish the kitchen has not finished yet can still be served, but the button
+// should not look like the routine confirm-the-obvious action.
+.ko-serve-btn.early {
+    background: transparent !important;
+    color: var(--ko-muted-2, #5b6d70) !important;
+    border: 1.5px dashed var(--ko-border, #e4ebeb) !important;
+}

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!--
+      Kitchen feedback on the ออเดอร์ค้าง tab.
+
+      This inherits point_of_sale.TicketScreen a second time: ko_pos_ui.xml has
+      already replaced the screen body with the KO markup, so the xpaths below
+      target KO classes. Keeping it in its own file means the 36 KB base
+      template does not have to be rewritten to add a line of kitchen state.
+    -->
+    <t t-name="ko_pos_ui.TicketScreenKitchen"
+       t-inherit="point_of_sale.TicketScreen"
+       t-inherit-mode="extension">
+
+        <!-- Per-dish problem reported by the station -->
+        <xpath expr="//div[hasclass('ko-item-name-group')]" position="inside">
+            <div t-if="item.issueLabel" class="ko-item-issue"
+                 t-att-class="{'acked': item.issueAck}">
+                <t t-esc="item.issueLabel"/>
+                <span t-if="item.issueAck" class="ko-item-issue-ack"> · รับทราบแล้ว</span>
+            </div>
+        </xpath>
+
+        <!-- Say what pressing เสิร์ฟ will mean before it is pressed -->
+        <xpath expr="//button[hasclass('ko-serve-btn')]" position="attributes">
+            <attribute name="t-att-class">{'early': !item.isReady}</attribute>
+        </xpath>
+    </t>
+
+</templates>

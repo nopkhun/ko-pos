@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+      noupdate="0": this runs on every -i/-u of ko_pos_kds.
+      Before 19.0.6.0.0 a ticket line's station was a hard-coded
+      hot/cold/drink selection copied from pos.category. Those lines have no
+      station_id and would render as "ไม่ได้กำหนดสถานี" forever. The function
+      is idempotent — it only fills lines that still have no station.
+    -->
+    <data noupdate="0">
+        <function model="ko.kds.station" name="_ko_migrate_line_stations"/>
+    </data>
+</odoo>
