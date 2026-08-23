@@ -5,58 +5,139 @@ from odoo import fields, http
 from odoo.http import request
 
 
+def _json(payload, status=200):
+    return request.make_response(
+        json.dumps(payload),
+        status=status,
+        headers=[('Content-Type', 'application/json'), ('Cache-Control', 'no-store')],
+    )
+
+
 class KdsController(http.Controller):
+
+    # ------------------------------------------------------------------
+    # Access helpers
+    # ------------------------------------------------------------------
 
     def _check_access(self):
         if not request.env.user.has_group('point_of_sale.group_pos_user'):
             return False
         return True
 
-    @http.route(['/kds', '/kds/<int:station_id>'], auth='user', type='http', website=False)
-    def kds_screen(self, station_id=None, **kw):
+    def _allowed_configs(self):
+        """Every POS this user may look at.
+
+        `pos.config` carries Odoo's standard multi-company record rule, so this
+        search already excludes the POS of companies the user is not allowed in.
+        """
+        return request.env['pos.config'].search([], order='company_id, name, id')
+
+    def _config_or_none(self, config_id):
+        """Resolve a POS id to a record the user is allowed to see, else None."""
+        try:
+            config_id = int(config_id)
+        except (TypeError, ValueError):
+            return None
+        config = self._allowed_configs().filtered(lambda c: c.id == config_id)
+        return config[:1] or None
+
+    def _stations_for(self, config):
+        stations = request.env['ko.kds.station'].search([])
+        return stations._available_for_config(config)
+
+    def _ticket_in_scope(self, ticket):
+        """A screen may only act on tickets of a POS it is allowed to see."""
+        if not ticket:
+            return False
+        if not ticket.config_id:
+            # Legacy tickets from before per-POS scoping: keep them reachable.
+            return True
+        return ticket.config_id in self._allowed_configs()
+
+    # ------------------------------------------------------------------
+    # Screens
+    # ------------------------------------------------------------------
+
+    @http.route('/kds', auth='user', type='http', website=False)
+    def kds_index(self, **kw):
+        """Shop picker. One POS goes straight through; several never get mixed."""
         if not self._check_access():
             return request.make_response('Forbidden', status=403)
-        stations = request.env['ko.kds.station'].search([])
-        station = stations.filtered(lambda s: s.id == station_id) or stations[:1]
-        active_session = request.env['pos.session'].search([
-            ('state', 'in', ['opening_control', 'opened']),
-            ('rescue', '=', False),
-        ], limit=1)
-        pos_config = active_session.config_id
-        if not pos_config:
-            pos_config = request.env['pos.config'].search([], limit=1)
+        configs = self._allowed_configs()
+        if len(configs) == 1:
+            return request.redirect('/kds/pos/%s' % configs.id)
+        return request.render('ko_pos_kds.kds_choose_page', {
+            'configs': configs,
+            'multi_company': len(configs.mapped('company_id')) > 1,
+        })
+
+    @http.route('/kds/pos/<int:config_id>', auth='user', type='http', website=False)
+    def kds_screen(self, config_id, station_id=None, **kw):
+        if not self._check_access():
+            return request.make_response('Forbidden', status=403)
+        config = self._config_or_none(config_id)
+        if not config:
+            return request.redirect('/kds')
+        stations = self._stations_for(config)
+        station = stations.filtered(lambda s: str(s.id) == str(station_id))[:1]
         return request.render('ko_pos_kds.kds_page', {
             'stations': stations,
             'station': station,
-            'pos_config': pos_config,
+            'pos_config': config,
+            'all_configs': self._allowed_configs(),
             'csrf_token': request.csrf_token(),
         })
 
+    # Old bookmarks pointed at /kds/<station_id>; send them to the picker instead
+    # of guessing a shop, so nobody ends up on the wrong kitchen board silently.
+    @http.route('/kds/<int:legacy_id>', auth='user', type='http', website=False)
+    def kds_legacy(self, legacy_id, **kw):
+        return request.redirect('/kds')
+
+    # ------------------------------------------------------------------
+    # Data
+    # ------------------------------------------------------------------
+
     @http.route('/kds/data', auth='user', type='http', methods=['GET'])
-    def kds_data(self, station_id=None, **kw):
+    def kds_data(self, config_id=None, station_id=None, **kw):
         if not self._check_access():
-            return request.make_response('{"error": "forbidden"}', headers=[('Content-Type', 'application/json')])
+            return _json({'error': 'forbidden'}, status=403)
+
+        config = self._config_or_none(config_id)
+        if not config:
+            # Without a POS there is no correct answer — returning every ticket
+            # is what made the board show other shops' orders.
+            return _json({'error': 'config_required', 'active': [], 'served': [],
+                          'cancelled': [], 'now_utc': fields.Datetime.now().isoformat() + 'Z',
+                          'sla_minutes': 15}, status=400)
+
         env = request.env
-        station = env['ko.kds.station'].browse(int(station_id)) if station_id else env['ko.kds.station']
+        station = self._stations_for(config).filtered(lambda s: str(s.id) == str(station_id))[:1]
         categ_ids = set(station.category_ids.ids) if station and station.category_ids else None
 
+        scope = [('config_id', '=', config.id)]
+
         # Active includes ready tickets until front of house confirms service.
-        active_tickets = env['ko.kds.ticket'].search([
-            ('state', 'in', ['new', 'progress', 'ready']),
-        ], order='id asc', limit=100)
+        active_tickets = env['ko.kds.ticket'].search(
+            scope + [('state', 'in', ['new', 'progress', 'ready'])],
+            order='id asc', limit=100,
+        )
 
         # Fetch recently served tickets (last 2 hours)
         recent_limit = fields.Datetime.subtract(fields.Datetime.now(), hours=2)
-        served_tickets = env['ko.kds.ticket'].search([
-            '&', ('state', 'in', ['served', 'done']),
-            '|', ('served_time', '>=', recent_limit), ('done_time', '>=', recent_limit),
-        ], order='served_time desc, done_time desc', limit=50)
+        served_tickets = env['ko.kds.ticket'].search(
+            scope + [
+                '&', ('state', 'in', ['served', 'done']),
+                '|', ('served_time', '>=', recent_limit), ('done_time', '>=', recent_limit),
+            ],
+            order='served_time desc, done_time desc', limit=50,
+        )
 
         # Fetch cancelled tickets
-        cancelled_tickets = env['ko.kds.ticket'].search([
-            ('state', '=', 'cancelled'),
-            ('create_date', '>=', recent_limit),
-        ], order='id desc', limit=30)
+        cancelled_tickets = env['ko.kds.ticket'].search(
+            scope + [('state', '=', 'cancelled'), ('create_date', '>=', recent_limit)],
+            order='id desc', limit=30,
+        )
 
         def _format_ticket(t):
             lines = []
@@ -99,52 +180,61 @@ class KdsController(http.Controller):
         served_res = [res for res in (_format_ticket(t) for t in served_tickets) if res]
         cancelled_res = [res for res in (_format_ticket(t) for t in cancelled_tickets) if res]
 
-        config = active_tickets[:1].config_id or served_tickets[:1].config_id
-        if not config:
-            config = env['pos.config'].search([], limit=1)
+        return _json({
+            'config_id': config.id,
+            'config_name': config.display_name,
+            'company_name': config.company_id.name or '',
+            'station_id': station.id if station else 0,
+            'active': active_res,
+            'served': served_res,
+            'cancelled': cancelled_res,
+            'now_utc': fields.Datetime.now().isoformat() + 'Z',
+            'sla_minutes': max(1, config.ko_kds_sla_minutes or 15),
+        })
 
-        return request.make_response(
-            json.dumps({
-                'active': active_res,
-                'served': served_res,
-                'cancelled': cancelled_res,
-                'now_utc': fields.Datetime.now().isoformat() + 'Z',
-                'sla_minutes': max(1, config.ko_kds_sla_minutes or 15),
-            }),
-            headers=[('Content-Type', 'application/json'), ('Cache-Control', 'no-store')],
-        )
+    # ------------------------------------------------------------------
+    # Actions
+    # ------------------------------------------------------------------
+
+    def _ticket_from_request(self, ticket_id):
+        ticket = request.env['ko.kds.ticket'].browse(int(ticket_id)).exists()
+        return ticket if self._ticket_in_scope(ticket) else request.env['ko.kds.ticket']
 
     @http.route('/kds/set_state', auth='user', type='http', methods=['POST'], csrf=True)
     def kds_set_state(self, ticket_id=None, state=None, **kw):
         if not self._check_access() or state not in ('new', 'progress', 'ready', 'served', 'cancelled'):
-            return request.make_response('{"ok": false}', headers=[('Content-Type', 'application/json')])
-        ticket = request.env['ko.kds.ticket'].browse(int(ticket_id)).exists()
-        if ticket:
-            ticket.set_kds_state(state)
-        return request.make_response('{"ok": true}', headers=[('Content-Type', 'application/json')])
+            return _json({'ok': False})
+        ticket = self._ticket_from_request(ticket_id)
+        if not ticket:
+            return _json({'ok': False, 'error': 'not_allowed'}, status=403)
+        ticket.set_kds_state(state)
+        return _json({'ok': True})
 
     @http.route('/kds/toggle_line', auth='user', type='http', methods=['POST'], csrf=True)
     def kds_toggle_line(self, line_id=None, **kw):
         if not self._check_access():
-            return request.make_response('{"ok": false}', headers=[('Content-Type', 'application/json')])
+            return _json({'ok': False})
         line = request.env['ko.kds.ticket.line'].browse(int(line_id)).exists()
-        if line:
-            line.toggle_ready()
-        return request.make_response('{"ok": true}', headers=[('Content-Type', 'application/json')])
+        if not line or not self._ticket_in_scope(line.ticket_id):
+            return _json({'ok': False, 'error': 'not_allowed'}, status=403)
+        line.toggle_ready()
+        return _json({'ok': True})
 
     @http.route('/kds/all_ready', auth='user', type='http', methods=['POST'], csrf=True)
     def kds_all_ready(self, ticket_id=None, line_ids=None, **kw):
         if not self._check_access():
-            return request.make_response('{"ok": false}', headers=[('Content-Type', 'application/json')])
+            return _json({'ok': False})
         env = request.env
         if ticket_id:
-            ticket = env['ko.kds.ticket'].browse(int(ticket_id)).exists()
-            if ticket:
-                ticket.set_kds_state('ready')
+            ticket = self._ticket_from_request(ticket_id)
+            if not ticket:
+                return _json({'ok': False, 'error': 'not_allowed'}, status=403)
+            ticket.set_kds_state('ready')
         elif line_ids:
             try:
                 ids = [int(x) for x in json.loads(line_ids)]
                 lines = env['ko.kds.ticket.line'].browse(ids).exists()
+                lines = lines.filtered(lambda line: self._ticket_in_scope(line.ticket_id))
                 lines.filtered(lambda line: not line.cancelled).write({'done': True, 'state': 'ready'})
                 for ticket in lines.mapped('ticket_id'):
                     live_lines = ticket.line_ids.filtered(lambda line: not line.cancelled)
@@ -153,13 +243,14 @@ class KdsController(http.Controller):
                     ticket._notify_kds('batch_ready')
             except Exception:
                 pass
-        return request.make_response('{"ok": true}', headers=[('Content-Type', 'application/json')])
+        return _json({'ok': True})
 
     @http.route('/kds/remake', auth='user', type='http', methods=['POST'], csrf=True)
     def kds_remake(self, ticket_id=None, **kw):
         if not self._check_access():
-            return request.make_response('{"ok": false}', headers=[('Content-Type', 'application/json')])
-        ticket = request.env['ko.kds.ticket'].browse(int(ticket_id)).exists()
-        if ticket:
-            ticket.remake_ticket()
-        return request.make_response('{"ok": true}', headers=[('Content-Type', 'application/json')])
+            return _json({'ok': False})
+        ticket = self._ticket_from_request(ticket_id)
+        if not ticket:
+            return _json({'ok': False, 'error': 'not_allowed'}, status=403)
+        ticket.remake_ticket()
+        return _json({'ok': True})
