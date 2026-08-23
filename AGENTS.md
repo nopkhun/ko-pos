@@ -336,15 +336,19 @@ Working and confirmed against the live system:
 1. **Finish data-backed §1 QA:** once real menu data has an English
    `public_description` and a configurable item, verify English search and Odoo's
    configurator path live.
-2. **Owner/staff review:** decide whether pre-existing KDS ticket K0003 / queue 1003 is a
+2. **Production phone-width spot check:** final §2–§9 production QA used the fixed
+   1280×720 browser surface. Local 390×844 and the earlier §1 live phone checks passed,
+   but repeat the final production flow at 390 px when a resizable live browser is
+   available; do not complete payment or change kitchen state.
+3. **Owner/staff review:** decide whether pre-existing KDS ticket K0003 / queue 1003 is a
    real kitchen ticket or old QA data before marking it served or cancelled.
-3. **Real business data from the owner:** real PromptPay number (currently the placeholder
+4. **Real business data from the owner:** real PromptPay number (currently the placeholder
    `0812345678`), the real menu items & prices, and the kitchen printer's IP (Epson).
-4. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
+5. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
    attach it to the payment method, and test against the Beam playground before live use.
-5. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
+6. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close.
-6. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
+7. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
 > ✅ Completed 2026-08-23: audited and replaced the incomplete §2–§9 implementation from
 > `ffeb880`, completed disposable-database QA, deployed it, and passed production
