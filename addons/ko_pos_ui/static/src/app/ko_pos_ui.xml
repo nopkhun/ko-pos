@@ -54,8 +54,8 @@
             </div>
         </xpath>
 
-        <xpath expr="//div[hasclass('switchpane')]/button[hasclass('pay-button')]" position="replace"/>
-        <xpath expr="//div[hasclass('switchpane')]/button[hasclass('review-button')]" position="replace">
+        <xpath expr="//div[hasclass('switchpane')]//button[hasclass('pay-button')]" position="replace"/>
+        <xpath expr="//div[hasclass('switchpane')]//button[hasclass('review-button')]" position="replace">
             <button t-if="!currentOrder.isEmpty()"
                     class="ko-mobile-cart-button btn flex-grow-1"
                     t-on-click="switchPane">
