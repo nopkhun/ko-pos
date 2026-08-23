@@ -546,13 +546,20 @@
     padding: 0 !important;
 }
 
+/* Odoo 19 puts `flex-column` (or `flex-row-reverse ... m-1` on small screens) on the
+   product card through `pos.productViewMode`. Those Bootstrap utilities are !important,
+   so the row layout below has to override direction, alignment and margin explicitly —
+   without this the card stacks image over name and the menu is not a list. */
 .pos .rightpane .ko-product-card {
     display: flex !important;
     width: 100%;
     min-height: 80px;
-    margin: 0;
+    margin: 0 !important;
     padding: 13px 20px !important;
+    flex-direction: row !important;
     align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
     gap: 14px;
     color: var(--ko-ink);
     border: 0 !important;
@@ -565,6 +572,10 @@
 
 .pos .rightpane .ko-product-card.ko-in-cart {
     background: var(--ko-primary-soft) !important;
+}
+
+.pos .rightpane .ko-product-card .product-cart-qty {
+    display: none !important;
 }
 
 .pos .ko-product-card .product-img,
@@ -599,10 +610,12 @@
     min-width: 0;
     height: auto !important;
     min-height: 0;
+    margin: 0 !important;
     padding: 0 !important;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    text-align: left !important;
     gap: 1px;
     border-radius: 0 !important;
     background: transparent !important;
@@ -611,6 +624,8 @@
 .pos .ko-product-card .product-name {
     width: 100%;
     overflow: hidden;
+    justify-content: flex-start !important;
+    text-align: left !important;
     color: var(--ko-ink);
     font-size: 16px;
     font-weight: 500;
@@ -679,6 +694,10 @@
     border: 0;
     background: #eef3f3;
     font-size: 19px;
+}
+
+.pos .ko-orderline-stepper {
+    margin-inline-end: 10px;
 }
 
 .pos .ko-product-stepper .ko-stepper-add,
