@@ -75,8 +75,8 @@ reviewable source copy.
 - Header context reads `ขายหน้าเคาน์เตอร์`, one seat, and live session `#0020`.
   Mobile document width equals the 390 px viewport and console logs are clean.
 - The live seed menu has no configurable product and no English `public_description`;
-  those two data-dependent checks wait for real menu data. One unsent/unpaid QA draft
-  line remains pending explicit deletion confirmation.
+  those two data-dependent checks wait for real menu data. After explicit confirmation,
+  the unsent/unpaid QA draft line was removed and the current order is empty.
 
 ## Previous UI visual baseline (2026-08-22; superseded after §1 deploy)
 
@@ -102,9 +102,9 @@ Repeat the production checklist after every deploy.
 - Live checks passed at `1280×800` and `390×844`; the phone page has no horizontal or
   vertical document overflow. Payment navigation reached the payment screen but no
   payment method was selected and no payment was completed.
-- Session `#0020` remains open for normal service. The QA line is draft-only and was
-  never sent to the kitchen; remove it after the required browser deletion confirmation,
-  and do not close the session.
+- Session `#0020` remains open for normal service. After explicit confirmation, the
+  draft-only QA line was removed and the current order is empty; nothing was sent to the
+  kitchen, no payment was made, and the session was not closed.
 
 ## Rollback
 

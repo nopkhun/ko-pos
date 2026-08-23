@@ -289,9 +289,9 @@ Working and confirmed against the live system:
   session `#0020`, and no browser console warning/error was introduced.
 - The live seed menu currently has no configurable product and no English
   `public_description`, so those two data-dependent §1 paths are not yet verifiable.
-  One unsent, unpaid QA draft line (`ข้าวกะเพราหมูสับ`, qty 1, 60.00 ฿) remains in
-  session `#0020` pending explicit browser deletion confirmation; it was never sent to
-  the kitchen and no payment method was selected.
+  After explicit confirmation, the unsent and unpaid QA draft line
+  (`ข้าวกะเพราหมูสับ`, qty 1, 60.00 ฿) was removed. The current order is empty and
+  session `#0020` remains open; nothing was sent to the kitchen or paid.
 - Production Compose now passes `/mnt/extra-addons` explicitly to both Odoo processes
   and makes the mounted addon tree readable. Both init services exited 0, and the Thai override
   success signal remains exactly 57 files.
@@ -305,10 +305,9 @@ Working and confirmed against the live system:
 
 ## 9. Outstanding work
 
-1. **Finish data-backed §1 QA and cleanup:** remove the unsent/unpaid QA draft line in
-   session `#0020` after explicit browser deletion confirmation. Once real menu data has
-   an English `public_description` and a configurable item, verify English search and
-   Odoo's configurator path live.
+1. **Finish data-backed §1 QA:** once real menu data has an English
+   `public_description` and a configurable item, verify English search and Odoo's
+   configurator path live.
 2. **Continue the new UI handoff:** implement §2 item options, §3 phone cart,
    §4 payment, §5 receipt/success, §6 bills, §7 KDS backend/state and UI,
    §8 bottom nav, and §9 toast.
