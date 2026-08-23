@@ -2,11 +2,30 @@
 
 import { patch } from "@web/core/utils/patch";
 import { PosStore } from "@point_of_sale/app/services/pos_store";
-import { changesToOrder } from "@point_of_sale/app/models/utils/order_change";
+import { getOrderChanges } from "@point_of_sale/app/models/utils/order_change";
+import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
+import { setKitchenAlertAckHandler, setKitchenAlerts } from "./kds_alert";
 
 /**
- * KO KDS: every time an order is sent to the kitchen, also create a
- * KDS ticket on the server (ko.kds.ticket) so kitchen screens can show it.
+ * KO KDS — POS side.
+ *
+ * Three things happen here.
+ *
+ * 1. The kitchen display is decoupled from `pos.printer`. Odoo decides whether
+ *    an order "has something to send" from the categories attached to a
+ *    receipt printer, so a shop with no kitchen printer (or a printer that does
+ *    not list เครื่องดื่ม) never even sees the ส่งครัว button. KDS routing is
+ *    configured on ko.kds.station instead, so every POS category counts.
+ *
+ * 2. Both ways of taking an order reach the kitchen:
+ *    - key the dishes, press ส่งครัว  → Odoo's own submitOrder path;
+ *    - key the dishes and pay straight away → sent automatically the moment
+ *      payment validates. Odoo only did that outside restaurant mode; in
+ *      restaurant mode it asked a yes/no question *before* payment that staff
+ *      could dismiss, leaving a paid order the kitchen never saw.
+ *
+ * 3. Problems reported by a station come back as a red bar plus a chime that
+ *    stays until front of house acknowledges it.
  */
 patch(PosStore.prototype, {
     async setup() {
@@ -15,8 +34,175 @@ patch(PosStore.prototype, {
         // activity must not trigger a refresh here.
         this.bus.addChannel(`ko_pos_kds_${this.config.id}`);
         this.bus.subscribe("ko_pos_kds_update", () => this.koRefreshKdsStatus());
+        setKitchenAlertAckHandler((items) => this.koAckKitchenIssues(items));
         await this.koRefreshKdsStatus();
     },
+
+    get koKdsEnabled() {
+        return this.config.ko_kds_enabled !== false;
+    },
+
+    /** Every POS category. KDS station routing happens on the server. */
+    get koKdsCategoryIds() {
+        return new Set(this.models["pos.category"].map((categ) => categ.id));
+    },
+
+    /**
+     * Odoo asks this for "what has changed since the last send", and uses the
+     * answer for the ส่งครัว button and for order.hasChange. Base Odoo scopes it
+     * to printer categories; with a KDS every category is a preparation
+     * category, otherwise drink-only orders can never be fired.
+     */
+    getOrderChanges(order = this.getOrder()) {
+        if (this.koKdsEnabled) {
+            return getOrderChanges(order, this.koKdsCategoryIds);
+        }
+        return super.getOrderChanges(order);
+    },
+
+    /**
+     * Our own diff, independent of any category configuration.
+     *
+     * Two reasons not to reuse `changesToOrder`: it drops products that have no
+     * POS category at all, and it reports a *delta* quantity while the KDS
+     * ticket stores the line's absolute quantity — so adding one more plate to
+     * a table used to overwrite "3" with "1" on the kitchen screen.
+     */
+    koKdsChanges(order, cancelled = false) {
+        const last = order.last_order_preparation_change?.lines || {};
+        const added = [];
+        const removed = [];
+
+        const asPayload = (line) => ({
+            uuid: line.uuid,
+            product_id: line.getProduct()?.id,
+            name: line.getFullProductName(),
+            display_name: line.getProduct()?.display_name,
+            quantity: line.getQuantity(),
+            note: line.getNote(),
+            customer_note: line.getCustomerNote(),
+            attribute_value_names: (line.attribute_value_ids || []).map((a) => a.name),
+        });
+
+        if (cancelled) {
+            for (const change of Object.values(last)) {
+                removed.push({ ...change, quantity: Math.abs(change.quantity || 0) });
+            }
+            return { new: [], cancelled: removed };
+        }
+
+        const liveUuids = new Set();
+        for (const line of order.getOrderlines()) {
+            liveUuids.add(line.uuid);
+            const previous = last[line.preparationKey];
+            const qty = line.getQuantity();
+            if (qty <= 0) {
+                continue;
+            }
+            const changed =
+                !previous ||
+                previous.quantity !== qty ||
+                (previous.note || "") !== (line.getNote() || "") ||
+                (previous.customer_note || "") !== (line.getCustomerNote() || "");
+            if (changed) {
+                added.push(asPayload(line));
+            }
+        }
+
+        for (const change of Object.values(last)) {
+            if (!liveUuids.has(change.uuid)) {
+                removed.push({ ...change, quantity: Math.abs(change.quantity || 0) });
+            }
+        }
+
+        return { new: added, cancelled: removed };
+    },
+
+    /**
+     * The ส่งครัว button only renders when this returns something. Base Odoo
+     * returns nothing for a product with no POS category, so add a fallback
+     * bucket rather than hiding the button on an order the kitchen still needs.
+     */
+    getCategoryCount(order = this.getOrder()) {
+        const result = super.getCategoryCount(order);
+        if (result.length || !this.koKdsEnabled || !order) {
+            return result;
+        }
+        const change = this.koKdsChanges(order);
+        const count = change.new.reduce((total, line) => total + (line.quantity || 0), 0);
+        if (count > 0) {
+            return [{ count, name: "ครัว" }];
+        }
+        return result;
+    },
+
+    /**
+     * Base restaurant Odoo pops "the order has not been sent, send it?" before
+     * payment, and Discard silently skips the kitchen. With auto-send after
+     * payment configured there is nothing to ask.
+     */
+    async _askForPreparation() {
+        if (this.koKdsEnabled && this.config.ko_kds_auto_send_on_payment !== false) {
+            return;
+        }
+        return await super._askForPreparation(...arguments);
+    },
+
+    koKdsPayload(order, change) {
+        const partner = order.getPartner?.();
+        return {
+            order_uuid: order.uuid,
+            pos_reference: order.pos_reference,
+            tracking_number: order.tracking_number,
+            config_id: this.config.id,
+            table: order.table_id ? order.table_id.table_number : null,
+            floor: order.table_id?.floor_id?.name || "",
+            customer_name: partner?.name || order.partner_name || "",
+            paid: Boolean(order.finalized || order.isPaid?.()),
+            internal_note: order.internal_note || "",
+            general_customer_note: order.general_customer_note || "",
+            new: change.new,
+            cancelled: change.cancelled,
+        };
+    },
+
+    async koSendToKds(order, opts = {}) {
+        if (!this.koKdsEnabled || !order || order.isRefund || order.uiState?.isReprinting) {
+            return false;
+        }
+        let payload = null;
+        try {
+            const change = this.koKdsChanges(order, Boolean(opts.cancelled));
+            if (!change.new.length && !change.cancelled.length) {
+                return false;
+            }
+            payload = this.koKdsPayload(order, change);
+        } catch (error) {
+            console.warn("KDS: failed computing changes", error);
+            return false;
+        }
+        try {
+            await this.data.call("ko.kds.ticket", "create_from_pos", [payload]);
+            await this.koRefreshKdsStatus();
+            return true;
+        } catch (error) {
+            // Offline or server error: the kitchen printer (if any) still got it.
+            console.warn("KDS: failed sending ticket", error);
+            return false;
+        }
+    },
+
+    async sendOrderInPreparation(order, opts = {}) {
+        if (!opts.byPassPrint) {
+            // Send to KDS first — the (optional) kitchen printer may be slow.
+            await this.koSendToKds(order, opts);
+        }
+        return await super.sendOrderInPreparation(order, opts);
+    },
+
+    // ------------------------------------------------------------------
+    // Kitchen state coming back to front of house
+    // ------------------------------------------------------------------
 
     async koRefreshKdsStatus() {
         const orders = this.models["pos.order"].getAll();
@@ -29,67 +215,98 @@ patch(PosStore.prototype, {
                 "get_pos_status",
                 [orders.map((order) => order.uuid), this.config.id]
             );
+            const alerts = [];
             for (const order of orders) {
                 const orderStatus = status[order.uuid];
                 if (!orderStatus) {
+                    for (const line of order.getOrderlines()) {
+                        line.koKitchenState = line.koKitchenState || null;
+                    }
                     continue;
                 }
+                order.koKitchenTicket = orderStatus.ticket_name || null;
+                order.koKitchenState = orderStatus.ticket_state || null;
                 for (const line of order.getOrderlines()) {
-                    const status = orderStatus.lines[line.uuid];
-                    const state = typeof status === "string" ? status : status?.state;
+                    const lineStatus = orderStatus.lines[line.uuid];
+                    const state =
+                        typeof lineStatus === "string" ? lineStatus : lineStatus?.state;
                     line.koServed = state === "served";
                     line.koKitchenState = state || null;
-                    line.koKitchenStation = typeof status === "object" ? status?.station : null;
+                    line.koKitchenStation =
+                        typeof lineStatus === "object" ? lineStatus?.station : null;
+                    line.koKitchenIssue =
+                        typeof lineStatus === "object" ? lineStatus?.issue || null : null;
+                    if (line.koKitchenIssue && !line.koKitchenIssue.ack) {
+                        alerts.push({
+                            key: `${order.uuid}|${line.uuid}|${line.koKitchenIssue.time || ""}`,
+                            orderUuid: order.uuid,
+                            lineUuid: line.uuid,
+                            orderLabel: order.table_id
+                                ? `โต๊ะ ${order.table_id.table_number}`
+                                : order.getPartner?.()?.name || `ออเดอร์ ${order.tracking_number || ""}`,
+                            dish: line.getFullProductName(),
+                            label: line.koKitchenIssue.label,
+                            note: line.koKitchenIssue.note,
+                        });
+                    }
                 }
             }
+            setKitchenAlerts(alerts);
         } catch (error) {
             console.warn("KDS: failed refreshing front-of-house state", error);
         }
     },
 
-    async sendOrderInPreparation(order, opts = {}) {
-        let kdsPayload = null;
-        try {
-            if (!order.isRefund && !opts.byPassPrint && !order.uiState?.isReprinting) {
-                // All POS categories: server-side stations do the filtering.
-                const allCategIds = new Set(this.models["pos.category"].map((c) => c.id));
-                if (allCategIds.size) {
-                    const change = changesToOrder(order, allCategIds, opts.cancelled);
-                    const hasChanges =
-                        change.new.length ||
-                        change.cancelled.length ||
-                        change.internal_note ||
-                        change.general_customer_note;
-                    if (hasChanges) {
-                        kdsPayload = {
-                            order_uuid: order.uuid,
-                            pos_reference: order.pos_reference,
-                            tracking_number: order.tracking_number,
-                            config_id: this.config.id,
-                            table: order.table_id ? order.table_id.table_number : null,
-                            floor: order.table_id?.floor_id?.name || "",
-                            internal_note: change.internal_note || "",
-                            general_customer_note: change.general_customer_note || "",
-                            new: change.new,
-                            cancelled: change.cancelled,
-                        };
-                    }
+    async koAckKitchenIssues(items) {
+        const byOrder = {};
+        for (const item of items || []) {
+            (byOrder[item.orderUuid] = byOrder[item.orderUuid] || []).push(item.lineUuid);
+        }
+        for (const [orderUuid, lineUuids] of Object.entries(byOrder)) {
+            try {
+                await this.data.call("ko.kds.ticket", "ack_issues_from_pos", [
+                    orderUuid,
+                    lineUuids,
+                ]);
+            } catch (error) {
+                console.warn("KDS: failed acknowledging kitchen issue", error);
+            }
+        }
+        await this.koRefreshKdsStatus();
+    },
+});
+
+/**
+ * Path 2 of the owner's spec: key the dishes, take the money, and the kitchen
+ * gets the order the instant the payment succeeds. Odoo skips this in
+ * restaurant mode, which is why paid orders could vanish before the kitchen.
+ */
+patch(OrderPaymentValidation.prototype, {
+    async afterOrderValidation() {
+        const result = await super.afterOrderValidation(...arguments);
+        const pos = this.pos;
+        const order = this.order;
+        if (
+            pos?.config?.module_pos_restaurant &&
+            pos.koKdsEnabled &&
+            pos.config.ko_kds_auto_send_on_payment !== false &&
+            order &&
+            !order.isRefund
+        ) {
+            try {
+                await pos.checkPreparationStateAndSentOrderInPreparation(order, {
+                    orderDone: true,
+                });
+            } catch (error) {
+                // Never let a kitchen hand-off failure block the receipt screen.
+                console.warn("KDS: auto-send after payment failed", error);
+                try {
+                    await pos.koSendToKds(order);
+                } catch (fallbackError) {
+                    console.warn("KDS: fallback send after payment failed", fallbackError);
                 }
             }
-        } catch (e) {
-            console.warn("KDS: failed computing changes", e);
         }
-
-        if (kdsPayload) {
-            // Send to KDS first — the (optional) kitchen printer may be slow/offline.
-            try {
-                await this.data.call("ko.kds.ticket", "create_from_pos", [kdsPayload]);
-                await this.koRefreshKdsStatus();
-            } catch (e) {
-                // Offline or server error: kitchen printer (if any) still got the order.
-                console.warn("KDS: failed sending ticket", e);
-            }
-        }
-        return await super.sendOrderInPreparation(order, opts);
+        return result;
     },
 });
