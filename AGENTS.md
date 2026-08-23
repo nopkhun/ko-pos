@@ -8,7 +8,7 @@
 > https://kodoo.viakuma.com — ใช้งานจริงแล้ว มี addon ของเราเอง 5 ตัว และระบบคำแปลไทย
 > "ฉบับร้านอาหาร" ที่เขียนเอง อ่านหัวข้อ *Do not break these* ก่อนแก้อะไรทั้งสิ้น
 
-- **Last verified:** 2026-08-23
+- **Last verified:** 2026-08-23 (KDS per-shop scoping)
 - **Status:** LIVE in production. A real restaurant will use this.
 - **Owner:** Nop (Thai speaker — user-facing strings and all UI copy must be natural Thai)
 
@@ -66,10 +66,12 @@ exit successfully before Odoo starts.
 ```
 addons-init (alpine/git, one-shot)
   └─ clones main with the read-only SSH deploy key embedded in the local Compose
-  └─ wipes /mnt/extra-addons and unpacks the repo's addons.tar.gz
+  └─ wipes /mnt/extra-addons and copies the repo's addons/ directory into it
+      (exits 1 if /tmp/repo/addons is missing — no silent fallback)
+  └─ echoes the deployed ko_pos_kds / ko_pos_ui manifest versions into the log
   └─ makes /mnt/extra-addons readable by the non-root Odoo user
-      (the patch/thai_v2 + thai_v3 pipeline was folded into the tarball
-       and deleted on 2026-08-23)
+      (the patch/thai_v2 + thai_v3 pipeline was folded into addons/ and
+       deleted on 2026-08-23)
         ↓ (service_completed_successfully)
 odoo-upgrade (odoo:19, one-shot)
   └─ uses an explicit --addons-path ending in /mnt/extra-addons
@@ -87,8 +89,8 @@ db (postgres:17-alpine) — healthcheck gates all of the above
 Named volumes: `odoo-data` (filestore), `odoo-addons` (`/mnt/extra-addons`), `db`.
 
 `/mnt/extra-addons` is **rebuilt from scratch on every deploy** (`rm -rf /mnt/extra-addons/*`).
-Never hand-edit files inside that volume expecting them to survive. Change the reviewable
-source, repack `addons.tar.gz`, and push it before deploying.
+Never hand-edit files inside that volume expecting them to survive. Change the modules
+under `addons/` and push `main` before deploying.
 
 ---
 
@@ -100,7 +102,7 @@ All live in `addons.tar.gz` at the repo root.
 | --- | --- |
 | `ko_pos_setup` | Restaurant seed data: POS categories, floors/tables, demo products |
 | `ko_pos_thai_receipt` | Thai abbreviated tax invoice (ใบกำกับภาษีอย่างย่อ) receipt layout |
-| `ko_pos_kds` | Kitchen Display System (jaw-krua / จอครัว) at `/kds` |
+| `ko_pos_kds` | Kitchen Display System (jaw-krua / จอครัว). One screen = one POS: `/kds` is a shop picker, the board is `/kds/pos/<config_id>` |
 | `ko_pos_beam_bolt` | Beam Bolt+ card-terminal payment integration (not yet configured with a live merchant key) |
 | `ko_pos_thai_lang` | The Thai translation override layer — see §5. Depends on all four above. |
 | `ko_pos_ui` | Touch-first restaurant POS interface: list-first Sell screen, current-order panel, prices, payment emphasis, responsive tablet/mobile layout. Presentation only; it does not change order, tax, or payment logic. |
@@ -110,12 +112,19 @@ All live in `addons.tar.gz` at the repo root.
 ## 4. Repository layout (`nopkhun/ko-pos`, branch `main`)
 
 ```
-addons.tar.gz              ← deployment source of truth (all 6 modules)
-addons/                    ← ⚠️ NOT read by deployment. Reviewable source copies of all
-                              six modules; repack the tarball after editing them.
+addons/                    ← deployment source of truth (all 6 modules). addons-init
+                              copies this directory into /mnt/extra-addons.
+addons.tar.gz              ← ⚠️ historical since 2026-08-23. NOT read by deployment.
+                              Kept as a convenience snapshot only; a repacked tarball
+                              is NOT a deploy. Do not reintroduce a fallback to it.
 AGENTS.md                  ← this file
 docs/                      ← runbooks, see below
 ```
+
+**Why the flip:** an agent session can only push *text* through the GitHub MCP, so a
+binary `addons.tar.gz` in the repo could never be refreshed from here. Preferring it meant
+a pushed-and-deployed change could silently run old code. `addons/` is text, reviewable in
+a diff, and always current.
 
 ### History of the `patch/` directories (deleted 2026-08-23)
 
@@ -233,7 +242,11 @@ means containers started. Verify the translation count line from §5 and check t
 8. The agent sandbox **cannot reach `kodoo.viakuma.com` directly** (egress blocked, 403).
    Verify the live site through the browser tooling or WebFetch instead. Do not
    conclude the site is down from a sandbox `curl` failure.
-9. **Keep `/mnt/extra-addons` explicit and readable.** Both Odoo commands must pass an
+9. **Never scope a KDS query by accident.** `ko.kds.ticket` has no implicit POS filter.
+   Any new search must carry `('config_id', '=', …)`, and `/kds/data` must keep answering
+   `400 config_required` instead of falling back to "all tickets" — that fallback was the
+   bug that put one shop's orders on another shop's kitchen screen.
+10. **Keep `/mnt/extra-addons` explicit and readable.** Both Odoo commands must pass an
    `--addons-path` that includes `/mnt/extra-addons`, and `addons-init` must finish with
    `chmod -R a+rX /mnt/extra-addons`. The `odoo:19` image pulled on 2026-08-22 did not
    include the mounted path automatically; see `docs/GOTCHAS.md`.
@@ -342,6 +355,30 @@ Working and confirmed against the live system:
   warning after more than 70 seconds. Served-tab and station-filter checks passed, server
   logs remained error-free, and K0003 was not changed.
 
+- **KDS is scoped per shop (verified live 2026-08-23).** `ko_pos_kds` **19.0.5.0.0** binds
+  one kitchen screen to one POS. `/kds` renders a shop picker (and redirects straight
+  through when the user can see only one POS); the board is `/kds/pos/<config_id>`;
+  `/kds/data` requires `config_id` and returns `400 config_required` without one; the bus
+  channel is `ko_pos_kds_<config_id>` on both the screen and the POS client; every
+  mutating `/kds/*` route re-checks the ticket's POS against the user's allowed POS list.
+  `ko.kds.ticket` and `ko.kds.ticket.line` gained a stored `company_id` (related from the
+  POS) with global `ir.rule`s in `security/kds_security.xml`; `ko.kds.station` gained
+  `config_ids` / `company_id` so a station can belong to one shop. `ko_pos_ui`
+  **19.0.4.1.0** sends the kitchen tab to `/kds/pos/<current config>` instead of `/kds`.
+  Old `/kds/<id>` bookmarks now redirect to the picker rather than guessing a shop.
+- Verification for that change: five module tests pass on a disposable Odoo 19 + Postgres
+  database (`0 failed, 0 error(s) of 5 tests`), and an authenticated HTTP pass on that
+  database confirmed each board returned only its own ticket, `400` without `config_id`,
+  `303` to `/kds` for a POS outside the user's companies, and `403` on a cross-company
+  ticket action. Deploy action **110896245** succeeded; the init log shows
+  `DEPLOYED_ko_pos_kds: 'version': '19.0.5.0.0'`, `KDS_SECURITY_PRESENT=yes`, and
+  translations still exactly 57 files. Live at `kodoo.viakuma.com` the picker lists
+  **ร้านชอบแกง** (config 2) and **ร้านหวานอยู่** (config 3); each board reports its own
+  shop name, its own `ko_pos_kds_<id>` channel, and existing tickets K0001/K0002 now carry
+  `company_id = บริษัท น็อกเอาต์ จำกัด`. **Not verified live:** two shops with live
+  tickets side by side — production had no open kitchen tickets at the time, and no test
+  ticket was created in production on purpose.
+
 ---
 
 ## 9. Outstanding work
@@ -361,6 +398,10 @@ Working and confirmed against the live system:
    session close.
 6. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
+> ✅ Completed 2026-08-23: scoped the kitchen display per shop (`ko_pos_kds` 19.0.5.0.0,
+> `ko_pos_ui` 19.0.4.1.0) and flipped `addons-init` to deploy the repo's `addons/`
+> directory instead of `addons.tar.gz`. Deploy action `110896245`.
+>
 > ✅ Completed 2026-08-23: deleted stale KDS-only ticket K0003 / queue 1003 after the
 > owner explicitly requested it. Live KDS verified empty; K0001/K0002 and POS sales were
 > left untouched.
