@@ -102,7 +102,7 @@ All live in `addons.tar.gz` at the repo root.
 | `ko_pos_kds` | Kitchen Display System (jaw-krua / จอครัว) at `/kds` |
 | `ko_pos_beam_bolt` | Beam Bolt+ card-terminal payment integration (not yet configured with a live merchant key) |
 | `ko_pos_thai_lang` | The Thai translation override layer — see §5. Depends on all four above. |
-| `ko_pos_ui` | Touch-first restaurant POS interface: clearer menu/category grid, current-order panel, prices, payment emphasis, responsive tablet/mobile layout. Presentation only; it does not change order, tax, or payment logic. |
+| `ko_pos_ui` | Touch-first restaurant POS interface: list-first Sell screen, current-order panel, prices, payment emphasis, responsive tablet/mobile layout. Presentation only; it does not change order, tax, or payment logic. |
 
 ---
 
@@ -279,26 +279,46 @@ Working and confirmed against the live system:
   QA passed at `1280×720` with no page overflow: the active category is green with white
   text, inactive categories remain distinct, and Thai product names/prices render. Local
   responsive QA also passed at `1024×768` and `390×844`.
+- The high-fidelity **§1 Sell screen redesign** is implemented in the reviewable
+  `addons/ko_pos_ui/` source and in `addons.tar.gz`, but is **not deployed yet**. It
+  changes the menu to list-first rows, moves the 380 px current-order pane to the right
+  at `≥900px`, adds table/session context, inline search, underline categories,
+  functional product/order steppers, the mobile View order pill, and locally bundled
+  Prompt 400/500/600/700 fonts. Local validation passed for XML, JavaScript, SCSS,
+  Odoo 19 inheritance targets, tarball/source parity, and the simulated init pipeline;
+  authenticated visual and interaction QA on production remains outstanding.
 - Production Compose now passes `/mnt/extra-addons` explicitly to both Odoo processes
-  and makes the mounted addon tree readable. Final deploy action `110739168` completed;
-  Postgres is healthy, Odoo is running, both init services exited 0, and the Thai override
+  and makes the mounted addon tree readable. Both init services exited 0, and the Thai override
   success signal remains exactly 57 files.
+- **Company Profile Configured (verified 2026-08-23):** Company record and partner record
+  updated to **`บริษัท น็อกเอาต์ จำกัด`**, address `2/67 ซอย ประเสริฐมนูกิจ 29 แยก 4 ถนนประเสริฐมนูกิจ แขวงลาดพร้าว เขตลาดพร้าว กรุงเทพมหานคร 10230`,
+  and Tax ID `0105564168851` (Bangkok state TH-10). Odoo upgrade log confirmed
+  `KO POS: Company info updated successfully: บริษัท น็อกเอาต์ จำกัด, VAT: 0105564168851`.
+  Receipts and tax invoices dynamically format with these official details. Deploy action `110790895` completed with success.
 
 ---
 
 ## 9. Outstanding work
 
-1. **Real business data from the owner:** shop name, address, 13-digit tax ID, real
-   PromptPay number (currently the placeholder `0812345678`), the real menu, and the
-   kitchen printer's IP (Epson).
-2. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
+1. **Deploy and live-QA §1 Sell screen:** confirm Odoo asset/QWeb loading, then test
+   search, category selection, plain/configurable product add, both quantity steppers,
+   mobile cart switching, and payment navigation at tablet and phone widths without
+   completing a payment.
+2. **Continue the new UI handoff:** implement §2 item options, §3 phone cart,
+   §4 payment, §5 receipt/success, §6 bills, §7 KDS backend/state and UI,
+   §8 bottom nav, and §9 toast.
+3. **Real business data from the owner:** real PromptPay number (currently the placeholder
+   `0812345678`), the real menu items & prices, and the kitchen printer's IP (Epson).
+4. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
    attach it to the payment method, and test against the Beam playground before live use.
-3. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
+5. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close.
-4. **Refactor (recommended):** fold `patch/thai_v2` + `patch/thai_v3` back into
+6. **Refactor (recommended):** fold `patch/thai_v2` + `patch/thai_v3` back into
    `addons.tar.gz`, delete the patch directories, and simplify `addons-init`. See §4.
-5. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
+7. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
+> ✅ Completed 2026-08-23: Company name, address, and 13-digit tax ID configured (`บริษัท น็อกเอาต์ จำกัด`).
+>
 > ✅ Completed 2026-08-22: the `การ์ด` → `บัตรเครดิต` payment-method rename. Odoo blocks
 > payment-method writes while any POS session is not `closed`, and it offers **no UI to
 > cancel or delete a session** — the Action menu exposes only Export. The only route is

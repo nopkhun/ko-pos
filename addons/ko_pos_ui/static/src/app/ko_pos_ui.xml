@@ -6,23 +6,82 @@
         <xpath expr="//div[hasclass('product-screen')]" position="attributes">
             <attribute name="class" add="ko-pos-product-screen" separator=" "/>
         </xpath>
+
         <xpath expr="//div[hasclass('leftpane')]/OrderSummary" position="before">
             <div class="ko-order-heading d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="ko-step-badge">1</span>
-                    <strong>ออเดอร์ปัจจุบัน</strong>
+                <div class="ko-order-heading-title">
+                    ออเดอร์ปัจจุบัน
+                    <span>· Current order</span>
                 </div>
-                <small class="text-muted">ตรวจรายการก่อนชำระเงิน</small>
+                <button class="ko-more-button" t-on-click="displayAllControlPopup" title="เมนูเพิ่มเติม" aria-label="เมนูเพิ่มเติม">
+                    <i class="fa fa-ellipsis-h" aria-hidden="true"/>
+                </button>
             </div>
         </xpath>
+
         <xpath expr="//div[hasclass('rightpane')]/div[hasclass('position-relative')]/CategorySelector" position="before">
-            <div class="ko-menu-heading d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="ko-step-badge">2</span>
-                    <strong>เลือกเมนู</strong>
+            <div class="ko-sell-header">
+                <div class="ko-sell-title-row">
+                    <div class="ko-sell-title">
+                        <div class="ko-sell-title-main">
+                            <t t-if="this.koTableNumber">โต๊ะ <t t-esc="this.koTableNumber"/></t>
+                            <t t-elif="this.koDirectSaleName"><t t-esc="this.koDirectSaleName"/></t>
+                            <t t-else="">ขายหน้าร้าน</t>
+                            <span>
+                                <t t-if="this.koTableNumber">· Table <t t-esc="this.koTableNumber"/></t>
+                                <t t-else="">· Direct sale</t>
+                            </span>
+                        </div>
+                        <div class="ko-sell-title-meta">
+                            <t t-esc="this.koSeatCount"/> ที่นั่ง · รอบขาย #<t t-esc="this.koSessionNumber"/>
+                        </div>
+                    </div>
+                    <button class="ko-search-toggle"
+                            t-att-class="{'active': state.koSearchOpen}"
+                            t-on-click="koToggleSearch"
+                            title="ค้นหาเมนู"
+                            aria-label="ค้นหาเมนู">
+                        <i t-att-class="state.koSearchOpen ? 'fa fa-times' : 'fa fa-search'" aria-hidden="true"/>
+                    </button>
                 </div>
-                <small class="text-muted">แตะรายการเพื่อเพิ่มลงออเดอร์</small>
+                <div t-if="state.koSearchOpen" class="ko-search-row">
+                    <input type="search"
+                           t-att-value="pos.searchProductWord"
+                           t-on-input="koUpdateSearch"
+                           placeholder="ค้นหาเมนู · Search menu…"
+                           aria-label="ค้นหาเมนู"/>
+                </div>
             </div>
+        </xpath>
+
+        <xpath expr="//div[hasclass('switchpane')]/button[hasclass('pay-button')]" position="replace"/>
+        <xpath expr="//div[hasclass('switchpane')]/button[hasclass('review-button')]" position="replace">
+            <button t-if="!currentOrder.isEmpty()"
+                    class="ko-mobile-cart-button btn flex-grow-1"
+                    t-on-click="switchPane">
+                <span>ดูออเดอร์ · View order <small>(<t t-esc="items"/>)</small></span>
+                <strong t-esc="total"/>
+            </button>
+        </xpath>
+    </t>
+
+    <t t-name="ko_pos_ui.CategorySelector"
+       t-inherit="point_of_sale.CategorySelector"
+       t-inherit-mode="extension">
+        <xpath expr="//div[contains(@t-attf-class, 'category-list')]/t[@t-foreach]" position="before">
+            <button class="category-button ko-category-all p-1 btn d-flex align-items-center"
+                    t-att-class="{'ko-category-selected': !this.pos.selectedCategory}"
+                    t-on-click="() => this.pos.setSelectedCategory(0)">
+                <span>ทั้งหมด</span>
+            </button>
+        </xpath>
+        <xpath expr="//t[@t-foreach]/button[hasclass('category-button')]" position="attributes">
+            <attribute name="t-att-class">{
+                'border-0': category.isChildren and !this.isAncestorOrSelected(category),
+                'opacity-75 border-0': !category.isChildren and !category.isSelected,
+                'justify-content-center': ui.isSmall,
+                'ko-category-selected': this.pos.selectedCategory?.id === category.id,
+            }</attribute>
         </xpath>
     </t>
 
@@ -31,11 +90,89 @@
        t-inherit-mode="extension">
         <xpath expr="//article" position="attributes">
             <attribute name="class" add="ko-product-card" separator=" "/>
+            <attribute name="t-attf-class" add="{{ this.koHasCartQuantity ? 'ko-in-cart' : '' }}" separator=" "/>
         </xpath>
-        <xpath expr="//div[hasclass('product-content')]" position="inside">
-            <span t-if="this.koDisplayPrice"
-                  class="ko-product-price ms-auto align-self-end fw-bold text-nowrap"
-                  t-esc="this.koDisplayPrice"/>
+        <xpath expr="//div[hasclass('product-content')]" position="before">
+            <div t-if="!props.imageUrl" class="ko-product-img-placeholder" aria-hidden="true">
+                <i class="fa fa-cutlery"/>
+            </div>
+        </xpath>
+        <xpath expr="//div[hasclass('product-name')]" position="after">
+            <div class="ko-product-meta">
+                <span t-if="this.koEnglishName"><t t-esc="this.koEnglishName"/> · </span>
+                <strong t-esc="this.koDisplayPrice"/>
+            </div>
+            <div t-if="this.koHasOptions" class="ko-product-options">มีตัวเลือก · แตะเพื่อเลือก</div>
+        </xpath>
+        <xpath expr="//div[hasclass('product-content')]" position="after">
+            <div t-if="this.koHasCartQuantity"
+                 class="ko-product-stepper"
+                 t-on-click.stop="() => {}"
+                 t-on-mousedown.stop="() => {}"
+                 t-on-mouseup.stop="() => {}"
+                 t-on-touchstart.stop="() => {}"
+                 t-on-touchend.stop="() => {}">
+                <button t-on-click.stop="koDecrement" aria-label="ลดจำนวน">−</button>
+                <strong t-esc="this.productQty"/>
+                <button class="ko-stepper-add" t-on-click.stop="koIncrement" aria-label="เพิ่มจำนวน">+</button>
+            </div>
+            <button t-else="" class="ko-product-add" t-on-click.stop="koIncrement" aria-label="เพิ่มลงออเดอร์">+</button>
+        </xpath>
+    </t>
+
+    <t t-name="ko_pos_ui.Navbar"
+       t-inherit="point_of_sale.Navbar"
+       t-inherit-mode="extension">
+        <xpath expr="//Input[@tModel=&quot;[pos, 'searchProductWord']&quot;]" position="attributes">
+            <attribute name="t-if">pos.showSearchButton() and pos.router.state.current != 'ProductScreen'</attribute>
+        </xpath>
+    </t>
+
+    <t t-name="ko_pos_ui.Orderline"
+       t-inherit="point_of_sale.Orderline"
+       t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('line-details')]/div[hasclass('product-price')]" position="before">
+            <div t-if="this.koShowQuantityStepper"
+                 class="ko-orderline-stepper"
+                 t-on-pointerdown.stop="() => {}"
+                 t-on-pointerup.stop="() => {}">
+                <button t-on-click.stop="(event) => this.koChangeQuantity(event, -1)" aria-label="ลดจำนวน">−</button>
+                <strong t-esc="vals.unitPart"/>
+                <button class="ko-stepper-add" t-on-click.stop="(event) => this.koChangeQuantity(event, 1)" aria-label="เพิ่มจำนวน">+</button>
+            </div>
+        </xpath>
+    </t>
+
+    <t t-name="ko_pos_ui.OrderSummary"
+       t-inherit="point_of_sale.OrderSummary"
+       t-inherit-mode="extension">
+        <xpath expr="//t[@t-set-slot='details']" position="replace">
+            <t t-set-slot="details">
+                <div t-if="currentOrder.isEmpty()" class="ko-empty-order">
+                    ยังไม่มีรายการ<br/>
+                    <span>แตะเมนูเพื่อเพิ่ม · Tap a dish to add</span>
+                </div>
+            </t>
+        </xpath>
+    </t>
+
+    <t t-name="ko_pos_ui.OrderDisplay"
+       t-inherit="point_of_sale.OrderDisplay"
+       t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('order-summary')]/div[hasclass('fs-3')]/span[1]" position="replace">
+            <span>รวม <small>· Total</small></span>
+        </xpath>
+    </t>
+
+    <t t-name="ko_pos_ui.ActionpadWidget"
+       t-inherit="point_of_sale.ActionpadWidget"
+       t-inherit-mode="extension">
+        <xpath expr="//button[hasclass('pay-order-button')]" position="replace">
+            <button class="pay pay-order-button button btn btn-primary btn-lg py-3 d-flex align-items-center justify-content-center flex-fill"
+                    t-att-class="{'col-3': showFastPaymentMethods}"
+                    t-on-click="props.actionToTrigger">
+                <span>ชำระเงิน <small>· Charge</small></span>
+            </button>
         </xpath>
     </t>
 </templates>

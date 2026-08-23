@@ -234,3 +234,38 @@ last and handles overwriting deliberately.
 service is gated on `service_completed_successfully`.
 
 **Fix:** nothing. Read `odoo-1`, not `odoo-upgrade-1`, for the running server.
+
+---
+
+### Cannot change Price Tax computation method on res.company
+
+**Symptom:** `odoo.tools.convert.ParseError: Cannot change Price Tax computation method on a company that has already started invoicing.`
+
+**Cause:** Writing `'account_price_include': 'tax_included'` to `res.company` in a database where invoices or POS orders already exist raises a ValidationError from Odoo's `account` module.
+
+**Fix:** Do not write `account_price_include` programmatically if invoices/sales already exist; update only `name`, `street`, `street2`, `city`, `zip`, `vat`, `country_id`, `state_id`.
+
+---
+
+### Hostinger API Compose content length and YAML validation
+
+**Symptom:** `VPS_createNewProjectV1` returns `The content field must not be greater than 8192 characters.` or `[VPS:2004] File content must be valid YAML`.
+
+**Cause:** The Hostinger VPS API caps the Compose YAML string at 8,192 characters. Additionally, in YAML block scalars (`command: - |`), any line indented less than 8 spaces breaks the scalar and fails the YAML parser.
+
+**Fix:** Keep inline base64 tarballs compact (e.g. gzip stripped of extraneous files) and ensure every line inside `command: - |` has uniform 8-space indentation.
+
+---
+
+### POS addon installs locally but Odoo cannot locate a CategorySelector XPath
+
+**Symptom:** `ko_pos_ui.xml` is well-formed, but the addon upgrade fails because an
+inheritance XPath targeting the category list cannot be found.
+
+**Cause:** In Odoo 19, `point_of_sale.CategorySelector` puts `category-list` in
+`t-attf-class`, not a literal `class` attribute. `hasclass('category-list')` therefore
+does not reliably target that container during template inheritance.
+
+**Fix:** target the source attribute explicitly:
+`//div[contains(@t-attf-class, 'category-list')]`. Validate every inherited XPath against
+the exact Odoo 19 XML source before packaging; well-formed XML alone does not test this.

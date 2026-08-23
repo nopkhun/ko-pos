@@ -7,15 +7,22 @@ logic.
 
 ## Design contract
 
-- Keep the current order visible on the left and the menu on the right on tablets.
-- Categories are a single horizontal, scrollable row with a clearly selected state.
-- Category highlighting must account for Odoo 19's separate inactive markers:
-  `opacity-75` for root categories and `border-0` for child categories.
-- Product cards have large touch targets, name, current display price, and cart quantity.
-- The primary green action is payment; secondary actions must not compete with it.
+- At `≥900px`, keep the list-first menu on the left and a fixed 380 px current-order
+  pane on the right. Below 900 px, keep Odoo's cart/product pane switch and show one
+  full-width menu list.
+- Categories are one horizontal scroll row with underline tabs; selected state must come
+  from `category.isSelected`, not from guessing which Bootstrap class is absent.
+- Product rows use a 54×54 image, Thai name, optional existing `public_description`
+  English subline, Odoo's current display price, and functional `− qty +` controls.
+- The header reads table, seat, and session state from the current Odoo order/session;
+  the inline search writes to Odoo's `searchProductWord`. No parallel UI store is allowed.
+- Prompt 400/500/600/700 is bundled locally under `static/src/fonts/`; POS tills must not
+  depend on Google Fonts or any other network font request.
+- The primary teal action is payment; secondary actions must not compete with it. Use
+  flat surfaces and hairline borders, with no shadows.
 - Thai helper copy must be short and natural for front-of-house staff.
-- Mobile keeps a two-column menu grid and Odoo's cart/product pane switch.
-- Never reimplement price, tax, order, table, or payment state in this addon.
+- Never reimplement price, tax, order, table, configurable-product, or payment state in
+  this addon.
 
 ## Source and packaging
 
@@ -28,6 +35,10 @@ The reviewable files are under `addons/ko_pos_ui/`, but production still deploys
 4. Confirm the local and repo-root tarballs have the same SHA-256.
 5. Ensure the production Compose install/update lists both include `ko_pos_ui`.
 
+The tarball replacement must copy the entire `ko_pos_ui/` tree, including `static/src/fonts/`.
+After repacking, extract it again and compare the extracted addon recursively with the
+reviewable source copy.
+
 ## Production verification
 
 1. Confirm `addons-init` lists `ko_pos_ui`.
@@ -35,17 +46,34 @@ The reviewable files are under `addons/ko_pos_ui/`, but production still deploys
 3. Confirm `ir.module.module` reports `ko_pos_ui` as `installed`.
 4. Open `/pos/ui` in an authenticated browser and verify at tablet and mobile widths:
    - table/floor screen loads;
-   - current-order and menu headings render in Thai;
-   - categories scroll horizontally and the selected category is obvious;
-   - product cards show a price and cart quantity;
-   - tapping a product adds it once and updates the visible cart;
-   - payment button is prominent, but do not complete a payment during UI QA;
+   - the header shows the real table, seat count, and session number;
+   - inline search opens/closes, clears on close, and matches Thai product names plus an
+     English `public_description` when one is configured;
+   - categories scroll horizontally and only the selected tab has the teal underline;
+   - product rows show a 54×54 image/placeholder, name, current price, and options hint;
+   - tapping a plain product adds/merges through Odoo; tapping a configurable product
+     still opens Odoo's configurator until the dedicated §2 sheet is implemented;
+   - both the menu-row and current-order steppers change the existing Odoo orderline;
+   - at `≥900px` the order pane is exactly 380 px on the right; below 900 px the View
+     order pill switches to Odoo's cart pane;
+   - payment button is prominent and navigates correctly, but do not complete a payment
+     during UI QA;
    - no browser console error is introduced by `ko_pos_ui`.
 5. Confirm the closing dialog says `0 ออเดอร์: 0.00 ฿` before closing a QA session.
    Odoo 19 may immediately create a fresh unnumbered `opening_control` session after
    frontend close; do not loop open/close trying to remove it. See `GOTCHAS.md`.
 
-## Last local visual baseline (2026-08-22)
+## §1 implementation status (2026-08-23)
+
+- Implemented in `addons/ko_pos_ui/` and packed into `addons.tar.gz`; not deployed yet.
+- XML and JavaScript syntax pass; SCSS compiles standalone; every inherited XPath was
+  checked against Odoo 19 source and matches exactly once.
+- A simulated `addons-init` extraction + `thai_v2` overlay still leaves the new UI files
+  and exactly 57 Thai override `.po` files.
+- Authenticated visual and interaction QA is still required. Do not promote this section
+  to the production baseline until the deploy log and live POS checks pass.
+
+## Previous UI visual baseline (2026-08-22; superseded after §1 deploy)
 
 - Tablet `1024×768`: no document overflow; order pane ~369 px, menu pane ~655 px,
   four menu cards per row, and the payment button remains fully inside the viewport.
