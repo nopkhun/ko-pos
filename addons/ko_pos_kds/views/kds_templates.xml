@@ -190,6 +190,53 @@
                         background: var(--ko-primary-soft);
                     }
 
+                    .kds-shop-name {
+                        font-size: 15px;
+                        font-weight: 600;
+                        color: var(--ko-primary-dark);
+                        background: var(--ko-primary-soft);
+                        border-radius: 999px;
+                        padding: 3px 12px;
+                        margin-left: 8px;
+                        white-space: nowrap;
+                    }
+
+                    .kds-scope-bar {
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 8px 16px;
+                        border-top: 1px solid var(--ko-border);
+                        overflow-x: auto;
+                        white-space: nowrap;
+                    }
+
+                    .kds-scope-label {
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: var(--ko-muted);
+                        margin-right: 2px;
+                    }
+
+                    .kds-scope-label:not(:first-child) { margin-left: 10px; }
+
+                    .kds-scope-chip {
+                        padding: 5px 12px;
+                        border-radius: 999px;
+                        font-size: 12.5px;
+                        font-weight: 600;
+                        text-decoration: none;
+                        border: 1.5px solid var(--ko-border);
+                        color: var(--ko-muted-2);
+                        background: #fff;
+                    }
+
+                    .kds-scope-chip.active {
+                        border-color: var(--ko-primary);
+                        color: var(--ko-primary-dark);
+                        background: var(--ko-primary-soft);
+                    }
+
                     main {
                         flex: 1;
                         overflow-y: auto;
@@ -443,11 +490,12 @@
                 </style>
             </head>
             <body>
-                <div id="kds-bus-bridge" hidden="hidden"/>
+                <div id="kds-bus-bridge" hidden="hidden" t-att-data-channel="'ko_pos_kds_%s' % (pos_config.id if pos_config else 0)"/>
                 <header>
                     <div class="header-top">
                         <div class="header-title">
-                            จอครัว <span>· Kitchen display</span>
+                            จอครัว <span t-if="pos_config" class="kds-shop-name" t-esc="pos_config.display_name"/>
+                            <span t-if="not pos_config">· Kitchen display</span>
                         </div>
                         <div class="header-meta">
                             <span id="sla-label">SLA กำลังโหลด…</span>
@@ -480,6 +528,29 @@
                             <button class="stn-chip" id="stn-drink" onclick="kdsSetStation('drink')">เครื่องดื่ม</button>
                         </div>
                     </div>
+
+                    <div t-if="len(stations) &gt; 1 or len(all_configs) &gt; 1" class="kds-scope-bar">
+                        <t t-if="len(stations) &gt; 1">
+                            <span class="kds-scope-label">สถานี:</span>
+                            <a class="kds-scope-chip" t-att-class="'kds-scope-chip active' if not station else 'kds-scope-chip'"
+                               t-att-href="'/kds/pos/%s' % pos_config.id">ทั้งหมด</a>
+                            <t t-foreach="stations" t-as="stn">
+                                <a class="kds-scope-chip"
+                                   t-att-class="'kds-scope-chip active' if station and stn.id == station.id else 'kds-scope-chip'"
+                                   t-att-href="'/kds/pos/%s?station_id=%s' % (pos_config.id, stn.id)"
+                                   t-esc="stn.name"/>
+                            </t>
+                        </t>
+                        <t t-if="len(all_configs) &gt; 1">
+                            <span class="kds-scope-label">ร้าน:</span>
+                            <t t-foreach="all_configs" t-as="cfg">
+                                <a class="kds-scope-chip"
+                                   t-att-class="'kds-scope-chip active' if cfg.id == pos_config.id else 'kds-scope-chip'"
+                                   t-att-href="'/kds/pos/%s' % cfg.id"
+                                   t-esc="cfg.display_name"/>
+                            </t>
+                        </t>
+                    </div>
                 </header>
 
                 <main id="board">
@@ -493,17 +564,93 @@
                 <nav t-if="pos_config" class="kds-bottom-nav" aria-label="เมนูหลัก">
                     <a t-att-href="'/pos/ui/%s' % pos_config.id">ขาย<small>Sell</small></a>
                     <a t-att-href="'/pos/ui/%s/ticket' % pos_config.id">บิล<small>Orders</small></a>
-                    <a href="/kds" class="active">ครัว<small>Kitchen</small></a>
+                    <a t-att-href="'/kds/pos/%s' % pos_config.id" class="active">ครัว<small>Kitchen</small></a>
                 </nav>
 
                 <script>
+                    window.KDS_CONFIG_ID = <t t-esc="pos_config.id if pos_config else 0"/>;
                     window.KDS_STATION_ID = <t t-esc="station.id if station else 0"/>;
                     window.KDS_CSRF = "<t t-esc="csrf_token"/>";
                 </script>
                 <!-- This script is served directly rather than through an Odoo asset
                      bundle. Keep a version query so browsers cannot reuse an older KDS
                      runtime after an addon upgrade. -->
-                <script src="/ko_pos_kds/static/src/kds/kds.js?v=19.0.4.0.2"/>
+                <script src="/ko_pos_kds/static/src/kds/kds.js?v=19.0.5.0.0"/>
+            </body>
+        </html>
+    </template>
+
+    <template id="kds_choose_page" name="KDS — เลือกร้าน">
+        <html>
+            <head>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <title>เลือกร้าน · KO KDS</title>
+                <style>
+                    :root {
+                        --ko-primary: oklch(0.5 0.15 190);
+                        --ko-primary-dark: oklch(0.4 0.15 190);
+                        --ko-primary-soft: oklch(0.5 0.15 190 / 0.07);
+                        --ko-ink: #1c2426;
+                        --ko-muted: #8fa0a3;
+                        --ko-border: #e4ebeb;
+                        --ko-canvas: #f7fafa;
+                    }
+                    * { box-sizing: border-box; }
+                    body {
+                        margin: 0;
+                        font-family: "Prompt", "Noto Sans Thai", system-ui, sans-serif;
+                        background: var(--ko-canvas);
+                        color: var(--ko-ink);
+                        min-height: 100vh;
+                        padding: 32px 20px;
+                    }
+                    .wrap { max-width: 760px; margin: 0 auto; }
+                    h1 { font-size: 24px; margin: 0 0 4px; }
+                    .sub { color: var(--ko-muted); font-size: 14px; margin: 0 0 24px; }
+                    .grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                        gap: 12px;
+                    }
+                    .shop {
+                        display: block;
+                        text-decoration: none;
+                        color: inherit;
+                        background: #fff;
+                        border: 1.5px solid var(--ko-border);
+                        border-radius: 14px;
+                        padding: 18px 18px 16px;
+                    }
+                    .shop:hover { border-color: var(--ko-primary); background: var(--ko-primary-soft); }
+                    .shop-name { font-size: 18px; font-weight: 600; }
+                    .shop-company { font-size: 13px; color: var(--ko-muted); margin-top: 2px; }
+                    .shop-go { font-size: 13px; font-weight: 600; color: var(--ko-primary-dark); margin-top: 12px; }
+                    .empty {
+                        background: #fff;
+                        border: 1.5px dashed var(--ko-border);
+                        border-radius: 14px;
+                        padding: 28px;
+                        text-align: center;
+                        color: var(--ko-muted);
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="wrap">
+                    <h1>เลือกร้านสำหรับจอครัว</h1>
+                    <p class="sub">จอครัวแต่ละเครื่องจะแสดงเฉพาะออเดอร์ของร้านที่เลือก · บันทึกหน้านี้เป็นบุ๊กมาร์กของเครื่องนั้นได้เลย</p>
+                    <div t-if="configs" class="grid">
+                        <a t-foreach="configs" t-as="cfg" class="shop" t-att-href="'/kds/pos/%s' % cfg.id">
+                            <div class="shop-name" t-esc="cfg.display_name"/>
+                            <div t-if="multi_company" class="shop-company" t-esc="cfg.company_id.name"/>
+                            <div class="shop-go">เปิดจอครัว →</div>
+                        </a>
+                    </div>
+                    <div t-if="not configs" class="empty">
+                        ยังไม่มีจุดขาย (POS) ที่คุณเข้าถึงได้ — ให้ผู้ดูแลระบบสร้างจุดขายหรือเพิ่มสิทธิ์บริษัทก่อน
+                    </div>
+                </div>
             </body>
         </html>
     </template>
