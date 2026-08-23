@@ -269,3 +269,44 @@ does not reliably target that container during template inheritance.
 **Fix:** target the source attribute explicitly:
 `//div[contains(@t-attf-class, 'category-list')]`. Validate every inherited XPath against
 the exact Odoo 19 XML source before packaging; well-formed XML alone does not test this.
+
+---
+
+### The POS loads a blank page although the addon upgrade succeeded
+
+**Symptom:** `ko_pos_ui` installs cleanly, but opening Sell destroys the Owl root and the
+console says the XPath for `switchpane/pay-button` cannot be located.
+
+**Cause:** `pos_restaurant` inherits `point_of_sale.ProductScreen` first and replaces the
+direct payment button with a `<t>` wrapper. The replacement still contains a payment
+button, but it is no longer a direct child of `switchpane`. A direct-child XPath passes
+against the base Point of Sale template and still fails in the real restaurant asset.
+
+**Fix:** validate ProductScreen inheritance after installed dependencies, not only against
+the base template. Target the nested controls with
+`//div[hasclass('switchpane')]//button[...]`.
+
+---
+
+### Category names disappear but the “ทั้งหมด” tab remains
+
+**Symptom:** the category strip contains several blank clickable tabs after the custom
+CSS loads.
+
+**Cause:** when a category has no image, Odoo's first child `<div>` is the text wrapper.
+Hiding `.category-button > div:first-child` therefore hides the category name too.
+
+**Fix:** hide only the image wrapper (`> div.ratio`) and the image itself. Leave the
+`.line-clamp-3` text wrapper visible.
+
+---
+
+### The Sell header ends at `รอบขาย #` with no number
+
+**Symptom:** the active session exists, but its number is blank in the custom header.
+
+**Cause:** a live, not-yet-numbered session name can end with `/`. Splitting on `/` and
+returning the last segment returns an empty string before the session is closed.
+
+**Fix:** use the suffix only when non-empty; otherwise fall back to the live session ID
+and pad it for display (for example `#0020`).

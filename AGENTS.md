@@ -279,14 +279,19 @@ Working and confirmed against the live system:
   QA passed at `1280×720` with no page overflow: the active category is green with white
   text, inactive categories remain distinct, and Thai product names/prices render. Local
   responsive QA also passed at `1024×768` and `390×844`.
-- The high-fidelity **§1 Sell screen redesign** is implemented in the reviewable
-  `addons/ko_pos_ui/` source and in `addons.tar.gz`, but is **not deployed yet**. It
-  changes the menu to list-first rows, moves the 380 px current-order pane to the right
-  at `≥900px`, adds table/session context, inline search, underline categories,
-  functional product/order steppers, the mobile View order pill, and locally bundled
-  Prompt 400/500/600/700 fonts. Local validation passed for XML, JavaScript, SCSS,
-  Odoo 19 inheritance targets, tarball/source parity, and the simulated init pipeline;
-  authenticated visual and interaction QA on production remains outstanding.
+- The high-fidelity **§1 Sell screen redesign is deployed** from commit `75ae107`.
+  Final deploy action `110810391` succeeded: Postgres is healthy, Odoo is running,
+  both init services exited 0, `ko_pos_ui` loaded, and Thai overrides remain exactly
+  57 files. Production QA passed at `1280×800` and `390×844` for Thai search, category
+  selection, plain-product add/merge, both quantity steppers, payment navigation without
+  completing payment, and the mobile View order/cart switch. The phone document is
+  exactly 390 px wide with no overflow, the header shows `ขายหน้าเคาน์เตอร์` and live
+  session `#0020`, and no browser console warning/error was introduced.
+- The live seed menu currently has no configurable product and no English
+  `public_description`, so those two data-dependent §1 paths are not yet verifiable.
+  One unsent, unpaid QA draft line (`ข้าวกะเพราหมูสับ`, qty 1, 60.00 ฿) remains in
+  session `#0020` pending explicit browser deletion confirmation; it was never sent to
+  the kitchen and no payment method was selected.
 - Production Compose now passes `/mnt/extra-addons` explicitly to both Odoo processes
   and makes the mounted addon tree readable. Both init services exited 0, and the Thai override
   success signal remains exactly 57 files.
@@ -300,10 +305,10 @@ Working and confirmed against the live system:
 
 ## 9. Outstanding work
 
-1. **Deploy and live-QA §1 Sell screen:** confirm Odoo asset/QWeb loading, then test
-   search, category selection, plain/configurable product add, both quantity steppers,
-   mobile cart switching, and payment navigation at tablet and phone widths without
-   completing a payment.
+1. **Finish data-backed §1 QA and cleanup:** remove the unsent/unpaid QA draft line in
+   session `#0020` after explicit browser deletion confirmation. Once real menu data has
+   an English `public_description` and a configurable item, verify English search and
+   Odoo's configurator path live.
 2. **Continue the new UI handoff:** implement §2 item options, §3 phone cart,
    §4 payment, §5 receipt/success, §6 bills, §7 KDS backend/state and UI,
    §8 bottom nav, and §9 toast.

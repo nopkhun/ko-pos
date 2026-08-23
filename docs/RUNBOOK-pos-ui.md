@@ -10,8 +10,9 @@ logic.
 - At `≥900px`, keep the list-first menu on the left and a fixed 380 px current-order
   pane on the right. Below 900 px, keep Odoo's cart/product pane switch and show one
   full-width menu list.
-- Categories are one horizontal scroll row with underline tabs; selected state must come
-  from `category.isSelected`, not from guessing which Bootstrap class is absent.
+- Categories are one horizontal scroll row with underline tabs; selected state must
+  compare `pos.selectedCategory.id` with the current category id so ancestor categories
+  do not appear selected.
 - Product rows use a 54×54 image, Thai name, optional existing `public_description`
   English subline, Odoo's current display price, and functional `− qty +` controls.
 - The header reads table, seat, and session state from the current Odoo order/session;
@@ -65,13 +66,17 @@ reviewable source copy.
 
 ## §1 implementation status (2026-08-23)
 
-- Implemented in `addons/ko_pos_ui/` and packed into `addons.tar.gz`; not deployed yet.
-- XML and JavaScript syntax pass; SCSS compiles standalone; every inherited XPath was
-  checked against Odoo 19 source and matches exactly once.
-- A simulated `addons-init` extraction + `thai_v2` overlay still leaves the new UI files
-  and exactly 57 Thai override `.po` files.
-- Authenticated visual and interaction QA is still required. Do not promote this section
-  to the production baseline until the deploy log and live POS checks pass.
+- Deployed from commit `75ae107`; final Hostinger action `110810391` succeeded.
+- XML and JavaScript syntax pass, SCSS compiles standalone, tarball/source parity passes,
+  and the simulated init pipeline still produces exactly 57 Thai override `.po` files.
+- Authenticated production QA passed at `1280×800` and `390×844`: Thai search,
+  category filtering, a plain-product add/merge, menu and current-order steppers, payment
+  navigation without validation, and the mobile View order/cart switch all work.
+- Header context reads `ขายหน้าเคาน์เตอร์`, one seat, and live session `#0020`.
+  Mobile document width equals the 390 px viewport and console logs are clean.
+- The live seed menu has no configurable product and no English `public_description`;
+  those two data-dependent checks wait for real menu data. One unsent/unpaid QA draft
+  line remains pending explicit deletion confirmation.
 
 ## Previous UI visual baseline (2026-08-22; superseded after §1 deploy)
 
@@ -87,19 +92,19 @@ Repeat the production checklist after every deploy.
 
 ## Last production deploy (2026-08-23)
 
-- Snapshot action `110737091` completed before the change.
-- Final deploy action `110739168` completed and the project is running: Postgres healthy,
-  Odoo up, and both init services exited 0.
-- `addons-init` listed `ko_pos_ui`; `odoo-upgrade` logged `Loading module ko_pos_ui
-  (88/88)` and `Module ko_pos_ui loaded` with no upgrade error or traceback.
-- Thai overrides still reported exactly 57 files.
-- Authenticated `/pos/ui` QA passed at `1280×720`: no document overflow, Thai workflow
-  headings and menu prices render, the selected category is green with white text, and
-  inactive categories remain visually distinct. No product or payment was created.
-- Local responsive QA remains the evidence for `1024×768` and `390×844`; the production
-  browser surface used for final verification could not be resized.
-- QA sessions through `My Company/00011` closed with 0 orders and 0.00. One fresh
-  unnumbered `opening_control` session remains by Odoo design after frontend close.
+- Final deploy action `110810391` completed and the project is running: Postgres is
+  healthy, Odoo is up, and `addons-init` / `odoo-upgrade` both exited 0.
+- `odoo-upgrade` logged `Loading module ko_pos_ui (82/88)`, `Module ko_pos_ui loaded`,
+  and the Thai override success signal from exactly 57 files. Both Odoo processes list
+  `/mnt/extra-addons`; the running service logged `MASTER_PW_LINES=1` and HTTP on 8069.
+- No build-log `variable is not set`, invalid-module, manifest, permission, traceback,
+  or browser console error remained after the final deploy.
+- Live checks passed at `1280×800` and `390×844`; the phone page has no horizontal or
+  vertical document overflow. Payment navigation reached the payment screen but no
+  payment method was selected and no payment was completed.
+- Session `#0020` remains open for normal service. The QA line is draft-only and was
+  never sent to the kitchen; remove it after the required browser deletion confirmation,
+  and do not close the session.
 
 ## Rollback
 
