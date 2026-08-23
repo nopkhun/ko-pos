@@ -8,7 +8,7 @@
 > https://kodoo.viakuma.com — ใช้งานจริงแล้ว มี addon ของเราเอง 5 ตัว และระบบคำแปลไทย
 > "ฉบับร้านอาหาร" ที่เขียนเอง อ่านหัวข้อ *Do not break these* ก่อนแก้อะไรทั้งสิ้น
 
-- **Last verified:** 2026-08-23 (KDS per-shop scoping)
+- **Last verified:** 2026-08-23 (Sell menu list rows)
 - **Status:** LIVE in production. A real restaurant will use this.
 - **Owner:** Nop (Thai speaker — user-facing strings and all UI copy must be natural Thai)
 
@@ -378,6 +378,26 @@ Working and confirmed against the live system:
   `company_id = บริษัท น็อกเอาต์ จำกัด`. **Not verified live:** two shops with live
   tickets side by side — production had no open kitchen tickets at the time, and no test
   ticket was created in production on purpose.
+- **Sell menu is a real list (fixed and verified live 2026-08-23).** `ko_pos_ui`
+  **19.0.4.2.0**. Odoo 19 hands every `ProductCard` the Bootstrap utility class from
+  `pos.productViewMode` (`flex-column`, or `flex-row-reverse justify-content-between m-1`
+  on small screens); those utilities are `!important`, so the KO row styling never took
+  effect and each menu item kept stacking image-over-name instead of the one-dish-per-line
+  list of `design_handoff_ko_pos_ui` §1. `.ko-product-card` now pins
+  `flex-direction: row`, `justify-content: flex-start`, `text-align: left` and `margin: 0`
+  with `!important`, keeps `.product-content` / `.product-name` left aligned (Odoo centers
+  the no-image variant), hides Odoo's own `.product-cart-qty` badge, and gives the
+  orderline stepper 10 px of room so it no longer touches the line price.
+  Deploy action **110899755**: `DEPLOYED_ko_pos_ui: "version": "19.0.4.2.0"`,
+  `KDS_SECURITY_PRESENT=yes`, translations still exactly 57 files, `ko_pos_ui` loaded.
+  Verified live at `kodoo.viakuma.com` (POS 2, ร้านชอบแกง) at 1600 px, 760 px and 420 px:
+  rows are 54 px thumbnail + name + `฿price` + `+` / stepper, 81 px tall, contiguous with
+  a 1 px `--ko-line` divider, in-cart rows tinted `--ko-primary-soft`.
+  **Not verified:** payment, kitchen state and session close were not touched; the English
+  subline still cannot be checked because the seed menu has no `public_description`.
+- **After any `ko_pos_ui` deploy, every browser that already had the POS open keeps the old
+  assets** until a hard refresh: the POS service workers cache `odoo-sw-cache` /
+  `odoo-pos-cache` and the stylesheet URL has no version segment. See `docs/GOTCHAS.md`.
 
 ---
 
@@ -398,6 +418,10 @@ Working and confirmed against the live system:
    session close.
 6. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
+> ✅ Completed 2026-08-23: made the Sell menu render one row per dish (`ko_pos_ui`
+> 19.0.4.2.0) by overriding Odoo 19's Bootstrap `flex-column` product-card utility.
+> Deploy action `110899755`; verified live after clearing the POS service-worker cache.
+>
 > ✅ Completed 2026-08-23: scoped the kitchen display per shop (`ko_pos_kds` 19.0.5.0.0,
 > `ko_pos_ui` 19.0.4.1.0) and flipped `addons-init` to deploy the repo's `addons/`
 > directory instead of `addons.tar.gz`. Deploy action `110896245`.
