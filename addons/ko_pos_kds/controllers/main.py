@@ -42,8 +42,7 @@ class KdsController(http.Controller):
         return config[:1] or None
 
     def _stations_for(self, config):
-        stations = request.env['ko.kds.station'].search([])
-        return stations._available_for_config(config)
+        return config._ko_kds_station_ids()
 
     def _ticket_in_scope(self, ticket):
         """A screen may only act on tickets of a POS it is allowed to see."""
@@ -112,8 +111,8 @@ class KdsController(http.Controller):
                           'sla_minutes': 15}, status=400)
 
         env = request.env
-        station = self._stations_for(config).filtered(lambda s: str(s.id) == str(station_id))[:1]
-        categ_ids = set(station.category_ids.ids) if station and station.category_ids else None
+        stations = self._stations_for(config)
+        station = stations.filtered(lambda s: str(s.id) == str(station_id))[:1]
 
         scope = [('config_id', '=', config.id)]
 
@@ -142,7 +141,9 @@ class KdsController(http.Controller):
         def _format_ticket(t):
             lines = []
             for line in t.line_ids:
-                if categ_ids is not None and line.pos_categ_ids and not (set(line.pos_categ_ids.ids) & categ_ids):
+                # One screen = one station. When a station is selected the board
+                # shows only its own dishes; "ทั้งหมด" shows every station.
+                if station and line.station_id != station:
                     continue
                 lines.append({
                     'id': line.id,
@@ -150,12 +151,16 @@ class KdsController(http.Controller):
                     'qty': line.qty,
                     'note': ' '.join(x for x in [line.note, line.customer_note] if x),
                     'attrs': line.attribute_names or '',
-                    'station': line.station or 'hot',
+                    'station_id': line.station_id.id or 0,
+                    'station': line.station_id.name or 'ไม่ได้กำหนดสถานี',
+                    'station_color': line.station_id.color or '',
                     'cancelled': line.cancelled,
                     'done': line.done,
                     'state': line.state,
+                    'issue': line._issue_payload(),
                 })
-            if not lines and not t.internal_note and not t.general_customer_note:
+            if not lines and (station or not (t.internal_note or t.general_customer_note)):
+                # A note-only ticket still matters on the unfiltered board.
                 return None
             return {
                 'id': t.id,
@@ -164,8 +169,11 @@ class KdsController(http.Controller):
                 'tracking': t.tracking_number or '',
                 'table': t.table_name or '',
                 'floor': t.floor_name or '',
+                'customer': t.customer_name or '',
                 'order_type': t.order_type or 'dinein',
+                'paid': t.paid,
                 'remake': t.remake,
+                'change_seq': t.change_seq or 0,
                 'note': ' '.join(x for x in [t.internal_note, t.general_customer_note] if x),
                 'state': t.state,
                 'created_utc': t.create_date.isoformat() + 'Z' if t.create_date else None,
@@ -185,6 +193,8 @@ class KdsController(http.Controller):
             'config_name': config.display_name,
             'company_name': config.company_id.name or '',
             'station_id': station.id if station else 0,
+            'station_name': station.name if station else '',
+            'stations': [{'id': s.id, 'name': s.name, 'color': s.color or ''} for s in stations],
             'active': active_res,
             'served': served_res,
             'cancelled': cancelled_res,
@@ -200,6 +210,12 @@ class KdsController(http.Controller):
         ticket = request.env['ko.kds.ticket'].browse(int(ticket_id)).exists()
         return ticket if self._ticket_in_scope(ticket) else request.env['ko.kds.ticket']
 
+    def _line_from_request(self, line_id):
+        line = request.env['ko.kds.ticket.line'].browse(int(line_id)).exists()
+        if not line or not self._ticket_in_scope(line.ticket_id):
+            return request.env['ko.kds.ticket.line']
+        return line
+
     @http.route('/kds/set_state', auth='user', type='http', methods=['POST'], csrf=True)
     def kds_set_state(self, ticket_id=None, state=None, **kw):
         if not self._check_access() or state not in ('new', 'progress', 'ready', 'served', 'cancelled'):
@@ -214,10 +230,32 @@ class KdsController(http.Controller):
     def kds_toggle_line(self, line_id=None, **kw):
         if not self._check_access():
             return _json({'ok': False})
-        line = request.env['ko.kds.ticket.line'].browse(int(line_id)).exists()
-        if not line or not self._ticket_in_scope(line.ticket_id):
+        line = self._line_from_request(line_id)
+        if not line:
             return _json({'ok': False, 'error': 'not_allowed'}, status=403)
         line.toggle_ready()
+        return _json({'ok': True})
+
+    @http.route('/kds/line_issue', auth='user', type='http', methods=['POST'], csrf=True)
+    def kds_line_issue(self, line_id=None, issue_type=None, note=None, **kw):
+        """The station tells front of house a dish is out of stock / late / …"""
+        if not self._check_access():
+            return _json({'ok': False})
+        line = self._line_from_request(line_id)
+        if not line:
+            return _json({'ok': False, 'error': 'not_allowed'}, status=403)
+        if not line.report_issue(issue_type, note or ''):
+            return _json({'ok': False, 'error': 'bad_issue_type'}, status=400)
+        return _json({'ok': True})
+
+    @http.route('/kds/clear_issue', auth='user', type='http', methods=['POST'], csrf=True)
+    def kds_clear_issue(self, line_id=None, **kw):
+        if not self._check_access():
+            return _json({'ok': False})
+        line = self._line_from_request(line_id)
+        if not line:
+            return _json({'ok': False, 'error': 'not_allowed'}, status=403)
+        line.clear_issue()
         return _json({'ok': True})
 
     @http.route('/kds/all_ready', auth='user', type='http', methods=['POST'], csrf=True)
@@ -233,16 +271,16 @@ class KdsController(http.Controller):
         elif line_ids:
             try:
                 ids = [int(x) for x in json.loads(line_ids)]
-                lines = env['ko.kds.ticket.line'].browse(ids).exists()
-                lines = lines.filtered(lambda line: self._ticket_in_scope(line.ticket_id))
-                lines.filtered(lambda line: not line.cancelled).write({'done': True, 'state': 'ready'})
-                for ticket in lines.mapped('ticket_id'):
-                    live_lines = ticket.line_ids.filtered(lambda line: not line.cancelled)
-                    if live_lines and all(line.state in ('ready', 'served') for line in live_lines):
-                        ticket.write({'state': 'ready', 'ready_time': fields.Datetime.now()})
-                    ticket._notify_kds('batch_ready')
-            except Exception:
-                pass
+            except (TypeError, ValueError):
+                return _json({'ok': False, 'error': 'bad_line_ids'}, status=400)
+            lines = env['ko.kds.ticket.line'].browse(ids).exists()
+            lines = lines.filtered(lambda line: self._ticket_in_scope(line.ticket_id))
+            lines.filtered(lambda line: not line.cancelled).write({'done': True, 'state': 'ready'})
+            for ticket in lines.mapped('ticket_id'):
+                live_lines = ticket.line_ids.filtered(lambda line: not line.cancelled)
+                if live_lines and all(line.state in ('ready', 'served') for line in live_lines):
+                    ticket.write({'state': 'ready', 'ready_time': fields.Datetime.now()})
+                ticket._notify_kds('batch_ready')
         return _json({'ok': True})
 
     @http.route('/kds/remake', auth='user', type='http', methods=['POST'], csrf=True)
