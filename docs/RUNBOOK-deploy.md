@@ -8,15 +8,24 @@ Prerequisite: read `../AGENTS.md` first, especially §0 *Definition of done* and
 There is no incremental deploy. `VPS_createNewProjectV1` with an existing
 `project_name` **replaces the entire Compose project**. Containers are recreated;
 named volumes (`db`, `odoo-data`) survive, so no data is lost. `/mnt/extra-addons`
-is deliberately wiped and rebuilt by cloning `main` and unpacking its `addons.tar.gz`.
+is deliberately wiped and rebuilt by cloning `main` and copying its `addons/` directory.
+
+> **Changed 2026-08-23.** `addons-init` no longer unpacks `addons.tar.gz`. The repo's
+> `addons/` directory is the deploy source of truth; the tarball is historical and is
+> **ignored on purpose**, because it is binary and cannot be refreshed from an agent
+> session — trusting it would silently deploy stale code. `addons-init` now fails hard
+> if `/tmp/repo/addons` is missing rather than falling back.
 
 ## Procedure
 
 ### 1. Land your change in the repo first
 
-Nothing on the VPS is a source of truth. Repack `addons.tar.gz`, commit the reviewable
-source with it, and push `main` before deploying. The deploy key is read-only, so the VPS
-always clones exactly the remote `main`; an unpushed change cannot reach production.
+Nothing on the VPS is a source of truth. Edit the modules under `addons/`, commit, and
+push `main` before deploying. The deploy key is read-only, so the VPS always clones
+exactly the remote `main`; an unpushed change cannot reach production.
+
+Keep `addons.tar.gz` in the owner's local `KO-DOO` folder in sync as a convenience
+snapshot, but nothing reads it any more — do not treat a repacked tarball as "deployed".
 
 ### 2. Call the deploy API
 
@@ -42,8 +51,10 @@ TRAEFIK_HOST=srv973354.hstgr.cloud
 
 The Compose YAML to send is `deploy_real/vps-compose-git.yaml` inside
 `deploy-secrets.zip`. It is deliberately below Hostinger's 8,192-character `content`
-limit, embeds the read-only SSH deploy key, clones `main`, unpacks `addons.tar.gz`, and
-does no patching. Never send `vps-compose-simplified.yaml`: its inline tar makes it about
+limit, embeds the read-only SSH deploy key, clones `main`, copies `addons/` into
+`/mnt/extra-addons`, and does no patching. It also echoes the deployed
+`ko_pos_kds` / `ko_pos_ui` manifest versions and `KDS_SECURITY_PRESENT=yes` so the log
+proves which code actually landed. Never send `vps-compose-simplified.yaml`: its inline tar makes it about
 690 KB and Hostinger rejects the request before deployment. `vps-compose-thaiv2.yaml`
 and the other files are historical only.
 
@@ -90,8 +101,17 @@ Check, in order:
    ko_pos_ui
    ```
    (Since the 2026-08-23 refactor the patch pipeline is gone — `addons-init` only
-   clones, unpacks `addons.tar.gz`, and chmods. If you ever reintroduce shell logic
-   here, remember the `$$VAR` rule from check 1.)
+   clones, copies `addons/`, echoes the deployed manifest versions, and chmods. If you
+   ever reintroduce shell logic here, remember the `$$VAR` rule from check 1.)
+
+   Also confirm the version echo matches what you pushed, e.g.
+   ```
+   DEPLOYED_ko_pos_kds:
+   'version': '19.0.5.0.0',
+   KDS_SECURITY_PRESENT=yes
+   ```
+   An older version here means the clone did not pick up your commit. Stop and fix that
+   before reading any further signal.
 
 3. **`odoo-upgrade` service.** The line that proves translations landed:
    ```
