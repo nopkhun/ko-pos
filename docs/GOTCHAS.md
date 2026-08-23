@@ -133,6 +133,10 @@ watchdog's randomized delay, and confirm the banner does not return while SLA an
 data continue updating. If a tab still raises `kdsSetTab is not defined`, close that tab
 and open `/kds` again so the versioned runtime is requested.
 
+Verified in production on 2026-08-23 with deploy action `110891014`: the versioned
+runtime loaded, polling and read-only controls remained healthy, and the warning did not
+return after more than 70 seconds.
+
 ---
 
 ### Every nested POS category turns green

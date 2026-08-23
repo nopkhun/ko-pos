@@ -314,8 +314,9 @@ Working and confirmed against the live system:
   lifecycle test passes (`0 failed, 0 errors of 1 tests`). POS and KDS assets compile and
   load with no browser console error; the Thai override signal remains exactly 57 files.
   Repacked root/repo bundles match at SHA-256
-  `67d144d209895e36cd4a25a8e85725f572a1e9895cbf683d4bcb42163fb07eca`.
-- Production deploy actions **110883615** and hotfix **110885173** succeeded on
+  `ee3b072283b97bcd1b49599eecc2c60860357c5e5f77c99d610f9d377db0a68f`.
+- Production deploy actions **110883615**, hotfix **110885173**, and KDS watchdog fix
+  **110891014** succeeded on
   2026-08-23. Both init containers exited 0; the six addon directories were present;
   `ko_pos_kds` and `ko_pos_ui` loaded; both Odoo processes included
   `/mnt/extra-addons`; translations remained exactly 57 files; `MASTER_PW_LINES=1` and
@@ -334,31 +335,35 @@ Working and confirmed against the live system:
   against an empty `session.server_version` and raised a false warning. Version
   **19.0.4.0.2** seeds Odoo's standard frontend session info before assets load and bumps
   the direct-script cache key. Static checks and disposable Odoo 19 render/integration QA
-  passed; production deploy and the delayed live watchdog check are still pending.
+  passed. Production action **110891014** installed it successfully: a fresh authenticated
+  `/kds` served `kds.js?v=19.0.4.0.2`, kept SLA/ticket polling live, and showed no stale-page
+  warning after more than 70 seconds. Served-tab and station-filter checks passed, server
+  logs remained error-free, and K0003 was not changed.
 
 ---
 
 ## 9. Outstanding work
 
-1. **Deploy and live-QA KDS 19.0.4.0.2:** after owner confirmation, deploy the false
-   asset-watchdog warning fix, open a fresh authenticated `/kds`, wait through the
-   watchdog delay, and confirm the warning does not return while SLA/tickets keep polling.
-2. **Finish data-backed §1 QA:** once real menu data has an English
+1. **Finish data-backed §1 QA:** once real menu data has an English
    `public_description` and a configurable item, verify English search and Odoo's
    configurator path live.
-3. **Production phone-width spot check:** final §2–§9 production QA used the fixed
+2. **Production phone-width spot check:** final §2–§9 production QA used the fixed
    1280×720 browser surface. Local 390×844 and the earlier §1 live phone checks passed,
    but repeat the final production flow at 390 px when a resizable live browser is
    available; do not complete payment or change kitchen state.
-4. **Owner/staff review:** decide whether pre-existing KDS ticket K0003 / queue 1003 is a
+3. **Owner/staff review:** decide whether pre-existing KDS ticket K0003 / queue 1003 is a
    real kitchen ticket or old QA data before marking it served or cancelled.
-5. **Real business data from the owner:** real PromptPay number (currently the placeholder
+4. **Real business data from the owner:** real PromptPay number (currently the placeholder
    `0812345678`), the real menu items & prices, and the kitchen printer's IP (Epson).
-6. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
+5. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
    attach it to the payment method, and test against the Beam playground before live use.
-7. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
+6. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close.
-8. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
+7. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
+
+> ✅ Completed 2026-08-23: fixed the recurring false KDS stale-page warning in
+> `ko_pos_kds` 19.0.4.0.2 by initializing Odoo frontend session info before frontend
+> assets. Deploy action `110891014` passed, including the delayed live watchdog check.
 
 > ✅ Completed 2026-08-23: audited and replaced the incomplete §2–§9 implementation from
 > `ffeb880`, completed disposable-database QA, deployed it, and passed production

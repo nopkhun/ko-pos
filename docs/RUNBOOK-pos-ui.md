@@ -137,7 +137,8 @@ The verified root/repo `addons.tar.gz` SHA-256 is
 
 ### Production verification for §2–§9 (2026-08-23)
 
-- Hostinger deploy action `110883615` and KDS cache hotfix action `110885173` succeeded.
+- Hostinger deploy action `110883615`, KDS cache hotfix action `110885173`, and KDS
+  asset-watchdog fix action `110891014` succeeded.
 - Both init containers exited 0; six addons were present; KDS/UI loaded; translations
   remained exactly 57 files; both Odoo processes included `/mnt/extra-addons`; no
   build/runtime error signal remained.
@@ -146,11 +147,13 @@ The verified root/repo `addons.tar.gz` SHA-256 is
   history tabs, order/menu views, and station filtering with no console warning/error.
 - The production direct KDS runtime was cache-busted as `kds.js?v=19.0.4.0.1`; this fixed
   the live-only stale-script symptom where SLA stayed loading and tab clicks raised
-  `kdsSetTab is not defined`. The 19.0.4.0.2 candidate advances that key again.
+  `kdsSetTab is not defined`. Version 19.0.4.0.2 advances that key again.
 - KDS 19.0.4.0.2 additionally initializes Odoo's frontend session info before loading
   `web.assets_frontend`, preventing the asset watchdog from raising a false “page out of
   date” warning on every fresh standalone KDS page. Disposable Odoo 19 rendered-page QA
-  passed; production deployment and delayed live watchdog verification are pending.
+  and production deployment passed. A fresh authenticated `/kds` kept polling, served
+  the 19.0.4.0.2 runtime, passed read-only tab/station-filter checks, and showed no stale
+  warning after more than 70 seconds; current server logs had no error signal.
 - No product was added or sent, no payment/refund/cancellation was performed, and the
   live session was not closed. KDS ticket K0003 / queue 1003 was observed but not changed.
 
