@@ -53,7 +53,8 @@ reviewable source copy.
    - categories scroll horizontally and only the selected tab has the teal underline;
    - product rows show a 54×54 image/placeholder, name, current price, and options hint;
    - tapping a plain product adds/merges through Odoo; tapping a configurable product
-     still opens Odoo's configurator until the dedicated §2 sheet is implemented;
+     opens the §2 sheet backed by real Odoo attribute/PTAV records, and add/edit/remove
+     preserves attributes, `price_extra`, note and quantity;
    - both the menu-row and current-order steppers change the existing Odoo orderline;
    - at `≥900px` the order pane is exactly 380 px on the right; below 900 px the View
      order pill switches to Odoo's cart pane;
@@ -104,7 +105,35 @@ Repeat the production checklist after every deploy.
   payment method was selected and no payment was completed.
 - Session `#0020` remains open for normal service. After explicit confirmation, the
   draft-only QA line was removed and the current order is empty; nothing was sent to the
-  kitchen, no payment was made, and the session was not closed.
+## §2 through §9 corrected implementation status (2026-08-23)
+
+The first completion claim in commit `ffeb880` was code-presence only and failed real
+Odoo 19 runtime checks. Version `19.0.4.0.0` replaces it with the following verified
+implementation; it is locally complete but still awaits production deploy:
+
+- **§2 Item options:** reads real `product.attribute` / PTAV records, respects variants,
+  `price_extra` and custom values, and supports add/edit/remove, notes and quantity.
+- **§3 Phone cart:** uses the real order, modifiers, notes, tax/total and pane navigation;
+  the stock summary is hidden so totals are not duplicated.
+- **§4 Payment:** replaces both Odoo desktop and mobile roots, uses configured payment
+  methods, invokes Odoo QR/terminal requests, and validates cash exact/keypad/change.
+- **§5 Receipt:** replaces the whole stock screen, prints through Odoo, distinguishes
+  payment from refund, and restores edit-bill lines after refund. The intent survives a
+  page reload within the POS tab.
+- **§6 Bills:** loads paid orders from the server after reload, exposes open/billed tabs,
+  reprint/invoice/edit/two-tap void, and uses Odoo's refund flow rather than mutating
+  posted orders.
+- **§7 KDS:** persistent ticket/line lifecycle, category station field, SLA setting,
+  order/menu views, per-line ready/served, history/remake, Odoo bus plus two-second
+  fallback polling, refund suppression and source-ticket cancellation after refund.
+- **§8/§9:** Sell/Bills/Kitchen navigation and an Owl-subscribed, auto-dismiss toast.
+
+Disposable Odoo 19/PostgreSQL QA passed XML/JS/Python validation, final asset loading,
+the complete cash sale/receipt/bills/refund/edit flow at `390×844`, KDS lifecycle and
+views at `1024×768`, no browser console error, and exactly 57 Thai override files. The
+backend KDS test reports `0 failed, 0 errors of 1 tests`.
+The verified root/repo `addons.tar.gz` SHA-256 is
+`38467384076f2bf3d2a4ff0b736f5decd725f51ac0e945b92ed750cfb7532495`.
 
 ## Rollback
 

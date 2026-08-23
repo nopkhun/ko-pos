@@ -2,6 +2,7 @@
 
 import { Orderline } from "@point_of_sale/app/components/orderline/orderline";
 import { patch } from "@web/core/utils/patch";
+import { openKoItemOptions } from "./ko_item_options_sheet";
 
 patch(Orderline.prototype, {
     get koShowQuantityStepper() {
@@ -11,6 +12,19 @@ patch(Orderline.prototype, {
             !this.line.combo_parent_id &&
             this.line.getQuantity() > 0
         );
+    },
+
+    get koHasEditableOptions() {
+        return Boolean(
+            this.koShowQuantityStepper &&
+                this.line.product_id?.product_tmpl_id?.isConfigurable?.() &&
+                !this.line.product_id?.product_tmpl_id?.isCombo?.()
+        );
+    },
+
+    koEditOptions(event) {
+        event.stopPropagation();
+        openKoItemOptions(this.line.product_id.product_tmpl_id, this.line);
     },
 
     koChangeQuantity(event, delta) {

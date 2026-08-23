@@ -1,0 +1,348 @@
+/** @odoo-module **/
+
+import { onWillStart } from "@odoo/owl";
+import { TicketScreen } from "@point_of_sale/app/screens/ticket_screen/ticket_screen";
+import { formatCurrency } from "@web/core/currency";
+import { patch } from "@web/core/utils/patch";
+import { useService } from "@web/core/utils/hooks";
+import { makeAwaitable } from "@point_of_sale/app/utils/make_awaitable_dialog";
+import { PartnerList } from "@point_of_sale/app/screens/partner_list/partner_list";
+import { showKoToast } from "./ko_toast";
+import { KoBottomNav } from "./ko_bottom_nav";
+
+function timestamp(value) {
+    if (!value) {
+        return Date.now();
+    }
+    if (typeof value.toMillis === "function") {
+        return value.toMillis();
+    }
+    return new Date(value).getTime();
+}
+
+function shortOrderNumber(order) {
+    return String(order.pos_reference || order.name || order.tracking_number || "-").split("/").at(-1);
+}
+
+patch(TicketScreen, {
+    components: {
+        ...TicketScreen.components,
+        KoBottomNav,
+    },
+});
+
+patch(TicketScreen.prototype, {
+    setup() {
+        super.setup(...arguments);
+        Object.assign(this.state, {
+            koActiveTab: "open",
+            koSelectedTicket: null,
+            koConfirmVoid: false,
+            koBusy: false,
+        });
+        this.koInvoiceService = useService("account_move");
+        onWillStart(async () => {
+            try {
+                this.pos.screenState.ticketSCreen.totalCount = 0;
+                this.pos.screenState.ticketSCreen.offsetByDomain = {};
+                await this._fetchSyncedOrders();
+            } catch (error) {
+                console.error("KO POS billed orders load failed", error);
+                showKoToast("โหลดบิลล่าสุดไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
+            }
+        });
+    },
+
+    get koTab() {
+        return this.state.koActiveTab;
+    },
+
+    get koSelectedTicket() {
+        return this.state.koSelectedTicket;
+    },
+
+    get koConfirmVoid() {
+        return this.state.koConfirmVoid;
+    },
+
+    koSetTab(tab) {
+        this.state.koActiveTab = tab;
+        this.koCloseTicketSheet();
+    },
+
+    get koAllOrders() {
+        return this.pos.models["pos.order"].getAll();
+    },
+
+    get koSessionSummary() {
+        const paidOrders = this.koAllOrders.filter((order) => order.finalized);
+        const total = paidOrders.reduce((sum, order) => sum + (order.priceIncl || 0), 0);
+        const sessionName = this.pos.session?.name || this.pos.session?.display_name || "";
+        const shortSession = String(sessionName).split("/").at(-1) || "-";
+        return `รอบขาย #${shortSession} · ${paidOrders.length} บิล · ${formatCurrency(total, this.pos.currency.id)}`;
+    },
+
+    get koOpenOrders() {
+        return this.koAllOrders
+            .filter((order) => !order.finalized && !order.isEmpty())
+            .map((order) => {
+                const lines = order.getOrderlines();
+                const isTakeaway = !order.table_id;
+                const elapsedMinutes = Math.max(
+                    0,
+                    Math.round((Date.now() - timestamp(order.server_create_date || order.date_order)) / 60000)
+                );
+                return {
+                    order,
+                    no: `#${shortOrderNumber(order)}`,
+                    tableName: order.table_id ? `โต๊ะ ${order.table_id.table_number}` : "สั่งกลับบ้าน",
+                    isTakeaway,
+                    typeLabel: isTakeaway ? "กลับบ้าน" : "ทานที่ร้าน",
+                    elapsedMinutes,
+                    isLate: elapsedMinutes >= (this.pos.config.ko_kds_sla_minutes || 15),
+                    items: lines.map((line) => {
+                        const kitchenState = line.koKitchenState || "not_sent";
+                        const station = line.koKitchenStation || "hot";
+                        const stationLabels = {
+                            hot: "ครัวร้อน",
+                            cold: "ครัวเย็น",
+                            drink: "เครื่องดื่ม",
+                        };
+                        return {
+                            line,
+                            qty: line.getQuantity(),
+                            name: line.getFullProductName(),
+                            mods: line.getCustomerNote(),
+                            station,
+                            stationLabel: stationLabels[station] || stationLabels.hot,
+                            isServed: kitchenState === "served" || Boolean(line.koServed),
+                            canServe: kitchenState === "ready",
+                            statusLabel:
+                                kitchenState === "ready"
+                                    ? "พร้อมเสิร์ฟ"
+                                    : kitchenState === "cooking"
+                                    ? "กำลังทำ"
+                                    : kitchenState === "cancelled"
+                                    ? "ยกเลิก"
+                                    : "ยังไม่ส่งครัว",
+                        };
+                    }),
+                };
+            });
+    },
+
+    get koBilledOrders() {
+        return this.koAllOrders
+            .filter((order) => order.finalized)
+            .sort((a, b) => timestamp(b.date_order) - timestamp(a.date_order))
+            .map((order) => {
+                const fullyRefunded = order.getOrderlines().every(
+                    (line) => line.refundedQty >= Math.abs(line.qty)
+                );
+                const date = new Date(timestamp(order.date_order));
+                return {
+                    order,
+                    no: `#${shortOrderNumber(order)}`,
+                    tableName: order.table_id ? `โต๊ะ ${order.table_id.table_number}` : "สั่งกลับบ้าน",
+                    timeStr: date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
+                    count: order.getOrderlines().length,
+                    paymentName: order.payment_ids[0]?.payment_method_id?.name || "-",
+                    totalFormatted: formatCurrency(order.priceIncl || 0, this.pos.currency.id),
+                    isVoid: fullyRefunded || order.isRefund,
+                    statusLabel: order.isRefund
+                        ? "รายการคืนเงิน · Refund"
+                        : fullyRefunded
+                        ? "คืนเงินครบแล้ว · Refunded"
+                        : "ชำระแล้ว · Paid",
+                    hasTaxInvoice: Boolean(order.raw.account_move),
+                };
+            });
+    },
+
+    koOpenTicketSheet(ticket) {
+        this.state.koSelectedTicket = ticket;
+        this.state.koConfirmVoid = false;
+    },
+
+    koCloseTicketSheet() {
+        this.state.koSelectedTicket = null;
+        this.state.koConfirmVoid = false;
+    },
+
+    async koServeLine(order, line) {
+        try {
+            const served = await this.pos.data.call(
+                "ko.kds.ticket",
+                "serve_line_from_pos",
+                [order.uuid, line.uuid]
+            );
+            if (!served) {
+                showKoToast("ยังไม่พบรายการนี้บนจอครัว");
+                return;
+            }
+            line.koServed = true;
+            showKoToast("บันทึกว่าเสิร์ฟแล้ว");
+        } catch (error) {
+            console.error("KO KDS serve failed", error);
+            showKoToast("บันทึกสถานะเสิร์ฟไม่สำเร็จ");
+        }
+    },
+
+    async koReprintTicket() {
+        const ticket = this.koSelectedTicket;
+        if (!ticket || this.state.koBusy) {
+            return;
+        }
+        this.state.koBusy = true;
+        try {
+            const result = await this.pos.printReceipt({ order: ticket.order });
+            showKoToast(result ? `พิมพ์ใบเสร็จ ${ticket.no} แล้ว` : "พิมพ์ใบเสร็จไม่สำเร็จ");
+        } finally {
+            this.state.koBusy = false;
+            this.koCloseTicketSheet();
+        }
+    },
+
+    async koTaxInvoice() {
+        const ticket = this.koSelectedTicket;
+        if (!ticket || this.state.koBusy) {
+            return;
+        }
+        if (!ticket.order.id || typeof ticket.order.id !== "number") {
+            showKoToast("กรุณารอให้บิลบันทึกขึ้นระบบก่อน");
+            return;
+        }
+        this.state.koBusy = true;
+        try {
+            let partner = ticket.order.getPartner();
+            if (!partner) {
+                partner = await makeAwaitable(this.dialog, PartnerList);
+                if (!partner) {
+                    return;
+                }
+                await this.pos.data.ormWrite("pos.order", [ticket.order.id], {
+                    partner_id: partner.id,
+                });
+            }
+            if (!ticket.order.raw.account_move) {
+                await this.pos.data.call("pos.order", "action_pos_order_invoice", [ticket.order.id]);
+            }
+            const [refreshed] = await this.pos.data.loadServerOrders([
+                ["id", "=", ticket.order.id],
+            ]);
+            const accountMoveId = refreshed?.raw.account_move;
+            if (accountMoveId) {
+                await this.koInvoiceService.downloadPdf(accountMoveId);
+            }
+            showKoToast(`ออกใบกำกับภาษีเต็มรูป ${ticket.no} แล้ว`);
+            this.koCloseTicketSheet();
+        } catch (error) {
+            console.error("KO POS invoice failed", error);
+            showKoToast("ออกใบกำกับภาษีไม่สำเร็จ กรุณาตรวจสอบข้อมูลลูกค้า");
+        } finally {
+            this.state.koBusy = false;
+        }
+    },
+
+    _koReplacementLines(order) {
+        return order
+            .getOrderlines()
+            .filter((line) => !line.combo_parent_id)
+            .map((line) => ({
+                productTemplate: line.product_id.product_tmpl_id,
+                qty: Math.abs(line.qty),
+                customerNote: line.getCustomerNote(),
+                payload: {
+                    attribute_value_ids: line.attribute_value_ids.map((value) => value.id),
+                    attribute_custom_values: Object.fromEntries(
+                        (line.custom_attribute_value_ids || []).map((item) => [
+                            item.custom_product_template_attribute_value_id.id,
+                            item.custom_value,
+                        ])
+                    ),
+                    price_extra: line.price_extra || 0,
+                    qty: Math.abs(line.qty),
+                },
+            }));
+    },
+
+    async _koStartFullRefund(type) {
+        const ticket = this.koSelectedTicket;
+        if (!ticket || this.state.koBusy) {
+            return;
+        }
+        const order = ticket.order;
+        this.setSelectedOrder(order);
+        const firstLine = order.getOrderlines()[0];
+        if (firstLine) {
+            this.state.selectedOrderlineIds[order.id] = firstLine.id;
+        }
+        let refundable = 0;
+        for (const line of order.getOrderlines()) {
+            const qty = Math.max(0, Math.abs(line.qty) - line.refundedQty);
+            const detail = this.getToRefundDetail(line);
+            detail.qty = qty;
+            refundable += qty;
+        }
+        if (!refundable) {
+            showKoToast("บิลนี้คืนเงินครบแล้ว");
+            return;
+        }
+
+        this.pos.koRefundIntent = {
+            type,
+            sourceOrderUuid: order.uuid,
+            lines: type === "edit" ? this._koReplacementLines(order) : [],
+            refundOrderUuid: null,
+        };
+        this.state.koBusy = true;
+        try {
+            await this.onDoRefund();
+            const refundOrder = this.pos.getOrder();
+            if (refundOrder?.isRefund) {
+                this.pos.koRefundIntent.refundOrderUuid = refundOrder.uuid;
+                try {
+                    sessionStorage.setItem(
+                        `ko_pos_refund_intent_${refundOrder.uuid}`,
+                        JSON.stringify({
+                            ...this.pos.koRefundIntent,
+                            lines: this.pos.koRefundIntent.lines.map((item) => ({
+                                productTemplateId: item.productTemplate.id,
+                                qty: item.qty,
+                                customerNote: item.customerNote,
+                                payload: item.payload,
+                            })),
+                        })
+                    );
+                } catch (error) {
+                    console.warn("KO POS could not persist refund edit intent", error);
+                }
+                this.koCloseTicketSheet();
+                showKoToast(
+                    type === "edit"
+                        ? "กรุณาคืนเงินบิลเดิม แล้วระบบจะโหลดรายการให้แก้ไข"
+                        : "สร้างรายการคืนเงินแล้ว กรุณาตรวจสอบและยืนยัน"
+                );
+            } else {
+                this.pos.koRefundIntent = null;
+            }
+        } finally {
+            this.state.koBusy = false;
+        }
+    },
+
+    koEditBill() {
+        return this._koStartFullRefund("edit");
+    },
+
+    koVoidBill() {
+        if (!this.koSelectedTicket) {
+            return;
+        }
+        if (!this.state.koConfirmVoid) {
+            this.state.koConfirmVoid = true;
+            return;
+        }
+        return this._koStartFullRefund("void");
+    },
+});

@@ -40,7 +40,9 @@ TRAEFIK_HOST=srv973354.hstgr.cloud
 > in a way that looks like a database problem. Always pass it.
 
 The Compose YAML to send is the local file
-`deploy_real/vps-compose-thaiv2.yaml` inside `deploy-secrets.zip`. It embeds the SSH
+`deploy_real/vps-compose-simplified.yaml` inside `deploy-secrets.zip` (since
+2026-08-23; it replaced `vps-compose-thaiv2.yaml`, which is kept for history).
+It embeds the SSH
 deploy key, which is why it is not in this repo.
 
 Before sending it, verify three invariants introduced after the 2026-08-22 Odoo image
@@ -83,15 +85,10 @@ Check, in order:
    ko_pos_thai_lang
    ko_pos_thai_receipt
    ko_pos_ui
-   applying thai_v2 patch...
-   thai_v2 patch applied, override files:
-   57
-   thai_v3 appended: account
-   thai_v3 appended: payment
-   thai_v3 appended: mail
-   thai_v3 appended: stock
    ```
-   A missing `thai_v3 appended:` block is the classic `$`-interpolation bug.
+   (Since the 2026-08-23 refactor the patch pipeline is gone — `addons-init` only
+   clones, unpacks `addons.tar.gz`, and chmods. If you ever reintroduce shell logic
+   here, remember the `$$VAR` rule from check 1.)
 
 3. **`odoo-upgrade` service.** The line that proves translations landed:
    ```

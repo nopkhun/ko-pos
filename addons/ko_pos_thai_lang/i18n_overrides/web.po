@@ -1,0 +1,327 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 16.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-07-10 17:38+0000\n"
+"PO-Revision-Date: 2026-08-13 03:55+0000\n"
+"Last-Translator: Nusara Boonma <nuboo@odoo.com>\n"
+"Language-Team: Thai <https://translate.odoo.com/projects/odoo-19/web/th/>\n"
+"Language: th\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 2026.6.1\n"
+"X-KO-Override: ko_pos_thai_lang\n"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/fields/boolean_favorite/boolean_favorite_field.js:0
+msgid "Add to Favorites"
+msgstr "เพิ่มรายการกรุณา"
+
+#. module: web
+#: model:ir.model,name:web.model_res_config_settings
+msgid "Config Settings"
+msgstr "ตั้งค่าการตั้งค่า"
+
+#. module: web
+#: model:ir.actions.act_window,name:web.action_base_document_layout_configurator
+msgid "Configure your document layout"
+msgstr "ตั้งค่าเค้าโครงเอกสารของคุณ"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/fields/datetime/datetime_field.js:0
+msgid "Displays a warning icon if the input dates are in the future."
+msgstr "แสดงไอคอนคำเตือนหากวันที่ใส่เป็นวันที่ในอนาคต"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/fields/boolean_favorite/boolean_favorite_field.js:0
+msgid "Favorite"
+msgstr "รายการกรุณา"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/search/search_bar_menu/search_bar_menu.xml:0
+msgid "Favorites"
+msgstr "รายการกรุณา"
+
+#. module: web
+#. odoo-python
+#: code:addons/web/controllers/database.py:0
+msgid ""
+"Houston, we have a database naming issue! Make sure you only use letters, "
+"numbers, underscores, hyphens, or dots in the database name, and you'll be "
+"golden."
+msgstr ""
+"ฮูสตัน เรามีปัญหาเรื่องการตั้งชื่อฐานข้อมูล! ตรวจสอบว่าคุณใช้เฉพาะตัวอักษร "
+"ตัวเลข ขีดล่าง ยัติภังค์ หรือจุดในชื่อฐานข้อมูล จากนั้นคุณจะมีสีทอง"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/fields/many2many_tags/many2many_tags_field.js:0
+msgid ""
+"If checked, clicking on the tag will open the form that allows to directly "
+"edit it. Note that if a color field is also set, the tag edition will "
+"prevail. So, the color picker will not be displayed on click on the tag."
+msgstr ""
+"หากทำเครื่องหมายไว้ การคลิกที่แท็กจะเปิดฟอร์มที่ให้คุณแก้ไขแท็กได้โดยตรง "
+"กรุณาทราบว่าหากตั้งค่าช่องสีไว้ด้วย การแก้ไขแท็กจะมีผลเหนือกว่า ดังนั้น "
+"ตัวเลือกสีจะไม่ปรากฏขึ้นเมื่อคลิกที่แท็ก"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/fields/many2many_tags/many2many_tags_field.js:0
+msgid ""
+"If checked, users will not be able to create records based on the text "
+"input; they will still be able to create records via a popup form."
+msgstr ""
+"หากทำเครื่องหมาย ผู้ใช้จะไม่สามารถสร้างบันทึกตามการใส่ข้อความได้ "
+"พวกเขายังสามารถสร้างบันทึกผ่านแบบฟอร์มป๊อปอัปได้"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/fields/many2many_tags/many2many_tags_field.js:0
+msgid ""
+"If checked, users will not be able to create records based through a popup "
+"form; they will still be able to create records based on the text input."
+msgstr ""
+"หากทำเครื่องหมาย ผู้ใช้จะไม่สามารถสร้างบันทึกตามแบบฟอร์มป๊อปอัปได้ "
+"พวกเขายังคงสามารถสร้างบันทึกตามการใส่ข้อความได้"
+
+#. module: web
+#. odoo-python
+#: code:addons/web/controllers/home.py:0
+msgid ""
+"Only employees can access this database. Please contact the administrator."
+msgstr ""
+"เฉพาะพนักงานเท่านั้นที่สามารถเข้าถึงฐานข้อมูลนี้ได้ กรุณาติดต่อผู้ดูแลระบบ"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/ui/block_ui.js:0
+msgid "Please be patient."
+msgstr "กรุณาอดทนรอ"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/view_dialogs/export_data_dialog.js:0
+msgid "Please enter save field list name"
+msgstr "กรุณาใส่บันทึกฟิลด์รายการชื่อ"
+
+#. module: web
+#: model_terms:ir.ui.view,arch_db:web.view_view_form_inherit_view
+msgid ""
+"Please note that your view includes invalid locators.<br/>\n"
+"                    These nodes could not be anchored to the parent view and have no effect.<br/>\n"
+"                    This issue may have arisen as a result of manual modifications or during the upgrade process.<br/>\n"
+"                    For your reference, invalid xpath nodes are highlighted in red."
+msgstr ""
+"กรุณาทราบว่าในมุมมองของคุณมีตัวระบุตำแหน่งที่ไม่ถูกต้อง<br/>\n"
+"                    โหนดเหล่านี้ไม่สามารถเชื่อมโยงกับมุมมองหลักได้และจะไม่มีผลใดๆ<br/>\n"
+"                    ปัญหานี้อาจเกิดจากการปรับแก้ไขด้วยตนเองหรือระหว่างกระบวนการอัปเกรด<br/>\n"
+"                    เพื่อความสะดวกในการตรวจสอบ โหนด xpath ที่ไม่ถูกต้องจะถูกไฮไลต์เป็นสีแดง"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/view_dialogs/export_data_dialog.js:0
+msgid "Please select fields to save export list..."
+msgstr "กรุณาเลือกฟิลด์เพื่อบันทึกรายการนำออก..."
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/fields/boolean_favorite/boolean_favorite_field.js:0
+msgid "Remove from Favorites"
+msgstr "ลบออกจากรายการกรุณา"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/calendar/calendar_filter_section/calendar_filter_section.xml:0
+msgid "Remove this favorite from the list"
+msgstr "ลบรายการกรุณานี้ออกจากรายการ"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/fields/datetime/datetime_field.js:0
+msgid ""
+"Set to true the full range input has to be display by default, even if "
+"empty."
+msgstr ""
+"หากตั้งค่าเป็นจริง จะต้องแสดงการใส่ข้อมูลแบบเต็มช่วงตามค่าเริ่มต้น "
+"แม้ว่าจะว่างเปล่าก็ตาม"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/errors/error_dialogs.xml:0
+msgid ""
+"Something went wrong... If you really are stuck, share the report with your "
+"friendly support service"
+msgstr ""
+"มีบางอย่างผิดพลาด... หากคุณยังคงพบปัญหา "
+"กรุณาแชร์รายงานกับฝ่ายบริการสนับสนุนของคุณ"
+
+#. module: web
+#. odoo-python
+#: code:addons/web/controllers/export.py:0
+msgid ""
+"The content of this cell is too long for an XLSX file (more than %s "
+"characters). Please use the CSV format for this export."
+msgstr ""
+"เนื้อหาในเซลล์นี้ยาวเกินไปสำหรับไฟล์ XLSX (มากกว่า %s ตัวอักษร) "
+"กรุณาใช้รูปแบบ CSV สำหรับการส่งออกนี้"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/signature/name_and_signature.xml:0
+msgid "This file is invalid. Please select an image."
+msgstr "ไฟล์นี้ไม่ถูกต้อง กรุณาเลือกรูปภาพ"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/fields/timezone_mismatch/timezone_mismatch_field.js:0
+msgid ""
+"Timezone Mismatch : This timezone is different from that of your browser.\n"
+"Please, set the same timezone as your browser's to avoid time discrepancies in your system."
+msgstr ""
+"เขตเวลาไม่ตรงกัน : เขตเวลานี้แตกต่างจากของเบราว์เซอร์ของคุณ\n"
+"กรุณาตั้งค่าเขตเวลาเดียวกันกับเบราว์เซอร์ของคุณเพื่อหลีกเลี่ยงความคลาดเคลื่อนของเวลาในระบบของคุณ"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/no_content_helpers.xml:0
+msgid ""
+"Try to add some records, or make sure that there is no\n"
+"                    active filter in the search bar."
+msgstr ""
+"ลองเพิ่มบันทึกหรือตรวจสอบว่าไม่มี\n"
+"                    ตัวกรองที่ใช้งานอยู่ในแถบค้นหา"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/errors/error_dialogs.js:0
+msgid "Validation Error"
+msgstr "ข้อผิดพลาดในการยืนยัน"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/emoji_picker/emoji_data.js:0
+msgid "dairy"
+msgstr "สินค้านม"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/emoji_picker/emoji_data.js:0
+msgid "input"
+msgstr "การใส่ข้อมูล"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/emoji_picker/emoji_data.js:0
+msgid "input Latin letters"
+msgstr "ใส่ตัวอักษรละติน"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/emoji_picker/emoji_data.js:0
+msgid "input Latin lowercase"
+msgstr "ใส่ตัวพิมพ์เล็กละติน"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/emoji_picker/emoji_data.js:0
+msgid "input Latin uppercase"
+msgstr "ใส่ตัวพิมพ์ใหญ่ละติน"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/emoji_picker/emoji_data.js:0
+msgid "input latin letters"
+msgstr "ใส่ตัวอักษรละติน"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/emoji_picker/emoji_data.js:0
+msgid "input latin lowercase"
+msgstr "ใส่ตัวพิมพ์เล็กละติน"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/emoji_picker/emoji_data.js:0
+msgid "input latin uppercase"
+msgstr "ใส่ตัวพิมพ์ใหญ่ละติน"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/emoji_picker/emoji_data.js:0
+msgid "input numbers"
+msgstr "ใส่ตัวเลข"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/emoji_picker/emoji_data.js:0
+msgid "input symbols"
+msgstr "สัญลักษณ์การใส่ข้อมูล"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/core/emoji_picker/emoji_data.js:0
+msgid "please"
+msgstr "ได้กรุณา"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/search/search_bar_menu/search_bar_menu.xml:0
+msgid "Group By"
+msgstr "จัดกลุ่มตาม"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/debug_items.js:0
+msgid "Attachments"
+msgstr "ไฟล์แนบ"
+
+#. module: web
+#. odoo-javascript
+#: model_terms:ir.ui.view,arch_db:web.login_successful
+#: code:addons/web/static/src/webclient/user_menu/user_menu_items.js:0
+msgid "Log out"
+msgstr "ออกจากระบบ"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/search/search_bar/search_bar.js:0
+msgid "Custom Filter"
+msgstr "ตัวกรองกำหนดเอง"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/webclient/settings_form_view/settings_confirmation_dialog.js:0
+msgid "Unsaved changes"
+msgstr "มีการแก้ไขที่ยังไม่บันทึก"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/form/form_error_dialog/form_error_dialog.xml:0
+msgid "Discard changes"
+msgstr "ทิ้งการแก้ไข"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/form/form_status_indicator/form_status_indicator.xml:0
+msgid "Discard all changes"
+msgstr "ทิ้งการแก้ไขทั้งหมด"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/form/form_status_indicator/form_status_indicator.xml:0
+msgid "Save manually"
+msgstr "บันทึกเอง"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/fields/boolean_toggle/boolean_toggle_field.js:0
+msgid "Toggle"
+msgstr "เปิด/ปิด"

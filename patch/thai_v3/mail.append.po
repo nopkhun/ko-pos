@@ -1,5 +1,0 @@
-
-#. module: mail
-#: model:ir.model.fields,field_description:mail.field_mail_activity__state
-msgid "State"
-msgstr "สถานะ"

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="pos_categ_single_dish" model="pos.category">
+            <field name="name">อาหารจานเดียว</field>
+            <field name="sequence">1</field>
+        </record>
+        <record id="pos_categ_main" model="pos.category">
+            <field name="name">กับข้าว</field>
+            <field name="sequence">2</field>
+        </record>
+        <record id="pos_categ_drink" model="pos.category">
+            <field name="name">เครื่องดื่ม</field>
+            <field name="sequence">3</field>
+        </record>
+        <record id="pos_categ_dessert" model="pos.category">
+            <field name="name">ของหวาน</field>
+            <field name="sequence">4</field>
+        </record>
+    </data>
+</odoo>

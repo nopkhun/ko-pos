@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="seq_kds_ticket" model="ir.sequence">
+            <field name="name">KDS Ticket</field>
+            <field name="code">ko.kds.ticket</field>
+            <field name="prefix">K</field>
+            <field name="padding">4</field>
+        </record>
+        <record id="station_kitchen" model="ko.kds.station">
+            <field name="name">ครัว</field>
+            <field name="sequence">1</field>
+        </record>
+    </data>
+</odoo>

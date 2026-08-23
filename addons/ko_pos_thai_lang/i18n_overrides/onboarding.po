@@ -1,0 +1,35 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 18.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-25 18:37+0000\n"
+"PO-Revision-Date: 2026-08-03 02:47+0000\n"
+"Last-Translator: \"Tiffany Chang (tic)\" <tic@odoo.com>\n"
+"Language-Team: Thai <https://translate.odoo.com/projects/odoo-19/onboarding/th/>\n"
+"Language: th\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 2026.6.1\n"
+"X-KO-Override: ko_pos_thai_lang\n"
+
+#. module: onboarding
+#: model_terms:ir.ui.view,arch_db:onboarding.onboarding_container
+msgid "Are you sure you want to hide these configuration steps?"
+msgstr "คุณแน่ใจหรือไม่ว่าต้องการซ่อนขั้นตอนการตั้งค่าเหล่านี้"
+
+#. module: onboarding
+#: model:ir.model.fields.selection,name:onboarding.selection__onboarding_onboarding__current_onboarding_state__just_done
+#: model:ir.model.fields.selection,name:onboarding.selection__onboarding_onboarding_step__current_step_state__just_done
+#: model:ir.model.fields.selection,name:onboarding.selection__onboarding_progress__onboarding_state__just_done
+#: model:ir.model.fields.selection,name:onboarding.selection__onboarding_progress_step__step_state__just_done
+msgid "Just done"
+msgstr "สำเร็จแล้ว"
+
+#. module: onboarding
+#. odoo-python
+#: code:addons/onboarding/models/onboarding_onboarding.py:0
+msgid "Nice work! Your configuration is done."
+msgstr "ทำได้ดีมาก! การตั้งค่าของคุณเสร็จสิ้นแล้ว"

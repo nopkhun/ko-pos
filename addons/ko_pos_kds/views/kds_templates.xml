@@ -1,0 +1,496 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="kds_page" name="KDS Screen">
+        <html>
+            <head>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+                <title>จอครัว · KO KDS</title>
+                <t t-call-assets="web.assets_frontend"/>
+                <style>
+                    @font-face {
+                        font-family: "Prompt";
+                        src: url("/ko_pos_ui/static/src/fonts/Prompt-Regular.ttf") format("truetype");
+                        font-weight: 400;
+                    }
+                    @font-face {
+                        font-family: "Prompt";
+                        src: url("/ko_pos_ui/static/src/fonts/Prompt-Medium.ttf") format("truetype");
+                        font-weight: 500;
+                    }
+                    @font-face {
+                        font-family: "Prompt";
+                        src: url("/ko_pos_ui/static/src/fonts/Prompt-SemiBold.ttf") format("truetype");
+                        font-weight: 600;
+                    }
+                    @font-face {
+                        font-family: "Prompt";
+                        src: url("/ko_pos_ui/static/src/fonts/Prompt-Bold.ttf") format("truetype");
+                        font-weight: 700;
+                    }
+
+                    :root {
+                        --ko-primary: oklch(0.5 0.15 190);
+                        --ko-primary-dark: oklch(0.4 0.15 190);
+                        --ko-primary-soft: oklch(0.5 0.15 190 / 0.07);
+                        --ko-ink: #1c2426;
+                        --ko-muted: #8fa0a3;
+                        --ko-muted-2: #5b6d70;
+                        --ko-border: #e4ebeb;
+                        --ko-canvas: #f7fafa;
+                        --ko-surface: #ffffff;
+                        --ko-warn: #f59f00;
+                        --ko-warn-text: #b06f00;
+                        --ko-warn-bg: #fff7e8;
+                        --ko-danger: #d9485f;
+                        --ko-danger-text: #b03a4e;
+                        --ko-danger-bg: #fdeef1;
+                    }
+
+                    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+                    body {
+                        font-family: "Prompt", -apple-system, "Noto Sans Thai", sans-serif;
+                        color: var(--ko-ink);
+                        background: var(--ko-canvas);
+                        height: 100vh;
+                        display: flex;
+                        flex-direction: column;
+                        overflow: hidden;
+                    }
+
+                    header {
+                        padding: 16px 20px 10px;
+                        border-bottom: 1px solid #e8efef;
+                        background: #fff;
+                        flex: none;
+                    }
+
+                    .header-top {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: baseline;
+                    }
+
+                    .header-title {
+                        font-size: 21px;
+                        font-weight: 600;
+                    }
+
+                    .header-title span {
+                        font-weight: 400;
+                        color: var(--ko-muted);
+                        font-size: 13px;
+                    }
+
+                    .header-meta {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        font-size: 12px;
+                        font-weight: 500;
+                        color: var(--ko-muted-2);
+                    }
+
+                    .clock {
+                        font-weight: 600;
+                        color: var(--ko-ink);
+                    }
+
+                    .kds-tabs {
+                        display: flex;
+                        gap: 8px;
+                        padding-top: 10px;
+                    }
+
+                    .kds-tab-btn {
+                        padding: 8px 14px;
+                        border-radius: 999px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        border: 0;
+                        color: var(--ko-muted-2);
+                        background: #eef3f3;
+                        transition: all 120ms ease;
+                    }
+
+                    .kds-tab-btn.active {
+                        color: #fff;
+                        background: var(--ko-primary);
+                    }
+
+                    .kds-subcontrols {
+                        display: flex;
+                        gap: 8px;
+                        padding-top: 8px;
+                        align-items: center;
+                        flex-wrap: wrap;
+                    }
+
+                    .kds-view-toggle {
+                        display: flex;
+                        background: #eef3f3;
+                        border-radius: 999px;
+                        padding: 3px;
+                    }
+
+                    .kds-view-btn {
+                        padding: 6px 13px;
+                        border-radius: 999px;
+                        font-size: 12.5px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        border: 0;
+                        color: var(--ko-muted);
+                        background: transparent;
+                    }
+
+                    .kds-view-btn.active {
+                        color: var(--ko-primary-dark);
+                        background: #fff;
+                    }
+
+                    .divider {
+                        width: 1px;
+                        height: 20px;
+                        background: #e4ebeb;
+                    }
+
+                    .station-chips {
+                        display: flex;
+                        gap: 6px;
+                        overflow-x: auto;
+                    }
+
+                    .stn-chip {
+                        padding: 6px 12px;
+                        border-radius: 999px;
+                        font-size: 12.5px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        border: 1.5px solid var(--ko-border);
+                        color: var(--ko-muted-2);
+                        background: #fff;
+                    }
+
+                    .stn-chip.active {
+                        border-color: var(--ko-primary);
+                        color: var(--ko-primary-dark);
+                        background: var(--ko-primary-soft);
+                    }
+
+                    main {
+                        flex: 1;
+                        overflow-y: auto;
+                        min-height: 0;
+                        padding: 14px 16px 82px;
+                        display: grid;
+                        grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+                        gap: 12px;
+                        align-content: start;
+                        background: var(--ko-canvas);
+                    }
+
+                    .card {
+                        background: #fff;
+                        border-radius: 16px;
+                        border: 1px solid #e8efef;
+                        overflow: hidden;
+                        border-top: 4px solid var(--ko-primary);
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    .card.warn { border-top-color: var(--ko-warn); }
+                    .card.late { border-top-color: var(--ko-danger); }
+                    .card.cancelled { border-top-color: var(--ko-danger); opacity: 0.85; }
+
+                    .card-head {
+                        padding: 12px 14px 6px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    }
+
+                    .table-group {
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                    }
+
+                    .table-no {
+                        font-size: 15.5px;
+                        font-weight: 600;
+                    }
+
+                    .badge-remake {
+                        font-size: 10.5px;
+                        font-weight: 700;
+                        color: #fff;
+                        background: var(--ko-danger);
+                        border-radius: 6px;
+                        padding: 2px 7px;
+                    }
+
+                    .elapsed-label {
+                        font-size: 12.5px;
+                        font-weight: 600;
+                        color: var(--ko-primary);
+                    }
+
+                    .card.warn .elapsed-label { color: var(--ko-warn-text); }
+                    .card.late .elapsed-label { color: var(--ko-danger-text); }
+                    .history-meta { color: var(--ko-muted); }
+                    .history-meta.late { color: var(--ko-danger-text); }
+
+                    .sla-bar-wrap {
+                        margin: 0 14px;
+                        height: 4px;
+                        border-radius: 99px;
+                        background: #eef3f3;
+                        overflow: hidden;
+                    }
+
+                    .sla-bar {
+                        height: 100%;
+                        border-radius: 99px;
+                        background: var(--ko-primary);
+                        transition: width 1s linear;
+                    }
+
+                    .card.warn .sla-bar { background: var(--ko-warn); }
+                    .card.late .sla-bar { background: var(--ko-danger); }
+
+                    .lines {
+                        padding: 6px 14px 10px;
+                        flex: 1;
+                    }
+
+                    .line-item {
+                        padding: 5px 0;
+                        border-bottom: 1px dashed #eef3f3;
+                        cursor: pointer;
+                    }
+
+                    .line-item:last-child {
+                        border-bottom: 0;
+                    }
+
+                    .line-top {
+                        display: flex;
+                        gap: 8px;
+                        font-size: 14.5px;
+                        align-items: center;
+                    }
+
+                    .line-qty {
+                        font-weight: 700;
+                        color: var(--ko-primary-dark);
+                        min-width: 24px;
+                    }
+
+                    .line-name {
+                        flex: 1;
+                    }
+
+                    .stn-label {
+                        font-size: 10.5px;
+                        font-weight: 600;
+                        flex: none;
+                    }
+
+                    .stn-hot { color: oklch(0.6 0.15 40); }
+                    .stn-cold { color: oklch(0.55 0.12 250); }
+                    .stn-drink { color: oklch(0.62 0.13 85); }
+
+                    .st-chip {
+                        font-size: 11px;
+                        font-weight: 600;
+                        padding: 3px 9px;
+                        border-radius: 999px;
+                        flex: none;
+                    }
+
+                    .st-cooking {
+                        color: var(--ko-warn-text);
+                        background: var(--ko-warn-bg);
+                    }
+
+                    .st-ready {
+                        color: var(--ko-primary-dark);
+                        background: var(--ko-primary-soft);
+                    }
+
+                    .st-cancelled {
+                        color: var(--ko-danger-text);
+                        background: var(--ko-danger-bg);
+                    }
+
+                    .line-mods {
+                        font-size: 12px;
+                        color: var(--ko-muted);
+                        padding-left: 32px;
+                    }
+
+                    .line-note {
+                        font-size: 12px;
+                        color: var(--ko-warn-text);
+                        padding-left: 32px;
+                        font-weight: 500;
+                    }
+
+                    .card-action-btn {
+                        margin: 0 14px 14px;
+                        padding: 11px;
+                        border-radius: 10px;
+                        text-align: center;
+                        font-size: 14px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        border: 0;
+                        font-family: inherit;
+                    }
+
+                    .btn-start {
+                        color: var(--ko-warn-text);
+                        background: var(--ko-warn-bg);
+                    }
+
+                    .btn-all-ready {
+                        color: var(--ko-primary-dark);
+                        background: var(--ko-primary-soft);
+                    }
+
+                    .btn-waiting {
+                        color: var(--ko-muted);
+                        background: #f2f5f5;
+                        cursor: default;
+                    }
+
+                    .btn-remake {
+                        color: var(--ko-danger-text);
+                        background: var(--ko-danger-bg);
+                    }
+
+                    .empty-board {
+                        grid-column: 1 / -1;
+                        padding: 48px 20px;
+                        text-align: center;
+                        color: var(--ko-muted);
+                        font-size: 15px;
+                    }
+
+                    .toast-container {
+                        position: fixed;
+                        left: 0;
+                        right: 0;
+                        bottom: 24px;
+                        display: flex;
+                        justify-content: center;
+                        z-index: 100;
+                        pointer-events: none;
+                    }
+
+                    .toast-pill {
+                        background: var(--ko-ink);
+                        color: #fff;
+                        font-size: 13.5px;
+                        font-weight: 500;
+                        padding: 11px 20px;
+                        border-radius: 999px;
+                        animation: pop 200ms ease;
+                    }
+
+                    .kds-bottom-nav {
+                        position: fixed;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        z-index: 50;
+                        display: flex;
+                        padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
+                        background: #fff;
+                        border-top: 1px solid #edf1f1;
+                    }
+
+                    .kds-bottom-nav a {
+                        flex: 1;
+                        padding: 7px 4px;
+                        color: var(--ko-muted);
+                        text-align: center;
+                        text-decoration: none;
+                        border-radius: 12px;
+                    }
+
+                    .kds-bottom-nav a.active {
+                        color: var(--ko-primary-dark);
+                        background: var(--ko-primary-soft);
+                        font-weight: 600;
+                    }
+
+                    .kds-bottom-nav small { display: block; font-size: 10px; font-weight: 400; }
+                </style>
+            </head>
+            <body>
+                <div id="kds-bus-bridge" hidden="hidden"/>
+                <header>
+                    <div class="header-top">
+                        <div class="header-title">
+                            จอครัว <span>· Kitchen display</span>
+                        </div>
+                        <div class="header-meta">
+                            <span id="sla-label">SLA กำลังโหลด…</span>
+                            <span class="clock" id="clock">--:--</span>
+                        </div>
+                    </div>
+
+                    <div class="kds-tabs">
+                        <button class="kds-tab-btn active" id="tab-active" onclick="kdsSetTab('active')">
+                            กำลังทำ (<span id="active-count">0</span>)
+                        </button>
+                        <button class="kds-tab-btn" id="tab-served" onclick="kdsSetTab('served')">
+                            เสิร์ฟแล้ว
+                        </button>
+                        <button class="kds-tab-btn" id="tab-cancelled" onclick="kdsSetTab('cancelled')">
+                            ยกเลิก
+                        </button>
+                    </div>
+
+                    <div class="kds-subcontrols" id="subcontrols">
+                        <div class="kds-view-toggle">
+                            <button class="kds-view-btn active" id="view-order" onclick="kdsSetView('order')">แบบออเดอร์</button>
+                            <button class="kds-view-btn" id="view-menu" onclick="kdsSetView('menu')">แบบเมนู</button>
+                        </div>
+                        <div class="divider"></div>
+                        <div class="station-chips">
+                            <button class="stn-chip active" id="stn-all" onclick="kdsSetStation('all')">ทุกครัว</button>
+                            <button class="stn-chip" id="stn-hot" onclick="kdsSetStation('hot')">ครัวร้อน</button>
+                            <button class="stn-chip" id="stn-cold" onclick="kdsSetStation('cold')">ครัวเย็น</button>
+                            <button class="stn-chip" id="stn-drink" onclick="kdsSetStation('drink')">เครื่องดื่ม</button>
+                        </div>
+                    </div>
+                </header>
+
+                <main id="board">
+                    <div class="empty-board">กำลังโหลดรายการครัว…</div>
+                </main>
+
+                <div class="toast-container" id="toast-wrap" style="display:none;">
+                    <div class="toast-pill" id="toast-msg"></div>
+                </div>
+
+                <nav t-if="pos_config" class="kds-bottom-nav" aria-label="เมนูหลัก">
+                    <a t-att-href="'/pos/ui/%s' % pos_config.id">ขาย<small>Sell</small></a>
+                    <a t-att-href="'/pos/ui/%s/ticket' % pos_config.id">บิล<small>Orders</small></a>
+                    <a href="/kds" class="active">ครัว<small>Kitchen</small></a>
+                </nav>
+
+                <script>
+                    window.KDS_STATION_ID = <t t-esc="station.id if station else 0"/>;
+                    window.KDS_CSRF = "<t t-esc="csrf_token"/>";
+                </script>
+                <script src="/ko_pos_kds/static/src/kds/kds.js"/>
+            </body>
+        </html>
+    </template>
+</odoo>

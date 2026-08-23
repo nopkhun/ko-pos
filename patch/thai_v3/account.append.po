@@ -1,6 +1,0 @@
-
-#. module: account
-#: model:ir.model.fields,field_description:account.field_account_payment__state
-#: model:ir.model.fields,field_description:account.field_account_lock_exception__state
-msgid "State"
-msgstr "สถานะ"

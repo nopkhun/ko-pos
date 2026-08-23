@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_category_form_kds" model="ir.ui.view">
+        <field name="name">pos.category.form.ko.kds</field>
+        <field name="model">pos.category</field>
+        <field name="inherit_id" ref="point_of_sale.product_pos_category_form_view"/>
+        <field name="arch" type="xml">
+            <field name="parent_id" position="after">
+                <field name="ko_kds_station"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_pos_category_list_kds" model="ir.ui.view">
+        <field name="name">pos.category.list.ko.kds</field>
+        <field name="model">pos.category</field>
+        <field name="inherit_id" ref="point_of_sale.product_pos_category_tree_view"/>
+        <field name="arch" type="xml">
+            <field name="parent_id" position="after">
+                <field name="ko_kds_station" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_pos_config_form_kds" model="ir.ui.view">
+        <field name="name">pos.config.form.ko.kds</field>
+        <field name="model">pos.config</field>
+        <field name="inherit_id" ref="point_of_sale.pos_config_view_form"/>
+        <field name="arch" type="xml">
+            <setting id="other_devices" position="before">
+                <setting string="จอครัว (KDS)" help="กำหนดเวลามาตรฐานก่อนแจ้งเตือนว่าออเดอร์ล่าช้า">
+                    <field name="ko_kds_sla_minutes" class="w-25"/>
+                    <span class="ms-2">นาที</span>
+                </setting>
+            </setting>
+        </field>
+    </record>
+
+    <record id="action_kds_screen" model="ir.actions.act_url">
+        <field name="name">จอครัว (KDS)</field>
+        <field name="url">/kds</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_kds_station_list" model="ir.ui.view">
+        <field name="name">ko.kds.station.list</field>
+        <field name="model">ko.kds.station</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="category_ids" widget="many2many_tags"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_kds_station" model="ir.actions.act_window">
+        <field name="name">สถานีครัว (KDS Stations)</field>
+        <field name="res_model">ko.kds.station</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_kds_ticket_list" model="ir.ui.view">
+        <field name="name">ko.kds.ticket.list</field>
+        <field name="model">ko.kds.ticket</field>
+        <field name="arch" type="xml">
+            <list create="false">
+                <field name="create_date"/>
+                <field name="name"/>
+                <field name="table_name"/>
+                <field name="floor_name"/>
+                <field name="pos_reference"/>
+                <field name="state"/>
+                <field name="ready_time"/>
+                <field name="served_time"/>
+                <field name="done_time"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_kds_ticket" model="ir.actions.act_window">
+        <field name="name">ประวัติออเดอร์ครัว</field>
+        <field name="res_model">ko.kds.ticket</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_kds_screen" name="จอครัว (KDS)"
+              parent="point_of_sale.menu_point_root"
+              action="action_kds_screen" sequence="35"/>
+    <menuitem id="menu_kds_station" name="สถานีครัว (KDS)"
+              parent="point_of_sale.menu_point_config_product"
+              action="action_kds_station" sequence="60"/>
+    <menuitem id="menu_kds_ticket" name="ประวัติออเดอร์ครัว"
+              parent="point_of_sale.menu_point_of_sale"
+              action="action_kds_ticket" sequence="60"/>
+</odoo>

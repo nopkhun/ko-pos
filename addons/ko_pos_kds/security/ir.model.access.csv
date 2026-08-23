@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_kds_station_pos_user,kds.station.pos.user,model_ko_kds_station,point_of_sale.group_pos_user,1,0,0,0
+access_kds_station_pos_manager,kds.station.pos.manager,model_ko_kds_station,point_of_sale.group_pos_manager,1,1,1,1
+access_kds_ticket_pos_user,kds.ticket.pos.user,model_ko_kds_ticket,point_of_sale.group_pos_user,1,1,1,0
+access_kds_ticket_pos_manager,kds.ticket.pos.manager,model_ko_kds_ticket,point_of_sale.group_pos_manager,1,1,1,1
+access_kds_ticket_line_pos_user,kds.ticket.line.pos.user,model_ko_kds_ticket_line,point_of_sale.group_pos_user,1,1,1,0
+access_kds_ticket_line_pos_manager,kds.ticket.line.pos.manager,model_ko_kds_ticket_line,point_of_sale.group_pos_manager,1,1,1,1

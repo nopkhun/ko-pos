@@ -1,5 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
+
+    <!-- ========================================== -->
+    <!-- 1. Bottom Navigation                       -->
+    <!-- ========================================== -->
+    <t t-name="ko_pos_ui.BottomNav">
+        <div class="ko-bottom-nav">
+            <div class="ko-nav-tab" t-att-class="{'active': activeTab === 'sell'}" t-on-click="goSell">
+                <div class="ko-nav-th">ขาย</div>
+                <div class="ko-nav-en">Sell</div>
+            </div>
+            <div class="ko-nav-tab" t-att-class="{'active': activeTab === 'tickets'}" t-on-click="goTickets">
+                <div class="ko-nav-th">บิล</div>
+                <div class="ko-nav-en">Orders</div>
+            </div>
+            <div class="ko-nav-tab" t-on-click="goKitchen">
+                <div class="ko-nav-th">ครัว</div>
+                <div class="ko-nav-en">Kitchen</div>
+            </div>
+        </div>
+    </t>
+
+    <!-- ========================================== -->
+    <!-- 2. Item Options Bottom Sheet               -->
+    <!-- ========================================== -->
+    <t t-name="ko_pos_ui.ItemOptionsSheet">
+        <div class="ko-sheet-backdrop" t-on-click="close">
+            <div class="ko-sheet-container" t-on-click.stop="() =&gt; {}">
+                <div class="ko-sheet-header">
+                    <div class="ko-sheet-title-group">
+                        <div class="ko-sheet-title" t-esc="title"/>
+                        <div class="ko-sheet-subline">
+                            <t t-if="englishSubline"><t t-esc="englishSubline"/> · </t>
+                            <t t-esc="formattedUnitPrice"/>/จาน
+                        </div>
+                    </div>
+                    <button class="ko-sheet-close" t-on-click="close" aria-label="ปิด">✕</button>
+                </div>
+
+                <div class="ko-sheet-body">
+                    <div t-foreach="attributeLines" t-as="attributeLine" t-key="attributeLine.id" class="ko-sheet-section">
+                        <div class="ko-sheet-section-title">
+                            <t t-esc="attributeLine.attribute_id.name"/>
+                            <span t-if="attributeLine.attribute_id.display_type === 'multi'">· เลือกได้หลายรายการ</span>
+                        </div>
+                        <div class="ko-chip-row">
+                            <t t-foreach="attributeLine.values()" t-as="value" t-key="value.id">
+                                <button class="ko-chip-btn"
+                                        t-att-class="{'active': this.isSelected(attributeLine, value), 'disabled': value.excluded}"
+                                        t-att-disabled="value.excluded"
+                                        t-on-click="() =&gt; this.selectValue(attributeLine, value)">
+                                    <span t-esc="value.name"/>
+                                    <small t-if="value.price_extra" t-esc="this.formatExtra(value)"/>
+                                </button>
+                                <input t-if="value.is_custom and this.isSelected(attributeLine, value)"
+                                       class="ko-note-input"
+                                       type="text"
+                                       t-att-value="state.customValues[value.id] or ''"
+                                       t-on-input="(event) =&gt; this.setCustomValue(value, event)"
+                                       placeholder="ระบุรายละเอียดตัวเลือก"/>
+                            </t>
+                        </div>
+                    </div>
+
+                    <div class="ko-sheet-section">
+                        <div class="ko-sheet-section-title">
+                            โน้ตถึงครัว <span>· Note to kitchen</span>
+                        </div>
+                        <input class="ko-note-input"
+                               type="text"
+                               t-model="state.note"
+                               placeholder="เช่น ไม่ใส่ถั่ว, แยกน้ำจิ้ม…"/>
+                    </div>
+
+                    <div class="ko-sheet-qty-row">
+                        <button class="ko-sheet-qty-btn" t-on-click="decrementQty">−</button>
+                        <div class="ko-sheet-qty-num" t-esc="state.qty"/>
+                        <button class="ko-sheet-qty-btn active" t-on-click="incrementQty">+</button>
+                    </div>
+                </div>
+
+                <div class="ko-sheet-footer">
+                    <button t-if="isEditing" class="ko-sheet-remove-btn" t-on-click="remove">ลบ</button>
+                    <button class="ko-sheet-save-btn"
+                            t-att-disabled="!isValid"
+                            t-att-class="{'disabled': !isValid}"
+                            t-on-click="save">
+                        <t t-if="isEditing">บันทึก · </t>
+                        <t t-else="">เพิ่มลงออเดอร์ · </t>
+                        <t t-esc="formattedTotalPrice"/>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- ========================================== -->
+    <!-- 3. ProductScreen Extension                 -->
+    <!-- ========================================== -->
     <t t-name="ko_pos_ui.ProductScreen"
        t-inherit="point_of_sale.ProductScreen"
        t-inherit-mode="extension">
@@ -8,6 +106,13 @@
         </xpath>
 
         <xpath expr="//div[hasclass('leftpane')]/OrderSummary" position="before">
+            <div class="ko-mobile-order-header">
+                <button class="ko-pay-back-btn" t-on-click="switchPane" aria-label="กลับไปเลือกเมนู">←</button>
+                <div>
+                    <div class="ko-mobile-order-title">ออเดอร์ปัจจุบัน · Current order</div>
+                    <small><t t-esc="koCartItemCount"/> รายการ</small>
+                </div>
+            </div>
             <div class="ko-order-heading d-flex align-items-center justify-content-between">
                 <div class="ko-order-heading-title">
                     ออเดอร์ปัจจุบัน
@@ -16,6 +121,13 @@
                 <button class="ko-more-button" t-on-click="displayAllControlPopup" title="เมนูเพิ่มเติม" aria-label="เมนูเพิ่มเติม">
                     <i class="fa fa-ellipsis-h" aria-hidden="true"/>
                 </button>
+            </div>
+        </xpath>
+
+        <xpath expr="//div[hasclass('leftpane')]/OrderSummary" position="after">
+            <div class="ko-mobile-cart-totals">
+                <div><span>ภาษี · Tax</span><strong t-esc="koCartTax"/></div>
+                <div class="ko-mobile-cart-grand"><span>รวม · Total</span><strong t-esc="koCartTotal"/></div>
             </div>
         </xpath>
 
@@ -63,15 +175,26 @@
                 <strong t-esc="total"/>
             </button>
         </xpath>
+
+        <xpath expr="//div[hasclass('product-screen')]" position="after">
+            <KoItemOptionsSheet t-if="koItemOptionsState.product or koItemOptionsState.orderline"
+                               product="koItemOptionsState.product"
+                               orderline="koItemOptionsState.orderline"
+                               onClose="() =&gt; this.koCloseOptions()"/>
+            <KoBottomNav/>
+        </xpath>
     </t>
 
+    <!-- ========================================== -->
+    <!-- 4. CategorySelector Extension              -->
+    <!-- ========================================== -->
     <t t-name="ko_pos_ui.CategorySelector"
        t-inherit="point_of_sale.CategorySelector"
        t-inherit-mode="extension">
         <xpath expr="//div[contains(@t-attf-class, 'category-list')]/t[@t-foreach]" position="before">
             <button class="category-button ko-category-all p-1 btn d-flex align-items-center"
                     t-att-class="{'ko-category-selected': !this.pos.selectedCategory}"
-                    t-on-click="() => this.pos.setSelectedCategory(0)">
+                    t-on-click="() =&gt; this.pos.setSelectedCategory(0)">
                 <span>ทั้งหมด</span>
             </button>
         </xpath>
@@ -85,12 +208,17 @@
         </xpath>
     </t>
 
+    <!-- ========================================== -->
+    <!-- 5. ProductCard Extension                   -->
+    <!-- ========================================== -->
     <t t-name="ko_pos_ui.ProductCard"
        t-inherit="point_of_sale.ProductCard"
        t-inherit-mode="extension">
         <xpath expr="//article" position="attributes">
             <attribute name="class" add="ko-product-card" separator=" "/>
             <attribute name="t-attf-class" add="{{ this.koHasCartQuantity ? 'ko-in-cart' : '' }}" separator=" "/>
+            <attribute name="t-on-click.stop">koHandleClick</attribute>
+            <attribute name="t-on-keypress">(event) =&gt; event.code === 'Space' ? this.koHandleClick(event) : () =&gt; {}</attribute>
         </xpath>
         <xpath expr="//div[hasclass('product-content')]" position="before">
             <div t-if="!props.imageUrl" class="ko-product-img-placeholder" aria-hidden="true">
@@ -110,11 +238,11 @@
         <xpath expr="//div[hasclass('product-content')]" position="after">
             <div t-if="this.koHasCartQuantity"
                  class="ko-product-stepper"
-                 t-on-click.stop="() => {}"
-                 t-on-mousedown.stop="() => {}"
-                 t-on-mouseup.stop="() => {}"
-                 t-on-touchstart.stop="() => {}"
-                 t-on-touchend.stop="() => {}">
+                 t-on-click.stop="() =&gt; {}"
+                 t-on-mousedown.stop="() =&gt; {}"
+                 t-on-mouseup.stop="() =&gt; {}"
+                 t-on-touchstart.stop="() =&gt; {}"
+                 t-on-touchend.stop="() =&gt; {}">
                 <button t-on-click.stop="koDecrement" aria-label="ลดจำนวน">−</button>
                 <strong t-esc="this.productQty"/>
                 <button class="ko-stepper-add" t-on-click.stop="koIncrement" aria-label="เพิ่มจำนวน">+</button>
@@ -123,6 +251,9 @@
         </xpath>
     </t>
 
+    <!-- ========================================== -->
+    <!-- 6. Navbar Extension                        -->
+    <!-- ========================================== -->
     <t t-name="ko_pos_ui.Navbar"
        t-inherit="point_of_sale.Navbar"
        t-inherit-mode="extension">
@@ -131,21 +262,32 @@
         </xpath>
     </t>
 
+    <!-- ========================================== -->
+    <!-- 7. Orderline Extension                     -->
+    <!-- ========================================== -->
     <t t-name="ko_pos_ui.Orderline"
        t-inherit="point_of_sale.Orderline"
        t-inherit-mode="extension">
         <xpath expr="//div[hasclass('line-details')]/div[hasclass('product-price')]" position="before">
+            <button t-if="this.koHasEditableOptions"
+                    class="ko-orderline-edit-options"
+                    t-on-click.stop="koEditOptions">
+                แก้ตัวเลือก
+            </button>
             <div t-if="this.koShowQuantityStepper"
                  class="ko-orderline-stepper"
-                 t-on-pointerdown.stop="() => {}"
-                 t-on-pointerup.stop="() => {}">
-                <button t-on-click.stop="(event) => this.koChangeQuantity(event, -1)" aria-label="ลดจำนวน">−</button>
+                 t-on-pointerdown.stop="() =&gt; {}"
+                 t-on-pointerup.stop="() =&gt; {}">
+                <button t-on-click.stop="(event) =&gt; this.koChangeQuantity(event, -1)" aria-label="ลดจำนวน">−</button>
                 <strong t-esc="vals.unitPart"/>
-                <button class="ko-stepper-add" t-on-click.stop="(event) => this.koChangeQuantity(event, 1)" aria-label="เพิ่มจำนวน">+</button>
+                <button class="ko-stepper-add" t-on-click.stop="(event) =&gt; this.koChangeQuantity(event, 1)" aria-label="เพิ่มจำนวน">+</button>
             </div>
         </xpath>
     </t>
 
+    <!-- ========================================== -->
+    <!-- 8. OrderSummary Extension                  -->
+    <!-- ========================================== -->
     <t t-name="ko_pos_ui.OrderSummary"
        t-inherit="point_of_sale.OrderSummary"
        t-inherit-mode="extension">
@@ -159,6 +301,9 @@
         </xpath>
     </t>
 
+    <!-- ========================================== -->
+    <!-- 9. OrderDisplay Extension                  -->
+    <!-- ========================================== -->
     <t t-name="ko_pos_ui.OrderDisplay"
        t-inherit="point_of_sale.OrderDisplay"
        t-inherit-mode="extension">
@@ -167,6 +312,9 @@
         </xpath>
     </t>
 
+    <!-- ========================================== -->
+    <!-- 10. ActionpadWidget Extension              -->
+    <!-- ========================================== -->
     <t t-name="ko_pos_ui.ActionpadWidget"
        t-inherit="point_of_sale.ActionpadWidget"
        t-inherit-mode="extension">
@@ -178,4 +326,304 @@
             </button>
         </xpath>
     </t>
+
+    <!-- ========================================== -->
+    <!-- 11. PaymentScreen Overhaul                 -->
+    <!-- ========================================== -->
+    <t t-name="ko_pos_ui.PaymentScreen"
+       t-inherit="point_of_sale.PaymentScreen"
+       t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('payment-screen')]" position="replace">
+            <div class="payment-screen screen ko-payment-screen d-flex flex-column h-100">
+              <div class="ko-pay-container">
+                <!-- Header -->
+                <div class="ko-pay-header">
+                    <button class="ko-pay-back-btn" t-on-click="koBackToSell" aria-label="กลับ">←</button>
+                    <div class="ko-pay-header-title">
+                        <div class="ko-pay-main-title">ชำระเงิน · Payment</div>
+                        <div class="ko-pay-meta-title">
+                            <t t-if="currentOrder.table_id">โต๊ะ <t t-esc="currentOrder.table_id.table_number"/> · </t>
+                            <t t-esc="currentOrder.getOrderlines().length"/> รายการ
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scrollable Body -->
+                <div class="ko-pay-body">
+                    <div class="ko-pay-amount-due-box">
+                        <div class="ko-pay-due-label">ยอดที่ต้องชำระ · Amount due</div>
+                        <div class="ko-pay-due-amount" t-esc="koAmountDue"/>
+                    </div>
+
+                    <!-- 3-up Method Selector -->
+                    <div class="ko-pay-methods-row">
+                        <t t-foreach="koMethods" t-as="m" t-key="m.key">
+                            <div class="ko-pay-method-tile"
+                                 t-att-class="{'selected': koSelectedMethodType === m.type}"
+                                 t-on-click="() =&gt; this.koSelectMethod(m.type)">
+                                <div class="ko-method-th" t-esc="m.name"/>
+                                <div class="ko-method-en" t-esc="m.en"/>
+                            </div>
+                        </t>
+                    </div>
+
+                    <!-- Cash Section -->
+                    <div t-if="koIsCash" class="ko-pay-cash-section">
+                        <div class="ko-cash-received-row">
+                            <span>รับเงิน · Received</span>
+                            <span class="ko-received-amount" t-esc="koFormattedReceived"/>
+                        </div>
+
+                        <div t-if="koHasChange" class="ko-change-row">
+                            <span>เงินทอน · Change</span>
+                            <strong t-esc="koFormattedChange"/>
+                        </div>
+
+                        <div class="ko-quick-cash-row">
+                            <button class="ko-quick-chip" t-on-click="() =&gt; this.koQuickCash(500)">฿500</button>
+                            <button class="ko-quick-chip" t-on-click="() =&gt; this.koQuickCash(1000)">฿1,000</button>
+                            <button class="ko-quick-chip" t-on-click="() =&gt; this.koQuickCash('exact')">พอดี · Exact</button>
+                        </div>
+
+                        <!-- 3-Column Keypad -->
+                        <div class="ko-keypad-grid">
+                            <button class="ko-keypad-btn" t-on-click="() =&gt; this.koNumpadPress('1')">1</button>
+                            <button class="ko-keypad-btn" t-on-click="() =&gt; this.koNumpadPress('2')">2</button>
+                            <button class="ko-keypad-btn" t-on-click="() =&gt; this.koNumpadPress('3')">3</button>
+                            <button class="ko-keypad-btn" t-on-click="() =&gt; this.koNumpadPress('4')">4</button>
+                            <button class="ko-keypad-btn" t-on-click="() =&gt; this.koNumpadPress('5')">5</button>
+                            <button class="ko-keypad-btn" t-on-click="() =&gt; this.koNumpadPress('6')">6</button>
+                            <button class="ko-keypad-btn" t-on-click="() =&gt; this.koNumpadPress('7')">7</button>
+                            <button class="ko-keypad-btn" t-on-click="() =&gt; this.koNumpadPress('8')">8</button>
+                            <button class="ko-keypad-btn" t-on-click="() =&gt; this.koNumpadPress('9')">9</button>
+                            <button class="ko-keypad-btn" t-on-click="() =&gt; this.koNumpadPress('00')">00</button>
+                            <button class="ko-keypad-btn" t-on-click="() =&gt; this.koNumpadPress('0')">0</button>
+                            <button class="ko-keypad-btn" t-on-click="() =&gt; this.koNumpadPress('⌫')">⌫</button>
+                        </div>
+                    </div>
+
+                    <!-- PromptPay Section -->
+                    <div t-if="koIsPromptPay" class="ko-pay-promptpay-section">
+                        <div class="ko-qr-container">
+                            <div class="ko-qr-placeholder">
+                                <i class="fa fa-qrcode" style="font-size: 80px; color: var(--ko-primary);"/>
+                            </div>
+                        </div>
+                        <div class="ko-qr-title">ให้ลูกค้าสแกนจ่าย · Customer scans to pay</div>
+                        <div class="ko-qr-sub">พร้อมเพย์ร้าน KO POS</div>
+                    </div>
+
+                    <!-- Card Section -->
+                    <div t-if="koIsCard" class="ko-pay-card-section">
+                        <div class="ko-card-icon">💳</div>
+                        <div class="ko-card-prompt-th">แตะหรือเสียบบัตรที่เครื่อง</div>
+                        <div class="ko-card-prompt-en">Tap or insert card on the terminal</div>
+                    </div>
+                </div>
+
+                <!-- Footer Action -->
+                <div class="ko-pay-footer">
+                    <button class="ko-validate-btn"
+                            t-att-class="{'disabled': !koCanValidate}"
+                            t-att-disabled="!koCanValidate"
+                            t-on-click="koValidatePayment">
+                        ยืนยันชำระเงิน · Validate
+                    </button>
+                </div>
+              </div>
+            </div>
+        </xpath>
+    </t>
+
+    <!-- ========================================== -->
+    <!-- 12. ReceiptScreen Overhaul                 -->
+    <!-- ========================================== -->
+    <t t-name="ko_pos_ui.ReceiptScreen"
+       t-inherit="point_of_sale.ReceiptScreen"
+       t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('receipt-screen')]" position="replace">
+            <div class="receipt-screen screen ko-receipt-screen h-100 bg-100">
+              <div class="ko-receipt-success-wrap">
+                <div class="ko-success-check-circle">✓</div>
+                <div class="ko-success-title">
+                    <t t-if="koIsRefund">คืนเงินสำเร็จ</t>
+                    <t t-else="">ชำระเงินสำเร็จ</t>
+                </div>
+                <div class="ko-success-sub">
+                    <t t-if="koIsRefund">Refund complete</t>
+                    <t t-else="">Payment complete</t>
+                    · ออเดอร์ <t t-esc="koOrderNumber"/>
+                </div>
+                <div class="ko-success-total" t-esc="koTotalFormatted"/>
+
+                <div t-if="koChangeFormatted" class="ko-success-change-pill">
+                    เงินทอน · Change <t t-esc="koChangeFormatted"/>
+                </div>
+
+                <div class="ko-success-actions">
+                    <button class="ko-receipt-reprint-btn" t-on-click="koPrintReceipt">พิมพ์ใบเสร็จ · Receipt</button>
+                    <button class="ko-receipt-new-btn" t-on-click="koNewOrder">
+                        <t t-if="koIsEditRefund">โหลดรายการเพื่อแก้ไข · Edit order</t>
+                        <t t-else="">ออเดอร์ใหม่ · New order</t>
+                    </button>
+                </div>
+              </div>
+            </div>
+        </xpath>
+    </t>
+
+    <!-- ========================================== -->
+    <!-- 13. TicketScreen Overhaul                  -->
+    <!-- ========================================== -->
+    <t t-name="ko_pos_ui.TicketScreen"
+       t-inherit="point_of_sale.TicketScreen"
+       t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('ticket-screen')]" position="replace">
+            <div class="ticket-screen screen ko-ticket-screen h-100 bg-100">
+              <div class="ko-ticket-container">
+                <!-- Header -->
+                <div class="ko-ticket-header">
+                    <div class="ko-ticket-title-row">
+                        <div class="ko-ticket-title">
+                            บิล &amp; ออเดอร์ <span>· Orders &amp; bills</span>
+                        </div>
+                    </div>
+                    <div class="ko-ticket-summary" t-esc="koSessionSummary"/>
+                    <div class="ko-ticket-tabs">
+                        <button class="ko-ticket-tab-pill"
+                                t-att-class="{'active': koTab === 'open'}"
+                                t-on-click="() =&gt; this.koSetTab('open')">
+                            ออเดอร์ค้าง (<t t-esc="koOpenOrders.length"/>)
+                        </button>
+                        <button class="ko-ticket-tab-pill"
+                                t-att-class="{'active': koTab === 'billed'}"
+                                t-on-click="() =&gt; this.koSetTab('billed')">
+                            บิลแล้ว
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab 1: Open Orders -->
+                <div t-if="koTab === 'open'" class="ko-ticket-open-list">
+                    <t t-if="koOpenOrders.length === 0">
+                        <div class="ko-ticket-empty">ไม่มีออเดอร์ค้าง · No open orders</div>
+                    </t>
+                    <t t-foreach="koOpenOrders" t-as="o" t-key="o.order.uuid">
+                        <div class="ko-open-order-card">
+                            <div class="ko-open-order-head">
+                                <div class="ko-open-order-title-group">
+                                    <div class="ko-open-no-table"><t t-esc="o.no"/> · <t t-esc="o.tableName"/></div>
+                                    <div class="ko-open-type-badge" t-att-class="{'takeaway': o.isTakeaway}">
+                                        <t t-esc="o.typeLabel"/>
+                                    </div>
+                                </div>
+                                <div class="ko-open-elapsed" t-att-class="{'late': o.isLate}">
+                                    <t t-esc="o.elapsedMinutes"/> นาที
+                                </div>
+                            </div>
+                            <div class="ko-open-items-list">
+                                <t t-foreach="o.items" t-as="item" t-key="item.line.uuid">
+                                    <div class="ko-open-item-row">
+                                        <span class="ko-item-qty"><t t-esc="item.qty"/>×</span>
+                                        <div class="ko-item-name-group">
+                                            <div class="ko-item-name" t-att-class="{'served': item.isServed}" t-esc="item.name"/>
+                                            <div t-if="item.mods" class="ko-item-mods" t-esc="item.mods"/>
+                                            <div class="ko-item-station" t-att-class="item.station" t-esc="item.stationLabel"/>
+                                        </div>
+                                        <button t-if="item.canServe" class="ko-serve-btn" t-on-click="() =&gt; this.koServeLine(o.order, item.line)">
+                                            เสิร์ฟ
+                                        </button>
+                                        <span t-elif="item.isServed" class="ko-status-chip served">เสิร์ฟแล้ว ✓</span>
+                                        <span t-else="" class="ko-status-chip" t-esc="item.statusLabel"/>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- Tab 2: Billed Orders -->
+                <div t-if="koTab === 'billed'" class="ko-ticket-billed-list">
+                    <t t-if="koBilledOrders.length === 0">
+                        <div class="ko-ticket-empty">ยังไม่มีบิล · No billed orders</div>
+                    </t>
+                    <t t-foreach="koBilledOrders" t-as="b" t-key="b.order.uuid">
+                        <div class="ko-billed-row" t-att-class="{'void': b.isVoid}" t-on-click="() =&gt; this.koOpenTicketSheet(b)">
+                            <div class="ko-billed-time" t-esc="b.timeStr"/>
+                            <div class="ko-billed-info">
+                                <div class="ko-billed-title"><t t-esc="b.no"/> · <t t-esc="b.tableName"/></div>
+                                <div class="ko-billed-sub"><t t-esc="b.count"/> รายการ · <t t-esc="b.paymentName"/></div>
+                                <div t-if="b.hasTaxInvoice" class="ko-billed-tax-badge">ออกใบกำกับภาษีเต็มรูปแล้ว</div>
+                            </div>
+                            <div class="ko-billed-total-group">
+                                <div class="ko-billed-total" t-esc="b.totalFormatted"/>
+                                <div class="ko-billed-status" t-att-class="{'void': b.isVoid}" t-esc="b.statusLabel"/>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- Bill Actions Bottom Sheet -->
+                <div t-if="koSelectedTicket" class="ko-sheet-backdrop" t-on-click="koCloseTicketSheet">
+                    <div class="ko-sheet-container ko-bill-sheet" t-on-click.stop="() =&gt; {}">
+                        <div class="ko-sheet-header">
+                            <div class="ko-sheet-title-group">
+                                <div class="ko-sheet-title">บิล <t t-esc="koSelectedTicket.no"/> · <t t-esc="koSelectedTicket.tableName"/></div>
+                                <div class="ko-sheet-subline"><t t-esc="koSelectedTicket.timeStr"/> · <t t-esc="koSelectedTicket.paymentName"/> · <t t-esc="koSelectedTicket.count"/> รายการ</div>
+                            </div>
+                            <button class="ko-sheet-close" t-on-click="koCloseTicketSheet" aria-label="ปิด">✕</button>
+                        </div>
+
+                        <div class="ko-bill-sheet-body">
+                            <div class="ko-bill-items-list">
+                                <t t-foreach="koSelectedTicket.order.getOrderlines()" t-as="l" t-key="l.uuid">
+                                    <div class="ko-bill-item-row">
+                                        <span class="ko-bill-item-qty"><t t-esc="l.getQuantity()"/>×</span>
+                                        <div class="ko-bill-item-name-group">
+                                            <div class="ko-bill-item-name" t-esc="l.getFullProductName()"/>
+                                            <div t-if="l.getCustomerNote()" class="ko-bill-item-note" t-esc="l.getCustomerNote()"/>
+                                        </div>
+                                        <div class="ko-bill-item-sum" t-esc="env.utils.formatCurrency(l.price_subtotal_incl)"/>
+                                    </div>
+                                </t>
+                            </div>
+                            <div class="ko-bill-sheet-total-row">
+                                <span>รวมทั้งหมด</span>
+                                <strong t-esc="koSelectedTicket.totalFormatted"/>
+                            </div>
+                        </div>
+
+                        <!-- 2x2 Action Grid -->
+                        <div t-if="!koSelectedTicket.isVoid" class="ko-bill-actions-grid">
+                            <button class="ko-bill-act-btn" t-on-click="koReprintTicket">
+                                <div>พิมพ์ใบเสร็จอีกครั้ง</div>
+                                <small>Reprint receipt</small>
+                            </button>
+                            <button class="ko-bill-act-btn tax" t-on-click="koTaxInvoice">
+                                <div>ใบกำกับภาษีเต็มรูป</div>
+                                <small>Full tax invoice</small>
+                            </button>
+                            <button class="ko-bill-act-btn" t-on-click="koEditBill">
+                                <div>แก้ไขบิล</div>
+                                <small>คืนเงินก่อน แล้วโหลดรายการเดิม</small>
+                            </button>
+                            <button class="ko-bill-act-btn void"
+                                    t-att-class="{'confirm': koConfirmVoid}"
+                                    t-on-click="koVoidBill">
+                                <div><t t-if="koConfirmVoid">ยืนยันยกเลิก?</t><t t-else="">ยกเลิกบิล</t></div>
+                                <small>Refund bill</small>
+                            </button>
+                        </div>
+                        <div t-else="" class="ko-bill-voided-notice">
+                            บิลนี้เป็นรายการคืนเงิน หรือคืนเงินครบแล้ว · Refunded
+                        </div>
+                    </div>
+                </div>
+
+                <KoBottomNav/>
+              </div>
+            </div>
+        </xpath>
+    </t>
+
 </templates>

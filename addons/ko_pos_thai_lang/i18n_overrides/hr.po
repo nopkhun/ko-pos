@@ -1,0 +1,303 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 16.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-19 17:35+0000\n"
+"PO-Revision-Date: 2026-08-02 14:27+0000\n"
+"Last-Translator: Nusara Boonma <nuboo@odoo.com>\n"
+"Language-Team: Thai <https://translate.odoo.com/projects/odoo-19/hr/th/>\n"
+"Language: th\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 2026.6.1\n"
+"X-KO-Override: ko_pos_thai_lang\n"
+
+#. module: hr
+#: model_terms:hr.job,website_description:hr.job_developer
+msgid ""
+"As a developer at our company, you will <b>collaborate with product managers, designers,\n"
+"                                and other engineers to design, develop, and deploy innovative software solutions</b>.\n"
+"                                Join us at a rapidly growing organization that offers competitive benefits and\n"
+"                                opportunities for career advancement while working alongside industry leaders.\n"
+"                                We’re looking for a skilled developer with a passion for technology and innovation.\n"
+"                                <br>\n"
+"                                In this role, you will be responsible for <b>writing clean, maintainable code,\n"
+"                                participating in code reviews, and troubleshooting issues</b>. Your work will involve\n"
+"                                both creative <b>problem-solving and rigorous analysis</b>, requiring you to think\n"
+"                                outside the box to deliver effective solutions. We seek a proactive candidate with a\n"
+"                                strong \"get it done\" mentality. Success in this position hinges on your ability to\n"
+"                                tackle complex challenges and deliver high-quality results in a fast-paced environment."
+msgstr ""
+"ในฐานะนักพัฒนาของบริษัทเรา คุณจะได้ <b>ทำงานร่วมกับผู้จัดการสินค้า นักออกแบบ และ\n"
+"                                วิศวกรท่านอื่นๆ เพื่อออกแบบ พัฒนา และนำเสนอซอฟต์แวร์โซลูชันใหม่ๆ</b>\n"
+"                                ร่วมเป็นส่วนหนึ่งกับองค์กรที่เติบโตอย่างรวดเร็ว ซึ่งมีสวัสดิการที่แข่งขันได้และ\n"
+"                                โอกาสในการเติบโตในสายอาชีพ พร้อมทั้งได้ทำงานร่วมกับผู้นำในอุตสาหกรรม\n"
+"                                เรากำลังมองหานักพัฒนาที่มีทักษะ มีใจรักเทคโนโลยีและนวัตกรรม\n"
+"                                <br>\n"
+"                                ในหน้าที่นี้ คุณจะรับผิดชอบ<b>การเขียนโค้ดที่ถูกต้องและดูแลรักษาได้ง่าย\n"
+"                                มีส่วนร่วมในการตรวจสอบโค้ด และแก้ไขปัญหาต่างๆ</b> งานของคุณจะต้องใช้\n"
+"                                ทั้งการคิดสร้างสรรค์และ<b>การวิเคราะห์อย่างมุ่งมั่น</b>โดยต้องคิดนอกกรอบ\n"
+"                                เพื่อหาทางออกที่มีประสิทธิภาพ เราต้องการผู้สมัครที่มีความกระตือรือร้นและ\n"
+"                                มีทัศนคติแบบ “พร้อมลงมือทำ” ความสำเร็จในตำแหน่งนี้ขึ้นอยู่กับความสามารถในการรับมือ\n"
+"                                กับความท้าทายที่ซับซ้อนและส่งมอบผลงานคุณภาพสูงในสภาพแวดล้อมที่เปลี่ยนแปลงรวดเร็ว"
+
+#. module: hr
+#: model_terms:hr.job,website_description:hr.job_trainee
+msgid ""
+"As a trainee at our company, you will <b>work with various departments to assist in\n"
+"                                creating and launching innovative products</b>. Join our growing team, offering\n"
+"                                excellent benefits and valuable learning opportunities alongside experienced\n"
+"                                professionals.\n"
+"                                <br>\n"
+"                                This role is both <b>creative and structured</b>, encouraging out-of-the-box thinking.\n"
+"                                We are looking for a proactive individual with a strong get it done mindset. Successful\n"
+"                                candidates will have the chance to grow within the company based on their fit and\n"
+"                                performance."
+msgstr ""
+"ในฐานะ พนักงานฝึกงาน กับบริษัทของเรา คุณจะได้ <b>ทำงานร่วมกับหลายแผนกเพื่อช่วยสร้างสรรค์\n"
+"                                และเปิดตัวสินค้านวัตกรรมใหม่ๆ</b> ร่วมเป็นส่วนหนึ่งของทีมที่เติบโตอย่างต่อเนื่อง\n"
+"                                พร้อมรับสวัสดิการดีเยี่ยมและโอกาสในการเรียนรู้จากมืออาชีพมากประสบการณ์\n"
+"                                <br>\n"
+"                                ตำแหน่งนี้ผสมผสานทั้ง <b>ความคิดสร้างสรรค์และโครงสร้างงานที่ชัดเจน</b>, เปิดโอกาสให้คุณคิดนอกกรอบ\n"
+"                                เรายินดีต้อนรับผู้ที่มีความกระตือรือร้นและมีทัศนคติลงมือทำให้สำเร็จ\n"
+"                                หากคุณมีความเหมาะสมและแสดงผลงานได้ดี จะมีโอกาสเติบโตในบริษัทต่อไป"
+
+#. module: hr
+#: model_terms:hr.job,website_description:hr.job_marketing
+msgid ""
+"As an employee of our company, you will <b>collaborate with each department to create and deploy\n"
+"                                disruptive products.</b> Come work at a growing company that offers great benefits with opportunities to\n"
+"                                moving forward and learn alongside accomplished leaders. We're seeking an experienced and outstanding member of staff.\n"
+"                                <br><br>\n"
+"                                This position is both <b>creative and rigorous</b> by nature you need to think outside the box.\n"
+"                                We expect the candidate to be proactive and have a \"get it done\" spirit. To be successful,\n"
+"                                you will have solid solving problem skills."
+msgstr ""
+"ในฐานะพนักงานบริษัทของเรา คุณจะต้อง <b>ร่วมมือกับแต่ละแผนกเพื่อสร้างและปรับใช้\n"
+"                                สินค้าที่สะเทือนวงการ</b> มาร่วมกันทำงานในบริษัทที่กำลังเติบโตที่จะมอบผลประโยชน์มหาศาลและโอกาส\n"
+"                                ที่จะก้าวไปข้างหน้าและเรียนรู้ควบคู่ไปกับผู้นำที่ประสบความสำเร็จ เรากำลังมองหาพนักงานที่มีประสบการณ์และมีความโดดเด่น\n"
+"                                <br><br>\n"
+"                                ตำแหน่งนี้ต้องมีทั้ง<b>ความคิดสร้างสรรค์และความรอบคอบ</b> โดยธรรมชาติ คุณต้องคิดนอกกรอบ\n"
+"                                เราคาดหวังให้ผู้สมัครมีความกระตือรือร้นและมีจิตวิญญาณ \"แสวงหาคส่มสำเร็จ\" เพื่อประสบความสำเร็จ\n"
+"                              คุณจะต้องมีทักษะการแก้ปัญหาที่แข็งแกร่ง"
+
+#. module: hr
+#: model_terms:hr.job,website_description:hr.job_cto
+msgid ""
+"As our Chief Technology Officer, you will <b>work closely with product, marketing, and\n"
+"                                operations teams to create and launch innovative technology solutions that set us apart\n"
+"                                in the industry</b>. Join our fast-growing company, where you’ll enjoy competitive\n"
+"                                benefits and opportunities for professional growth while collaborating with top experts\n"
+"                                in the field.\n"
+"                                <br>\n"
+"                                In this role, you will <b>define and execute our technology strategy and roadmap</b>,\n"
+"                                ensuring it aligns with our business goals. This position is both <b>creative and\n"
+"                                analytical</b>, requiring you to think outside the box while implementing effective\n"
+"                                solutions. We are looking for a proactive leader with a strong \"get it done\" mentality\n"
+"                                who can tackle challenges head-on and drive projects to successful completion.\n"
+"                                <br>\n"
+"                                To excel in this position, you will need <b>extensive experience in software\n"
+"                                architecture, cloud computing, and data security</b>, along with a strong background in\n"
+"                                team leadership and agile project management. Your excellent communication skills will\n"
+"                                be vital for conveying complex technical ideas to non-technical stakeholders and\n"
+"                                fostering collaboration across all departments."
+msgstr ""
+"ในฐานะประธานเจ้าหน้าที่เทคโนโลยี (CTO) ของเรา <b>คุณจะทำงานร่วมกับทีมสินค้า การตลาด และ\n"
+"                                ฝ่ายปฏิบัติการอย่างใกล้ชิด เพื่อสร้างและเปิดตัวโซลูชันเทคโนโลยีที่เป็นนวัตกรรมใหม่ ซึ่งจะสร้างความแตกต่างให้กับบริษัท\n"
+"                                ในอุตสาหกรรมนี้</b> ร่วมเป็นส่วนหนึ่งของบริษัทที่กำลังเติบโตอย่างรวดเร็ว ที่ซึ่งคุณจะได้รับสวัสดิการที่แข่งขันสูง\n"
+"                                และโอกาสในการเติบโตทางสายอาชีพ พร้อมทั้งได้ร่วมงานกับผู้เชี่ยวชาญชั้นนำ\n"
+"                                ในอุตสาหกรรม\n"
+"                                <br>\n"
+"                                ในหน้าที่นี้ <b>คุณจะเป็นผู้กำหนดและดำเนินกลยุทธ์ด้านเทคโนโลยีและแผนงาน (roadmap)</b>\n"
+"                                ของบริษัทให้สอดคล้องกับเป้าหมายทางธุรกิจ ตำแหน่งนี้ต้องใช้ทั้ง <b>ความคิดสร้างสรรค์และ\n"
+"                                การวิเคราะห์</b>โดยต้องคิดนอกกรอบ และนำไปสู่การแก้ปัญหาที่มีประสิทธิภาพ\n"
+"                                เรากำลังมองหาผู้นำที่มีความกระตือรือร้น มีทัศนคติ “ลงมือทำให้สำเร็จ”\n"
+"                                สามารถเผชิญกับความท้าทายและขับเคลื่อนโครงการให้ประสบความสำเร็จ\n"
+"                                <br>\n"
+"                                เพื่อประสบความสำเร็จในตำแหน่งนี้ คุณควรมี <b>ประสบการณ์อย่างมากในด้านสถาปัตยกรรมซอฟต์แวร์\n"
+"                                คลาวด์คอมพิวติ้ง และความปลอดภัยของข้อมูล</b> พร้อมทั้งมีพื้นฐานที่แข็งแกร่งด้านการเป็นผู้นำทีม\n"
+"                                และการบริหารโครงการที่มีความยืดหยุ่น ทักษะการสื่อสารที่ยอดเยี่ยมของคุณจะมีความสำคัญอย่างมาก\n"
+"                                ในการถ่ายทอดแนวคิดเทคนิคที่ซับซ้อนให้กับผู้ที่ไม่ใช่สายเทคนิค\n"
+"                                และสร้างความร่วมมือระหว่างทุกแผนก"
+
+#. module: hr
+#: model:ir.model,name:hr.model_res_config_settings
+msgid "Config Settings"
+msgstr "ตั้งค่าการตั้งค่า"
+
+#. module: hr
+#: model:ir.ui.menu,name:hr.menu_human_resources_configuration
+#: model_terms:ir.ui.view,arch_db:hr.hr_department_view_kanban
+msgid "Configuration"
+msgstr "การตั้งค่า"
+
+#. module: hr
+#: model:ir.model.fields,field_description:hr.field_hr_department__message_needaction_counter
+#: model:ir.model.fields,field_description:hr.field_hr_employee__message_needaction_counter
+#: model:ir.model.fields,field_description:hr.field_hr_job__message_needaction_counter
+#: model:ir.model.fields,field_description:hr.field_hr_version__message_needaction_counter
+msgid "Number of Actions"
+msgstr "จำนวนการดำเนินการ"
+
+#. module: hr
+#: model:ir.model.fields,field_description:hr.field_hr_department__message_has_error_counter
+#: model:ir.model.fields,field_description:hr.field_hr_employee__message_has_error_counter
+#: model:ir.model.fields,field_description:hr.field_hr_job__message_has_error_counter
+#: model:ir.model.fields,field_description:hr.field_hr_version__message_has_error_counter
+msgid "Number of errors"
+msgstr "จำนวนข้อผิดพลาด"
+
+#. module: hr
+#: model:ir.model.fields,help:hr.field_hr_department__message_has_error_counter
+#: model:ir.model.fields,help:hr.field_hr_employee__message_has_error_counter
+#: model:ir.model.fields,help:hr.field_hr_job__message_has_error_counter
+#: model:ir.model.fields,help:hr.field_hr_version__message_has_error_counter
+msgid "Number of messages with delivery error"
+msgstr "จำนวนข้อความที่มีข้อผิดพลาดในการส่ง"
+
+#. module: hr
+#. odoo-python
+#: code:addons/hr/models/mail_activity_plan_template.py:0
+msgid ""
+"Oops! It seems there is a problem with your team structure."
+"                        We found a circular reporting loop and no one in "
+"that loop is linked to a user.                        Please double-check "
+"that everyone reports to the correct manager."
+msgstr ""
+"อุ๊ย! ดูเหมือนว่าโครงสร้างทีมของคุณมีปัญหา                        "
+"เราพบวงจรการรายงานแบบวงกลม และไม่มีใครในวงจรนั้นที่เชื่อมโยงกับผู้ใช้"
+"                        "
+"กรุณาตรวจสอบซ้ำอีกครั้งว่าทุกคนรายงานต่อผู้จัดการที่ถูกต้อง"
+
+#. module: hr
+#: model_terms:hr.job,website_description:hr.job_consultant
+#: model_terms:hr.job,website_description:hr.job_cto
+#: model_terms:hr.job,website_description:hr.job_developer
+#: model_terms:hr.job,website_description:hr.job_hrm
+#: model_terms:hr.job,website_description:hr.job_marketing
+#: model_terms:hr.job,website_description:hr.job_trainee
+msgid "Our Product"
+msgstr "สินค้าของเรา"
+
+#. module: hr
+#: model:ir.model.fields,help:hr.field_hr_employee__pin
+#: model:ir.model.fields,help:hr.field_res_users__pin
+msgid ""
+"PIN used to Check In/Out in the Kiosk Mode of the Attendance application (if"
+" enabled in Configuration) and to change the cashier in the Point of Sale "
+"application."
+msgstr ""
+"PIN ที่ใช้ในการเช็คอิน/เช็คเอาท์ในโหมดคีออสก์ของแอปพลิเคชันการลงเวลาทำงาน "
+"(หากเปิดใช้งานในการตั้งค่า) "
+"และเพื่อเปลี่ยนแคชเชียร์ในแอปพลิเคชันการขายหน้าร้าน"
+
+#. module: hr
+#: model_terms:hr.job,website_description:hr.job_marketing
+msgid "Passion for software products"
+msgstr "ความหลงใหลในสินค้าซอฟต์แวร์"
+
+#. module: hr
+#: model_terms:hr.job,description:hr.job_marketing
+msgid ""
+"The Marketing Manager defines the mid- to long-term marketing strategy for his covered market segments\n"
+"                in the World. He develops and monitors the annual budget in collaboration with Sales. He defines the\n"
+"                products and customers portfolio according to the marketing plan. This mission requires strong\n"
+"                collaboration with Technical Service and Sales."
+msgstr ""
+"ผู้จัดการฝ่ายการตลาดเป็นผู้กำหนดกลยุทธ์การตลาดระยะกลางถึงระยะยาวสำหรับกลุ่มตลาด\n"
+"                                     ที่รับผิดชอบในระดับโลก โดยจะเป็นผู้วางแผนและติดตามงบประมาณประจำปีร่วมกับฝ่ายขาย \n"
+"                                     รวมถึงกำหนดกลุ่มสินค้าและกลุ่มลูกค้าให้สอดคล้องกับแผนการตลาด ภารกิจนี้ต้องอาศัยความร่วมมือ\n"
+"                                     อย่างใกล้ชิดกับฝ่ายบริการด้านเทคนิคและฝ่ายขาย"
+
+#. module: hr
+#: model_terms:ir.ui.view,arch_db:hr.hr_contract_template_form_view
+#: model_terms:ir.ui.view,arch_db:hr.view_employee_form
+msgid "The default working hours are set in configuration."
+msgstr "ชั่วโมงการทำงานเริ่มต้นจะถูกตั้งค่าไว้ในการตั้งค่า"
+
+#. module: hr
+#: model:res.groups,comment:hr.group_hr_manager
+msgid ""
+"The user will have access to the human resources configuration as well as "
+"statistic reports."
+msgstr "ผู้ใช้จะมีสิทธิ์เข้าถึงการตั้งค่าทรัพยากรบุคคลและรายงานสถิติ"
+
+#. module: hr
+#: model_terms:hr.job,description:hr.job_trainee
+msgid ""
+"You participate to the update of our tutorial tools and pre-sales tools after the launch of a new version of Odoo. Indeed, any new version of the software brings significant improvements in terms of functionalities, ergonomics and configuration.\n"
+"You will have to become familiar with the existing tools (books, class supports, Odoo presentation’s slides, commercial tools),\n"
+"to participate to the update of those tools in order to make them appropriate for the new version of the software and, for sure,\n"
+"to suggest improvements in order to cover the new domains of the software.\n"
+"You join the Implementation Assistance department. This team of 3 people go with Odoo’s clients in the set up of the software. Your role will be\n"
+"to animate webinars in order to show the different functionalities of the software.\n"
+"to be involved in the support of the customers and\n"
+"to answer to their questions.\n"
+"You help the support manager to set up new support services by\n"
+"being involved in the treatment of new cases,\n"
+"contributing to the set up of a new politic,\n"
+"being involved into satisfaction surveys in order to have a better knowledge of how the support given is seen by the customers."
+msgstr ""
+"คุณเข้าร่วมในการอัปเดตเครื่องมือฝึกสอนและเครื่องมือก่อนการขายของเราหลังจากเปิดตัว Odoo เวอร์ชันใหม่ แท้จริงแล้วซอฟต์แวร์เวอร์ชันใหม่ใดๆ ก็ตามมีการปรับปรุงที่สำคัญในแง่ของฟังก์ชันการทำงาน การยศาสตร์ และการตั้งค่า\n"
+"คุณจะต้องทำความคุ้นเคยกับเครื่องมือที่มีอยู่ (หนังสือ การสนับสนุนในชั้นเรียน สไลด์การนำเสนอของ Odoo เครื่องมือเชิงพาณิชย์)\n"
+"เพื่อเข้าร่วมการอัปเดตเครื่องมือเหล่านั้นเพื่อให้เหมาะสมกับซอฟต์แวร์เวอร์ชันใหม่และแน่นอน\n"
+"เพื่อแนะนำการปรับปรุงเพื่อให้ครอบคลุมโดเมนใหม่ของซอฟต์แวร์\n"
+"คุณเข้าร่วมแผนกช่วยเหลือการดำเนินงาน ทีม 3 คนนี้ทำงานร่วมกับลูกค้าของ Odoo ในการตั้งค่าซอฟต์แวร์ บทบาทของคุณจะเป็น\n"
+"เพื่อสร้างภาพเคลื่อนไหวการสัมมนาผ่านเว็บเพื่อแสดงฟังก์ชันการทำงานต่างๆ ของซอฟต์แวร์\n"
+"ที่จะมีส่วนร่วมในการสนับสนุนลูกค้าและ\n"
+"เพื่อตอบคำถามของพวกเขา\n"
+"คุณช่วยผู้จัดการฝ่ายสนับสนุนในการตั้งค่าบริการสนับสนุนใหม่โดย\n"
+"มีส่วนร่วมในการแก้ปัญหาให้กับลูกค้ารายใหม่\n"
+"มีส่วนร่วมในการจัดตั้งการเมืองแบบใหม่\n"
+"มีส่วนร่วมในการสำรวจความพึงพอใจเพื่อให้มีความรู้ที่ดีขึ้นว่าลูกค้าจะได้รับการสนับสนุนอย่างไร"
+
+#. module: hr
+#: model:ir.ui.menu,name:hr.menu_hr_employee
+msgid "Directory"
+msgstr "ทำเนียบพนักงาน"
+
+#. module: hr
+#: model:ir.actions.act_window,name:hr.hr_work_location_action
+#: model:ir.ui.menu,name:hr.menu_hr_work_location_tree
+msgid "Work Locations"
+msgstr "สถานที่ทำงาน"
+
+#. module: hr
+#. odoo-javascript
+#: model:ir.model.fields.selection,name:hr.selection__hr_employee__hr_icon_display__presence_present
+#: model:ir.model.fields.selection,name:hr.selection__hr_employee__hr_presence_state__present
+#: model:ir.model.fields.selection,name:hr.selection__hr_employee_public__hr_presence_state__present
+#: code:addons/hr/static/src/components/avatar_card_resource/avatar_card_resource_popover.xml:0
+msgid "Present"
+msgstr "มาทำงาน"
+
+#. module: hr
+#. odoo-javascript
+#: model:ir.model.fields.selection,name:hr.selection__hr_employee__hr_icon_display__presence_absent
+#: model:ir.model.fields.selection,name:hr.selection__hr_employee__hr_presence_state__absent
+#: model:ir.model.fields.selection,name:hr.selection__hr_employee_public__hr_presence_state__absent
+#: code:addons/hr/static/src/components/avatar_card_resource/avatar_card_resource_popover.xml:0
+msgid "Absent"
+msgstr "ขาดงาน"
+
+#. module: hr
+#. odoo-javascript
+#: model:ir.model.fields.selection,name:hr.selection__hr_employee__hr_icon_display__presence_out_of_working_hour
+#: model:ir.model.fields.selection,name:hr.selection__hr_employee__hr_presence_state__out_of_working_hour
+#: model:ir.model.fields.selection,name:hr.selection__hr_employee_public__hr_presence_state__out_of_working_hour
+#: code:addons/hr/static/src/components/avatar_card_resource/avatar_card_resource_popover.xml:0
+msgid "Off-Hours"
+msgstr "นอกเวลางาน"
+
+#. module: hr
+#: model:ir.model.fields.selection,name:hr.selection__hr_version__employee_type__worker
+msgid "Worker"
+msgstr "พนักงานทั่วไป"
+
+#. module: hr
+#: model:ir.model.fields.selection,name:hr.selection__hr_version__employee_type__freelance
+msgid "Freelancer"
+msgstr "ฟรีแลนซ์"

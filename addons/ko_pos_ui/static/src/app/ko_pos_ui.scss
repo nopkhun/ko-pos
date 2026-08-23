@@ -30,7 +30,7 @@
     font-display: swap;
 }
 
-// KO POS — Section 1 Sell screen. Business logic remains in Odoo's POS models.
+// KO POS — Complete Touch-First UI Theme
 .pos {
     --ko-primary: oklch(0.5 0.15 190);
     --ko-primary-dark: oklch(0.4 0.15 190);
@@ -50,6 +50,9 @@
     --ko-danger-bg: #fdeef1;
     --ko-tax: #7048b5;
     --ko-tax-bg: #f5f0fc;
+    --ko-station-hot: oklch(0.6 0.15 40);
+    --ko-station-cold: oklch(0.55 0.12 250);
+    --ko-station-drink: oklch(0.62 0.13 85);
     color: var(--ko-ink);
     background: var(--ko-canvas);
     font-family: "Prompt", -apple-system, "Noto Sans Thai", sans-serif;
@@ -67,6 +70,337 @@
     box-shadow: none !important;
 }
 
+/* ==========================================================================
+   1. Bottom Navigation
+   ========================================================================== */
+.pos .ko-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    display: flex;
+    padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
+    background: var(--ko-surface);
+    border-top: 1px solid #edf1f1;
+}
+
+.pos .ko-nav-tab {
+    flex: 1;
+    padding: 8px 4px 6px;
+    text-align: center;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 120ms ease;
+}
+
+.pos .ko-nav-tab:hover {
+    background: var(--ko-primary-soft);
+}
+
+.pos .ko-nav-tab .ko-nav-th {
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--ko-muted);
+}
+
+.pos .ko-nav-tab .ko-nav-en {
+    font-size: 10.5px;
+    color: #b9c4c6;
+}
+
+.pos .ko-nav-tab.active .ko-nav-th {
+    font-weight: 600;
+    color: var(--ko-primary-dark);
+}
+
+.pos .ko-nav-tab.active .ko-nav-en {
+    color: var(--ko-primary);
+}
+
+/* ==========================================================================
+   2. Toast Notification
+   ========================================================================== */
+.pos .ko-toast-wrapper {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 96px;
+    z-index: 1060;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.pos .ko-toast-pill {
+    max-width: 85%;
+    padding: 11px 20px;
+    background: var(--ko-ink);
+    color: #fff;
+    font-size: 13.5px;
+    font-weight: 500;
+    border-radius: 999px;
+    animation: ko-rise 200ms ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ==========================================================================
+   3. Item Options Bottom Sheet
+   ========================================================================== */
+.pos .ko-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    background: rgba(18, 28, 30, 0.4);
+    animation: ko-fade 150ms ease;
+}
+
+.pos .ko-sheet-container {
+    position: relative;
+    max-height: 82%;
+    display: flex;
+    flex-direction: column;
+    background: var(--ko-surface);
+    border-radius: 22px 22px 0 0;
+    animation: ko-rise 220ms ease;
+    overflow: hidden;
+}
+
+.pos .ko-sheet-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 18px 22px 10px;
+    border-bottom: 1px solid var(--ko-line);
+}
+
+.pos .ko-sheet-title-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.pos .ko-sheet-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ko-ink);
+}
+
+.pos .ko-sheet-subline {
+    font-size: 12.5px;
+    color: var(--ko-muted);
+}
+
+.pos .ko-sheet-close {
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    font-size: 15px;
+    color: var(--ko-muted-2);
+    background: var(--ko-line);
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.pos .ko-sheet-body {
+    flex: 1;
+    padding: 14px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+}
+
+.pos .ko-sheet-section-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ko-ink);
+    padding-bottom: 8px;
+}
+
+.pos .ko-sheet-section-title span {
+    font-size: 11.5px;
+    font-weight: 400;
+    color: var(--ko-muted);
+}
+
+.pos .ko-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pos .ko-chip-btn {
+    padding: 9px 15px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ko-muted-2);
+    background: var(--ko-surface);
+    border: 1.5px solid var(--ko-border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 120ms ease;
+}
+
+.pos .ko-chip-btn.disabled,
+.pos .ko-sheet-save-btn.disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.pos .ko-chip-btn.active {
+    color: var(--ko-primary-dark);
+    background: var(--ko-primary-soft);
+    border-color: var(--ko-primary);
+}
+
+.pos .ko-addons-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pos .ko-addon-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    background: var(--ko-surface);
+    border: 1.5px solid var(--ko-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 120ms ease;
+}
+
+.pos .ko-addon-row.active {
+    background: var(--ko-primary-soft);
+    border-color: var(--ko-primary);
+}
+
+.pos .ko-checkbox {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    color: #fff;
+    border: 1.5px solid #ccd8d8;
+    border-radius: 7px;
+    background: #fff;
+}
+
+.pos .ko-addon-row.active .ko-checkbox {
+    border-color: var(--ko-primary);
+    background: var(--ko-primary);
+}
+
+.pos .ko-addon-name {
+    flex: 1;
+    font-size: 14.5px;
+    font-weight: 500;
+    color: var(--ko-ink);
+}
+
+.pos .ko-addon-price {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ko-primary-dark);
+}
+
+.pos .ko-note-input {
+    width: 100%;
+    min-height: 44px;
+    padding: 12px 16px;
+    font-size: 14.5px;
+    color: var(--ko-ink);
+    background: var(--ko-surface);
+    border: 1.5px solid var(--ko-border);
+    border-radius: 12px;
+    outline: none;
+}
+
+.pos .ko-note-input:focus {
+    border-color: var(--ko-primary);
+}
+
+.pos .ko-sheet-qty-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 2px 0 4px;
+}
+
+.pos .ko-sheet-qty-btn {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    font-size: 22px;
+    color: var(--ko-muted-2);
+    background: #eef3f3;
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.pos .ko-sheet-qty-btn.active {
+    color: #fff;
+    background: var(--ko-primary);
+}
+
+.pos .ko-sheet-qty-num {
+    min-width: 28px;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--ko-ink);
+    text-align: center;
+}
+
+.pos .ko-sheet-footer {
+    display: flex;
+    gap: 10px;
+    padding: 12px 22px calc(16px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--ko-line);
+}
+
+.pos .ko-sheet-remove-btn {
+    padding: 15px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ko-danger-text);
+    background: #fff;
+    border: 1.5px solid #f3d4da;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.pos .ko-sheet-save-btn {
+    flex: 1;
+    padding: 15px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--ko-primary);
+    border: 0;
+    border-radius: 999px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.pos .ko-sheet-save-btn:hover {
+    background: var(--ko-primary-dark);
+}
+
+/* ==========================================================================
+   4. Sell Screen (Section §1)
+   ========================================================================== */
 .pos .ko-pos-product-screen {
     gap: 0;
     color: var(--ko-ink);
@@ -76,6 +410,7 @@
 .pos .ko-pos-product-screen .rightpane {
     min-width: 0;
     background: var(--ko-surface) !important;
+    padding-bottom: 60px;
 }
 
 .pos .ko-sell-header {
@@ -161,10 +496,6 @@
     font-size: 15px;
 }
 
-.pos .ko-search-row input::placeholder {
-    color: var(--ko-muted);
-}
-
 .pos .category-list {
     display: flex !important;
     flex: none;
@@ -204,17 +535,6 @@
     white-space: nowrap;
 }
 
-.pos .category-list .category-button > div.ratio,
-.pos .category-list .category-img-thumb {
-    display: none !important;
-}
-
-.pos .category-list .category-button .line-clamp-3 {
-    width: auto !important;
-    overflow: visible;
-    white-space: nowrap;
-}
-
 .pos .category-list .category-button.ko-category-selected {
     color: var(--ko-primary-dark) !important;
     border-bottom-color: var(--ko-primary) !important;
@@ -247,20 +567,6 @@
     background: var(--ko-primary-soft) !important;
 }
 
-.pos .rightpane .ko-product-card:hover,
-.pos .rightpane .ko-product-card:focus-visible {
-    background: #f9fbfb !important;
-}
-
-.pos .rightpane .ko-product-card.ko-in-cart:hover,
-.pos .rightpane .ko-product-card.ko-in-cart:focus-visible {
-    background: oklch(0.5 0.15 190 / 0.1) !important;
-}
-
-.pos .rightpane .ko-product-card:active {
-    background: oklch(0.5 0.15 190 / 0.12) !important;
-}
-
 .pos .ko-product-card .product-img,
 .pos .ko-product-img-placeholder {
     display: grid !important;
@@ -285,17 +591,6 @@
     height: 100%;
     border-radius: 12px;
     object-fit: cover;
-}
-
-.pos .ko-product-card .product-img.ko-image-error::after {
-    display: grid;
-    width: 54px;
-    height: 54px;
-    place-items: center;
-    color: var(--ko-muted);
-    content: "\f03e";
-    font-family: FontAwesome;
-    font-size: 18px;
 }
 
 .pos .ko-product-card .product-content {
@@ -347,10 +642,6 @@
     line-height: 1.35;
 }
 
-.pos .ko-product-card .product-cart-qty {
-    display: none !important;
-}
-
 .pos .ko-product-add,
 .pos .ko-product-stepper button,
 .pos .ko-orderline-stepper button {
@@ -369,13 +660,6 @@
     font-size: 21px;
     font-weight: 500;
     line-height: 1;
-}
-
-.pos .ko-product-add:hover,
-.pos .ko-product-stepper button:hover,
-.pos .ko-orderline-stepper button:hover {
-    border-color: var(--ko-primary);
-    background: var(--ko-primary-soft);
 }
 
 .pos .ko-product-stepper,
@@ -420,6 +704,22 @@
     background: var(--ko-surface);
 }
 
+.pos .ko-mobile-order-header,
+.pos .ko-mobile-cart-totals {
+    display: none;
+}
+
+.pos .ko-orderline-edit-options {
+    flex: 0 0 auto;
+    padding: 6px 9px;
+    color: var(--ko-primary-dark);
+    background: var(--ko-primary-soft);
+    border: 0;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
 .pos .ko-order-heading-title {
     color: var(--ko-ink);
     font-size: 16px;
@@ -432,22 +732,9 @@
     font-weight: 400;
 }
 
-.pos .ko-order-heading .ko-more-button {
-    width: 38px;
-    height: 38px;
-    min-height: 38px;
-    border-radius: 12px;
-}
-
 .pos .ko-pos-product-screen .leftpane {
-    padding-bottom: 0 !important;
+    padding-bottom: 60px !important;
     background: #fcfdfd !important;
-}
-
-.pos .ko-pos-product-screen .leftpane .order-container {
-    padding: 0;
-    gap: 0;
-    background: #fcfdfd;
 }
 
 .pos .ko-pos-product-screen .leftpane .orderline {
@@ -465,59 +752,6 @@
     background: var(--ko-primary-soft) !important;
 }
 
-.pos .ko-pos-product-screen .leftpane .orderline > .d-flex.flex-column {
-    min-width: 0;
-    padding: 12px 0 !important;
-}
-
-.pos .ko-pos-product-screen .leftpane .orderline .product-name {
-    min-width: 0;
-    padding-right: 10px !important;
-    color: var(--ko-ink);
-    font-size: 14.5px;
-    font-weight: 500;
-}
-
-.pos .ko-pos-product-screen .leftpane .orderline:has(.ko-orderline-stepper) .product-name > .qty {
-    display: none !important;
-}
-
-.pos .ko-pos-product-screen .leftpane .orderline .product-price {
-    min-width: 54px;
-    color: var(--ko-ink);
-    font-size: 14.5px;
-    font-weight: 600 !important;
-    text-align: right;
-}
-
-.pos .ko-pos-product-screen .leftpane .ko-orderline-stepper {
-    gap: 8px;
-    margin-right: 10px;
-}
-
-.pos .ko-pos-product-screen .leftpane .ko-orderline-stepper button {
-    width: 32px;
-    height: 32px;
-    min-height: 32px;
-    font-size: 17px;
-}
-
-.pos .ko-pos-product-screen .leftpane .ko-orderline-stepper strong {
-    font-size: 15px;
-}
-
-.pos .ko-pos-product-screen .leftpane .info-list {
-    margin-left: 0 !important;
-    color: var(--ko-primary-dark);
-    font-size: 11.5px;
-}
-
-.pos .ko-pos-product-screen .leftpane .customer-note {
-    padding: 0 !important;
-    color: var(--ko-warn-text) !important;
-    background: transparent !important;
-}
-
 .pos .ko-pos-product-screen .leftpane .order-summary {
     padding: 12px 20px 10px !important;
     gap: 4px !important;
@@ -528,24 +762,6 @@
     font-weight: 400 !important;
 }
 
-.pos .ko-pos-product-screen .leftpane .order-summary .fs-3 {
-    align-items: baseline;
-    color: var(--ko-muted-2);
-    font-size: 14px !important;
-}
-
-.pos .ko-pos-product-screen .leftpane .order-summary .fs-3 small {
-    color: var(--ko-muted);
-    font-size: 11px;
-    font-weight: 400;
-}
-
-.pos .ko-pos-product-screen .leftpane .order-summary .total {
-    color: var(--ko-ink);
-    font-size: 22px;
-    font-weight: 700;
-}
-
 .pos .ko-empty-order {
     align-self: stretch;
     padding: 36px 20px;
@@ -553,25 +769,6 @@
     font-size: 13.5px;
     line-height: 1.55;
     text-align: center;
-}
-
-.pos .ko-empty-order span {
-    font-size: 12px;
-}
-
-.pos .ko-pos-product-screen .leftpane .pads {
-    flex: none;
-    padding: 0 20px 16px !important;
-    background: var(--ko-surface);
-}
-
-.pos .ko-pos-product-screen .leftpane .control-buttons,
-.pos .ko-pos-product-screen .leftpane .numpad {
-    display: none !important;
-}
-
-.pos .ko-pos-product-screen .leftpane .subpads {
-    padding-top: 0 !important;
 }
 
 .pos .pay-order-button,
@@ -586,17 +783,8 @@
     font-weight: 600;
 }
 
-.pos .pay-order-button small,
-.pos .pay-button small {
-    font-size: 12px;
-    font-weight: 400;
-    opacity: 0.88;
-}
-
 .pos .pay-order-button:hover,
-.pos .pay-button:hover,
-.pos .pay-order-button:active,
-.pos .pay-button:active {
+.pos .pay-button:hover {
     background: var(--ko-primary-dark) !important;
 }
 
@@ -614,44 +802,752 @@
     font-weight: 500;
 }
 
-.pos .ko-mobile-cart-button small {
+/* ==========================================================================
+   5. Payment Screen (Section §4)
+   ========================================================================== */
+.pos .ko-payment-screen {
+    background: var(--ko-surface) !important;
+}
+
+.pos .ko-pay-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: var(--ko-surface);
+    padding-bottom: 60px;
+}
+
+.pos .ko-pay-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid #edf1f1;
+}
+
+.pos .ko-pay-back-btn {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    font-size: 17px;
+    color: var(--ko-ink);
+    background: #fff;
+    border: 1px solid var(--ko-border);
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.pos .ko-pay-main-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ko-ink);
+}
+
+.pos .ko-pay-meta-title {
+    font-size: 12px;
+    color: var(--ko-muted);
+}
+
+.pos .ko-pay-body {
+    flex: 1;
+    padding: 18px 20px;
+    overflow-y: auto;
+}
+
+.pos .ko-pay-amount-due-box {
+    text-align: center;
+    padding-bottom: 16px;
+}
+
+.pos .ko-pay-due-label {
+    font-size: 13px;
+    color: var(--ko-muted);
+}
+
+.pos .ko-pay-due-amount {
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ko-ink);
+}
+
+.pos .ko-pay-methods-row {
+    display: flex;
+    gap: 8px;
+    padding-bottom: 18px;
+}
+
+.pos .ko-pay-method-tile {
+    flex: 1;
+    padding: 12px 8px;
+    text-align: center;
+    border: 1.5px solid var(--ko-border);
+    border-radius: 14px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 120ms ease;
+}
+
+.pos .ko-pay-method-tile.selected {
+    border-color: var(--ko-primary);
+    background: var(--ko-primary-soft);
+}
+
+.pos .ko-pay-method-tile .ko-method-th {
+    font-size: 14.5px;
+    font-weight: 600;
+    color: #3a4a4d;
+}
+
+.pos .ko-pay-method-tile.selected .ko-method-th {
+    color: var(--ko-primary-dark);
+}
+
+.pos .ko-pay-method-tile .ko-method-en {
+    font-size: 11px;
+    color: var(--ko-muted);
+}
+
+.pos .ko-cash-received-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0 4px 8px;
+    font-size: 13.5px;
+    color: var(--ko-muted-2);
+}
+
+.pos .ko-received-amount {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--ko-primary-dark);
+}
+
+.pos .ko-change-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    background: var(--ko-primary-soft);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ko-ink);
+}
+
+.pos .ko-change-row strong {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ko-primary-dark);
+}
+
+.pos .ko-quick-cash-row {
+    display: flex;
+    gap: 8px;
+    padding-bottom: 10px;
+}
+
+.pos .ko-quick-chip {
+    flex: 1;
+    padding: 10px 4px;
+    text-align: center;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #3a4a4d;
+    background: #fff;
+    border: 1px solid var(--ko-border);
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.pos .ko-keypad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.pos .ko-keypad-btn {
+    padding: 13px;
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--ko-ink);
+    background: #f5f8f8;
+    border: 0;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 100ms ease;
+}
+
+.pos .ko-keypad-btn:active {
+    background: #e5eded;
+}
+
+.pos .ko-qr-container {
+    text-align: center;
+    padding: 12px 0;
+}
+
+.pos .ko-qr-placeholder {
+    width: 190px;
+    height: 190px;
+    margin: 0 auto;
+    display: grid;
+    place-items: center;
+    border: 1.5px solid var(--ko-border);
+    border-radius: 16px;
+    background: #f5f8f8;
+}
+
+.pos .ko-qr-title {
+    padding-top: 12px;
+    font-size: 14px;
+    color: var(--ko-muted-2);
+    text-align: center;
+}
+
+.pos .ko-qr-sub {
+    font-size: 12px;
+    color: var(--ko-muted);
+    text-align: center;
+}
+
+.pos .ko-pay-card-section {
+    text-align: center;
+    padding: 24px 0;
+}
+
+.pos .ko-card-icon {
+    font-size: 44px;
+    padding-bottom: 8px;
+}
+
+.pos .ko-card-prompt-th {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ko-ink);
+}
+
+.pos .ko-card-prompt-en {
+    font-size: 12.5px;
+    color: var(--ko-muted);
+}
+
+.pos .ko-pay-footer {
+    padding: 12px 20px 18px;
+    border-top: 1px solid #edf1f1;
+}
+
+.pos .ko-validate-btn {
+    width: 100%;
+    padding: 16px;
+    font-size: 16.5px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--ko-primary);
+    border: 0;
+    border-radius: 999px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.pos .ko-validate-btn.disabled,
+.pos .ko-validate-btn:disabled {
+    background: #eef3f3;
+    color: #a3b0b3;
+    cursor: not-allowed;
+}
+
+/* ==========================================================================
+   6. Receipt / Success Screen (Section §5)
+   ========================================================================== */
+.pos .ko-receipt-screen {
+    background: var(--ko-surface) !important;
+}
+
+.pos .ko-receipt-success-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 24px;
+    text-align: center;
+    gap: 8px;
+}
+
+.pos .ko-success-check-circle {
+    width: 88px;
+    height: 88px;
+    display: grid;
+    place-items: center;
+    font-size: 42px;
+    color: #fff;
+    background: var(--ko-primary);
+    border-radius: 999px;
+    animation: ko-pop 300ms ease;
+}
+
+.pos .ko-success-title {
+    font-size: 22px;
+    font-weight: 600;
+    padding-top: 10px;
+    color: var(--ko-ink);
+}
+
+.pos .ko-success-sub {
+    font-size: 13px;
+    color: var(--ko-muted);
+}
+
+.pos .ko-success-total {
+    font-size: 32px;
+    font-weight: 700;
+    padding-top: 4px;
+    color: var(--ko-ink);
+}
+
+.pos .ko-success-change-pill {
+    padding: 10px 22px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ko-primary-dark);
+    background: var(--ko-primary-soft);
+    border-radius: 999px;
+}
+
+.pos .ko-success-actions {
+    display: flex;
+    gap: 10px;
+    padding-top: 22px;
+}
+
+.pos .ko-receipt-reprint-btn {
+    padding: 13px 24px;
+    font-size: 15px;
+    font-weight: 500;
+    color: #3a4a4d;
+    background: #fff;
+    border: 1.5px solid var(--ko-border);
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.pos .ko-receipt-new-btn {
+    padding: 13px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--ko-primary);
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+/* ==========================================================================
+   7. Ticket Screen (Section §6)
+   ========================================================================== */
+.pos .ko-ticket-screen {
+    background: var(--ko-surface) !important;
+}
+
+.pos .ko-ticket-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    padding-bottom: 60px;
+}
+
+.pos .ko-ticket-header {
+    padding: 16px 20px 10px;
+    border-bottom: 1px solid #edf1f1;
+    background: var(--ko-surface);
+}
+
+.pos .ko-ticket-title {
+    font-size: 21px;
+    font-weight: 600;
+    color: var(--ko-ink);
+}
+
+.pos .ko-ticket-title span {
     font-size: 13px;
     font-weight: 400;
-    opacity: 0.8;
+    color: var(--ko-muted);
 }
 
-.pos .ko-mobile-cart-button strong {
-    font-size: 17px;
+.pos .ko-ticket-summary {
+    font-size: 12px;
+    color: var(--ko-muted);
+    padding-top: 2px;
+}
+
+.pos .ko-ticket-tabs {
+    display: flex;
+    gap: 8px;
+    padding-top: 10px;
+}
+
+.pos .ko-ticket-tab-pill {
+    padding: 8px 14px;
+    font-size: 13px;
     font-weight: 600;
+    color: var(--ko-muted-2);
+    background: #eef3f3;
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
 }
 
-// Keep adjacent screens coherent until their dedicated handoff sections are implemented.
-.pos .payment-screen,
-.pos .ticket-screen,
-.pos .floor-screen {
-    background: var(--ko-canvas) !important;
+.pos .ko-ticket-tab-pill.active {
+    color: #fff;
+    background: var(--ko-primary);
 }
 
-.pos .payment-screen .paymentmethod,
-.pos .payment-screen .paymentline,
-.pos .ticket-screen .order-row {
-    border-color: var(--ko-border) !important;
-    box-shadow: none !important;
+.pos .ko-ticket-open-list {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 14px;
+    background: var(--ko-canvas);
 }
 
-.pos .payment-screen .paymentmethod.selected,
-.pos .payment-screen .paymentline.selected,
-.pos .ticket-screen .order-row.highlight {
-    border-color: var(--ko-primary) !important;
-    background: var(--ko-primary-soft) !important;
+.pos .ko-open-order-card {
+    margin: 12px 16px 0;
+    background: #fff;
+    border: 1px solid #e8efef;
+    border-radius: 16px;
+    overflow: hidden;
 }
 
-.pos .floor-screen .table,
-.pos .modal-content,
-.pos .o_dialog .modal-content {
-    box-shadow: none !important;
+.pos .ko-open-order-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px 6px;
 }
 
+.pos .ko-open-order-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pos .ko-open-no-table {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ko-ink);
+}
+
+.pos .ko-open-type-badge {
+    padding: 2px 8px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--ko-primary-dark);
+    background: var(--ko-primary-soft);
+    border-radius: 6px;
+}
+
+.pos .ko-open-type-badge.takeaway {
+    color: var(--ko-warn-text);
+    background: var(--ko-warn-bg);
+}
+
+.pos .ko-open-elapsed {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ko-muted);
+}
+
+.pos .ko-open-elapsed.late {
+    color: var(--ko-danger-text);
+}
+
+.pos .ko-open-items-list {
+    padding: 0 14px 12px;
+}
+
+.pos .ko-open-item-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    font-size: 14px;
+    border-bottom: 1px dashed #eef3f3;
+}
+
+.pos .ko-open-item-row:last-child {
+    border-bottom: 0;
+}
+
+.pos .ko-item-qty {
+    min-width: 24px;
+    font-weight: 700;
+    color: var(--ko-primary-dark);
+}
+
+.pos .ko-item-name-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.pos .ko-item-name {
+    color: var(--ko-ink);
+}
+
+.pos .ko-item-name.served {
+    color: #a3b0b3;
+    text-decoration: line-through;
+}
+
+.pos .ko-item-mods {
+    font-size: 11.5px;
+    color: var(--ko-muted);
+}
+
+.pos .ko-item-station {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--ko-station-hot);
+}
+
+.pos .ko-item-station.cold {
+    color: var(--ko-station-cold);
+}
+
+.pos .ko-item-station.drink {
+    color: var(--ko-station-drink);
+}
+
+.pos .ko-serve-btn {
+    padding: 7px 16px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--ko-primary);
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.pos .ko-status-chip {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+}
+
+.pos .ko-status-chip.served {
+    color: var(--ko-muted);
+    background: #f2f5f5;
+}
+
+.pos .ko-ticket-billed-list {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--ko-surface);
+}
+
+.pos .ko-billed-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--ko-line);
+    cursor: pointer;
+    transition: background 100ms ease;
+}
+
+.pos .ko-billed-row.void {
+    opacity: 0.55;
+}
+
+.pos .ko-billed-row:hover {
+    background: #f7fafa;
+}
+
+.pos .ko-billed-time {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ko-primary-dark);
+    background: var(--ko-primary-soft);
+    border-radius: 12px;
+}
+
+.pos .ko-billed-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.pos .ko-billed-title {
+    font-size: 15.5px;
+    font-weight: 500;
+    color: var(--ko-ink);
+}
+
+.pos .ko-billed-sub {
+    font-size: 12px;
+    color: var(--ko-muted);
+}
+
+.pos .ko-billed-tax-badge {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ko-tax);
+}
+
+.pos .ko-billed-total-group {
+    text-align: right;
+}
+
+.pos .ko-billed-total {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ko-ink);
+}
+
+.pos .ko-billed-status {
+    font-size: 11px;
+    font-weight: 500;
+    color: oklch(0.45 0.13 165);
+}
+
+.pos .ko-billed-status.void {
+    color: var(--ko-danger-text);
+}
+
+.pos .ko-ticket-empty {
+    padding: 48px 20px;
+    text-align: center;
+    color: var(--ko-muted);
+    font-size: 14px;
+}
+
+/* Bill Bottom Sheet */
+.pos .ko-bill-sheet {
+    max-height: 86%;
+}
+
+.pos .ko-bill-sheet-body {
+    flex: 1;
+    padding: 12px 22px;
+    overflow-y: auto;
+}
+
+.pos .ko-bill-item-row {
+    display: flex;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--ko-line);
+    font-size: 14.5px;
+}
+
+.pos .ko-bill-item-qty {
+    min-width: 26px;
+    font-weight: 700;
+    color: var(--ko-primary-dark);
+}
+
+.pos .ko-bill-item-name-group {
+    flex: 1;
+}
+
+.pos .ko-bill-item-name {
+    color: var(--ko-ink);
+}
+
+.pos .ko-bill-item-note {
+    font-size: 12px;
+    color: var(--ko-muted);
+}
+
+.pos .ko-bill-item-sum {
+    font-weight: 500;
+    color: var(--ko-muted-2);
+}
+
+.pos .ko-bill-sheet-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 12px 0 4px;
+    font-size: 14px;
+    color: var(--ko-muted-2);
+}
+
+.pos .ko-bill-sheet-total-row strong {
+    font-size: 21px;
+    font-weight: 700;
+    color: var(--ko-ink);
+}
+
+.pos .ko-bill-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 12px 22px calc(16px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--ko-line);
+}
+
+.pos .ko-bill-act-btn {
+    padding: 13px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #3a4a4d;
+    background: #fff;
+    border: 1.5px solid var(--ko-border);
+    border-radius: 14px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.pos .ko-bill-act-btn small {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 400;
+    color: var(--ko-muted);
+}
+
+.pos .ko-bill-act-btn.tax {
+    color: var(--ko-tax);
+    border-color: #e0d6f2;
+}
+
+.pos .ko-bill-act-btn.void {
+    color: var(--ko-danger-text);
+    border-color: #f3d4da;
+}
+
+.pos .ko-bill-act-btn.void.confirm {
+    color: #fff;
+    background: var(--ko-danger);
+    border-color: var(--ko-danger);
+}
+
+.pos .ko-bill-act-btn.void.confirm small {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pos .ko-bill-voided-notice {
+    padding: 14px 22px calc(18px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--ko-line);
+    text-align: center;
+    font-size: 13.5px;
+    color: var(--ko-danger-text);
+    font-weight: 500;
+}
+
+/* ==========================================================================
+   8. Responsive & Animations
+   ========================================================================== */
 @media (min-width: 900px) {
     .pos .ko-pos-product-screen {
         flex-direction: row-reverse;
@@ -683,68 +1579,54 @@
         border: 0 !important;
     }
 
-    .pos .ko-sell-title-row {
-        padding: 14px 20px 8px;
-    }
-
-    .pos .ko-sell-title-main {
-        font-size: 20px;
-    }
-
-    .pos .rightpane .ko-product-card {
-        padding: 13px 20px !important;
-    }
-
-    .pos .ko-product-card .product-name {
-        white-space: normal;
-    }
-
-    .pos .ko-pos-product-screen .switchpane {
-        min-height: 0;
-        padding: 10px 20px 12px !important;
-        border-color: #edf1f1 !important;
-        background: var(--ko-surface) !important;
-        box-shadow: none !important;
-    }
-
-    .pos .ko-pos-product-screen .switchpane:empty {
+    .pos .ko-pos-product-screen .leftpane .ko-order-heading {
         display: none !important;
     }
 
-    .pos .ko-order-heading {
-        min-height: 56px;
-    }
-}
-
-@media (max-width: 480px) {
-    .pos .ko-sell-title-row,
-    .pos .ko-search-row,
-    .pos .category-list,
-    .pos .rightpane .ko-product-card,
-    .pos .ko-pos-product-screen .switchpane {
-        padding-right: 16px !important;
-        padding-left: 16px !important;
-    }
-
-    .pos .rightpane .ko-product-card {
+    .pos .ko-mobile-order-header {
+        display: flex;
+        flex: none;
+        align-items: center;
         gap: 12px;
+        min-height: 64px;
+        padding: 10px 16px;
+        background: var(--ko-surface);
+        border-bottom: 1px solid var(--ko-border);
     }
 
-    .pos .ko-product-card .product-img,
-    .pos .ko-product-img-placeholder {
-        flex-basis: 50px;
-        width: 50px;
-        height: 50px;
+    .pos .ko-mobile-order-title {
+        color: var(--ko-ink);
+        font-size: 16px;
+        font-weight: 600;
     }
 
-    .pos .ko-product-stepper {
-        gap: 8px;
+    .pos .ko-mobile-order-header small {
+        color: var(--ko-muted);
     }
 
-    .pos .ko-product-stepper button {
-        width: 34px;
-        height: 34px;
-        min-height: 34px;
+    .pos .ko-mobile-cart-totals {
+        display: block;
+        padding: 8px 20px;
+        background: var(--ko-surface);
+        border-top: 1px solid var(--ko-border);
+    }
+
+    .pos .ko-pos-product-screen .leftpane .order-summary {
+        display: none !important;
+    }
+
+    .pos .ko-mobile-cart-totals > div {
+        display: flex;
+        justify-content: space-between;
+        padding: 3px 0;
+        color: var(--ko-muted-2);
+        font-size: 13px;
+    }
+
+    .pos .ko-mobile-cart-totals .ko-mobile-cart-grand {
+        color: var(--ko-ink);
+        font-size: 16px;
+        font-weight: 600;
     }
 }
 
@@ -759,10 +1641,33 @@
     }
 }
 
+@keyframes ko-pop {
+    0% {
+        transform: scale(0.6);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes ko-fade {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .pos button,
     .pos .ko-product-card,
-    .pos .ko-search-row {
+    .pos .ko-search-row,
+    .pos .ko-toast-pill,
+    .pos .ko-sheet-container,
+    .pos .ko-success-check-circle {
         animation: none !important;
         transition: none !important;
     }

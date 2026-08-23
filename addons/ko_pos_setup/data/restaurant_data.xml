@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Floors -->
+        <record id="floor_inside" model="restaurant.floor">
+            <field name="name">โซนด้านใน</field>
+            <field name="sequence">1</field>
+            <field name="background_color">rgb(249,250,251)</field>
+        </record>
+        <record id="floor_terrace" model="restaurant.floor">
+            <field name="name">โซนระเบียง</field>
+            <field name="sequence">2</field>
+            <field name="background_color">rgb(235,245,235)</field>
+        </record>
+
+        <!-- Tables: โซนด้านใน (T1-T10) -->
+        <record id="table_1" model="restaurant.table">
+            <field name="floor_id" ref="floor_inside"/>
+            <field name="table_number">1</field>
+            <field name="seats">2</field>
+            <field name="shape">square</field>
+            <field name="position_h">50</field>
+            <field name="position_v">50</field>
+            <field name="width">80</field>
+            <field name="height">80</field>
+        </record>
+        <record id="table_2" model="restaurant.table">
+            <field name="floor_id" ref="floor_inside"/>
+            <field name="table_number">2</field>
+            <field name="seats">2</field>
+            <field name="shape">square</field>
+            <field name="position_h">180</field>
+            <field name="position_v">50</field>
+            <field name="width">80</field>
+            <field name="height">80</field>
+        </record>
+        <record id="table_3" model="restaurant.table">
+            <field name="floor_id" ref="floor_inside"/>
+            <field name="table_number">3</field>
+            <field name="seats">4</field>
+            <field name="shape">square</field>
+            <field name="position_h">310</field>
+            <field name="position_v">50</field>
+            <field name="width">100</field>
+            <field name="height">80</field>
+        </record>
+        <record id="table_4" model="restaurant.table">
+            <field name="floor_id" ref="floor_inside"/>
+            <field name="table_number">4</field>
+            <field name="seats">4</field>
+            <field name="shape">square</field>
+            <field name="position_h">460</field>
+            <field name="position_v">50</field>
+            <field name="width">100</field>
+            <field name="height">80</field>
+        </record>
+        <record id="table_5" model="restaurant.table">
+            <field name="floor_id" ref="floor_inside"/>
+            <field name="table_number">5</field>
+            <field name="seats">4</field>
+            <field name="shape">round</field>
+            <field name="position_h">50</field>
+            <field name="position_v">190</field>
+            <field name="width">90</field>
+            <field name="height">90</field>
+        </record>
+        <record id="table_6" model="restaurant.table">
+            <field name="floor_id" ref="floor_inside"/>
+            <field name="table_number">6</field>
+            <field name="seats">4</field>
+            <field name="shape">round</field>
+            <field name="position_h">190</field>
+            <field name="position_v">190</field>
+            <field name="width">90</field>
+            <field name="height">90</field>
+        </record>
+        <record id="table_7" model="restaurant.table">
+            <field name="floor_id" ref="floor_inside"/>
+            <field name="table_number">7</field>
+            <field name="seats">6</field>
+            <field name="shape">square</field>
+            <field name="position_h">330</field>
+            <field name="position_v">190</field>
+            <field name="width">140</field>
+            <field name="height">90</field>
+        </record>
+        <record id="table_8" model="restaurant.table">
+            <field name="floor_id" ref="floor_inside"/>
+            <field name="table_number">8</field>
+            <field name="seats">2</field>
+            <field name="shape">square</field>
+            <field name="position_h">50</field>
+            <field name="position_v">330</field>
+            <field name="width">80</field>
+            <field name="height">80</field>
+        </record>
+        <record id="table_9" model="restaurant.table">
+            <field name="floor_id" ref="floor_inside"/>
+            <field name="table_number">9</field>
+            <field name="seats">2</field>
+            <field name="shape">square</field>
+            <field name="position_h">180</field>
+            <field name="position_v">330</field>
+            <field name="width">80</field>
+            <field name="height">80</field>
+        </record>
+        <record id="table_10" model="restaurant.table">
+            <field name="floor_id" ref="floor_inside"/>
+            <field name="table_number">10</field>
+            <field name="seats">8</field>
+            <field name="shape">square</field>
+            <field name="position_h">330</field>
+            <field name="position_v">330</field>
+            <field name="width">180</field>
+            <field name="height">90</field>
+        </record>
+
+        <!-- Tables: โซนระเบียง (T11-T16) -->
+        <record id="table_11" model="restaurant.table">
+            <field name="floor_id" ref="floor_terrace"/>
+            <field name="table_number">11</field>
+            <field name="seats">2</field>
+            <field name="shape">round</field>
+            <field name="position_h">50</field>
+            <field name="position_v">50</field>
+            <field name="width">80</field>
+            <field name="height">80</field>
+        </record>
+        <record id="table_12" model="restaurant.table">
+            <field name="floor_id" ref="floor_terrace"/>
+            <field name="table_number">12</field>
+            <field name="seats">2</field>
+            <field name="shape">round</field>
+            <field name="position_h">180</field>
+            <field name="position_v">50</field>
+            <field name="width">80</field>
+            <field name="height">80</field>
+        </record>
+        <record id="table_13" model="restaurant.table">
+            <field name="floor_id" ref="floor_terrace"/>
+            <field name="table_number">13</field>
+            <field name="seats">4</field>
+            <field name="shape">round</field>
+            <field name="position_h">310</field>
+            <field name="position_v">50</field>
+            <field name="width">90</field>
+            <field name="height">90</field>
+        </record>
+        <record id="table_14" model="restaurant.table">
+            <field name="floor_id" ref="floor_terrace"/>
+            <field name="table_number">14</field>
+            <field name="seats">4</field>
+            <field name="shape">round</field>
+            <field name="position_h">50</field>
+            <field name="position_v">190</field>
+            <field name="width">90</field>
+            <field name="height">90</field>
+        </record>
+        <record id="table_15" model="restaurant.table">
+            <field name="floor_id" ref="floor_terrace"/>
+            <field name="table_number">15</field>
+            <field name="seats">4</field>
+            <field name="shape">round</field>
+            <field name="position_h">190</field>
+            <field name="position_v">190</field>
+            <field name="width">90</field>
+            <field name="height">90</field>
+        </record>
+        <record id="table_16" model="restaurant.table">
+            <field name="floor_id" ref="floor_terrace"/>
+            <field name="table_number">16</field>
+            <field name="seats">6</field>
+            <field name="shape">square</field>
+            <field name="position_h">330</field>
+            <field name="position_v">190</field>
+            <field name="width">140</field>
+            <field name="height">90</field>
+        </record>
+
+        <!-- Kitchen order printer (Epson ePOS) — เปลี่ยน IP เป็นของจริงที่ร้าน -->
+        <record id="kitchen_printer" model="pos.printer">
+            <field name="name">เครื่องพิมพ์ครัว</field>
+            <field name="printer_type">epson_epos</field>
+            <field name="epson_printer_ip">192.168.1.100</field>
+            <field name="product_categories_ids" eval="[(6, 0, [ref('pos_categ_single_dish'), ref('pos_categ_main'), ref('pos_categ_dessert')])]"/>
+        </record>
+    </data>
+</odoo>

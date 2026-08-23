@@ -5,28 +5,26 @@
     'category': 'Localization',
     'summary': 'ปรับคำแปลภาษาไทยทั้งระบบให้เป็นภาษาที่ใช้จริงในร้านอาหาร อ่านง่าย ไม่สับสน',
     'description': """
-คำแปลไทยฉบับร้านอาหาร
-=====================
-- แปลหน้าจอ POS / จอครัว / ใบเสร็จ ใหม่ทั้งหมดด้วยภาษาร้านอาหารจริง
-  (ออเดอร์, บิล, ปิดรอบ, เงินทอน, สต็อก)
-- กวาดแก้คำแปลสับสนทั่วทั้งระบบด้วยอภิธานศัพท์กลาง
-- กลไก: ไฟล์ override ใน i18n_overrides/ ถูกโหลดทับคำแปลมาตรฐาน
-  ทั้งในฐานข้อมูล (model terms) และข้อความจากโค้ด Python/JavaScript
+คำแปลภาษาไทยฉบับร้านอาหารสำหรับ Odoo 19:
+- แทนที่คำแปล stock Thai ที่ไม่เหมาะกับบริบท POS ร้านอาหาร
+- เช่น "ลงบัญชีแล้ว" แทน "โพสต์", "บัตรเครดิต" แทน "การ์ด", "รอบขาย" แทน "เซสชั่น"
+- โหลดอัตโนมัติเมื่อติดตั้งหรืออัปเกรด
 """,
     'author': 'KO',
     'license': 'LGPL-3',
     'depends': [
+        'base',
         'point_of_sale',
         'pos_restaurant',
-        'pos_hr',
-        'pos_self_order',
+        'account',
         'ko_pos_setup',
-        'ko_pos_kds',
         'ko_pos_thai_receipt',
+        'ko_pos_kds',
         'ko_pos_beam_bolt',
     ],
     'data': [
         'data/apply_overrides.xml',
     ],
     'installable': True,
+    'auto_install': False,
 }

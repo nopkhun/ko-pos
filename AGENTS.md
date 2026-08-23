@@ -66,10 +66,10 @@ exit successfully before Odoo starts.
 ```
 addons-init (alpine/git, one-shot)
   └─ clones the git repo with an embedded SSH deploy key
-  └─ wipes /mnt/extra-addons, unpacks addons.tar.gz
-  └─ decodes patch/thai_v2/*.b64  → overwrites i18n_overrides/
-  └─ appends patch/thai_v3/*.append.po onto the matching .po files
+  └─ wipes /mnt/extra-addons, unpacks addons.tar.gz (the single source of truth)
   └─ makes /mnt/extra-addons readable by the non-root Odoo user
+      (the patch/thai_v2 + thai_v3 pipeline was folded into the tarball
+       and deleted on 2026-08-23)
         ↓ (service_completed_successfully)
 odoo-upgrade (odoo:19, one-shot)
   └─ uses an explicit --addons-path ending in /mnt/extra-addons
@@ -110,31 +110,25 @@ All live in `addons.tar.gz` at the repo root.
 
 ```
 addons.tar.gz              ← THE deployment source of truth (all 6 modules)
-addons/                    ← ⚠️ NOT read by deployment. Contains a partial copy of
-                              ko_pos_thai_lang and a reviewable source copy of ko_pos_ui.
+addons/                    ← ⚠️ NOT read by deployment. Reviewable source copies of
+                              ko_pos_thai_lang (partial), ko_pos_ui and ko_pos_setup.
                               The deploy script prefers addons.tar.gz and never reads this.
                               Do not "fix" a bug by editing addons/ — it has no effect.
-patch/thai_v2/*.b64        ← gzip+base64 chunks of a tarball that overwrites
-                              ko_pos_thai_lang/i18n_overrides/ and ko_pos_kds/views/kds_views.xml
-patch/thai_v3/*.append.po  ← small plain-text .po fragments appended onto existing .po files
 AGENTS.md                  ← this file
 docs/                      ← runbooks, see below
 ```
 
-### Why the `patch/` directories exist
+### History of the `patch/` directories (deleted 2026-08-23)
 
-The only write path into this repo from the agent session is a GitHub MCP tool that
-accepts **text content inline only** — it cannot upload binary. So `addons.tar.gz`
-cannot be regenerated from a chat session. `patch/thai_v2/` is a workaround: the
-tarball of changed files, gzipped, base64'd, split into ~3.6 KB pieces, each verified
-by git blob SHA. The deploy script reassembles it. Full mechanics in
-`docs/RUNBOOK-translations.md`.
-
-**If you have real filesystem + git access** (Codex, Antigravity, a local clone), you do
-not need any of that. Prefer to: unpack `addons.tar.gz`, edit the modules properly,
-repack, commit, and then **delete `patch/thai_v2/` and `patch/thai_v3/` and remove
-their handling from the Compose file** so the pipeline has one obvious source of truth.
-That cleanup is the single highest-value refactor available on this project.
+`patch/thai_v2/` (base64 tarball chunks) and `patch/thai_v3/` (appended `.po`
+fragments) existed because the only write path into this repo from the agent session
+was a GitHub MCP tool that accepts **text content inline only**. There was also a
+third hidden delivery path: a base64 tarball of `ko_pos_setup` files embedded
+**inline in the Compose file itself**. On 2026-08-23 all three were folded into
+`addons.tar.gz`, the patch directories were deleted, and the deploy Compose
+(`vps-compose-simplified.yaml` in `deploy-secrets.zip`) no longer does any patch
+handling. Old mechanics remain in `docs/RUNBOOK-translations.md` for historical
+reference only.
 
 ---
 
@@ -300,27 +294,58 @@ Working and confirmed against the live system:
   and Tax ID `0105564168851` (Bangkok state TH-10). Odoo upgrade log confirmed
   `KO POS: Company info updated successfully: บริษัท น็อกเอาต์ จำกัด, VAT: 0105564168851`.
   Receipts and tax invoices dynamically format with these official details. Deploy action `110790895` completed with success.
+- The Antigravity §2–§9 completion claim from commit `ffeb880` was audited and found
+  not production-ready: the options were hard-coded instead of using Odoo attributes,
+  payment/receipt retained stock mobile UI, billed orders disappeared after reload, and
+  KDS failed on two Odoo 19 model assumptions. These defects are corrected locally in
+  `ko_pos_ui` / `ko_pos_kds` version **19.0.4.0.0**, pending production deploy.
+- Final local QA uses a disposable Odoo 19/PostgreSQL database with the real addon and
+  asset pipeline. It passed configurable-product add/edit/remove with real
+  `product.attribute` values and `price_extra`, notes and quantity, phone cart,
+  cash keypad/exact/change, payment validation, receipt/success, billed-order reload,
+  full refund, two-tap void, and edit-bill refund followed by restoration of the original
+  lines/modifiers/notes. Refund intent is retained across a page reload for the edit flow.
+- KDS now owns persistent ticket/line state, configurable category station routing and
+  configurable SLA, sends bus notifications with a two-second polling fallback, exposes
+  order/menu views and served/cancelled history with time/duration, skips refund orders,
+  and cancels the source kitchen ticket only after a refund validates. Its Odoo
+  lifecycle test passes (`0 failed, 0 errors of 1 tests`). POS and KDS assets compile and
+  load with no browser console error; the Thai override signal remains exactly 57 files.
+  Repacked root/repo bundles match at SHA-256
+  `38467384076f2bf3d2a4ff0b736f5decd725f51ac0e945b92ed750cfb7532495`.
+- Patch pipeline retired (2026-08-23): `addons.tar.gz` is now the verified single
+  source of truth; see §4 history and the §9 completion note. Deployment has not yet
+  been rerun with the simplified Compose — expect identical content when it is.
 
 ---
 
 ## 9. Outstanding work
 
-1. **Finish data-backed §1 QA:** once real menu data has an English
+1. **Deploy and production-QA `19.0.4.0.0`:** deploy the corrected bundle from `main`,
+   `vps-compose-simplified.yaml`, verify both init containers, exact 57 translations,
+   assets and browser console, then test safe non-payment paths at tablet/phone widths.
+   Do not complete a real payment or close the live session for QA.
+2. **Finish data-backed §1 QA:** once real menu data has an English
    `public_description` and a configurable item, verify English search and Odoo's
    configurator path live.
-2. **Continue the new UI handoff:** implement §2 item options, §3 phone cart,
-   §4 payment, §5 receipt/success, §6 bills, §7 KDS backend/state and UI,
-   §8 bottom nav, and §9 toast.
 3. **Real business data from the owner:** real PromptPay number (currently the placeholder
    `0812345678`), the real menu items & prices, and the kitchen printer's IP (Epson).
 4. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
    attach it to the payment method, and test against the Beam playground before live use.
 5. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close.
-6. **Refactor (recommended):** fold `patch/thai_v2` + `patch/thai_v3` back into
-   `addons.tar.gz`, delete the patch directories, and simplify `addons-init`. See §4.
-7. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
+6. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
+> ✅ Corrected locally 2026-08-23: audited and replaced the incomplete §2–§9
+> implementation from `ffeb880`; full disposable-database QA is recorded above. This is
+> not a production completion claim until the pending deploy and live safe-path QA pass.
+>
+> ✅ Completed 2026-08-23: the patch-pipeline refactor. `patch/thai_v2`, `patch/thai_v3`,
+> and the inline base64 `ko_pos_setup` overlay that was embedded in the Compose file are
+> all folded into `addons.tar.gz` (verified: 57 i18n_overrides `.po` files, kds_views.xml
+> present, extraction matches the production tree). The deploy Compose is now
+> `vps-compose-simplified.yaml` in `deploy-secrets.zip`. Commit `8ef77ca`.
+>
 > ✅ Completed 2026-08-23: Company name, address, and 13-digit tax ID configured (`บริษัท น็อกเอาต์ จำกัด`).
 >
 > ✅ Completed 2026-08-22: the `การ์ด` → `บัตรเครดิต` payment-method rename. Odoo blocks

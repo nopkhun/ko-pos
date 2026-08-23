@@ -310,3 +310,69 @@ returning the last segment returns an empty string before the session is closed.
 
 **Fix:** use the suffix only when non-empty; otherwise fall back to the live session ID
 and pad it for display (for example `#0020`).
+
+## Symptom: repo contents and production differ even though the repo looks complete
+
+Before 2026-08-23 there were THREE delivery paths into `/mnt/extra-addons`:
+`addons.tar.gz`, `patch/thai_v2` + `patch/thai_v3`, **and a base64 tarball embedded
+inline in the Compose file itself** (a `echo "H4sIA..." | base64 -d | tar xz` line).
+Diffing the repo's tarball against production showed differences that no repo file
+explained, because the third path lived only in `deploy-secrets.zip`. Fixed by folding
+all three into `addons.tar.gz`. Lesson: grep the deploy Compose for embedded base64
+before concluding the repo is the source of truth.
+
+---
+
+### POS opens with `use_pricelist` / `currency_id` undefined after adding one config field
+
+**Symptom:** the addon upgrades successfully, but POS startup fails with an Owl error or
+`KeyError: use_pricelist` and most `pos.config` values are missing.
+
+**Cause:** Odoo 19 deliberately returns an empty field list for `pos.config`, meaning
+“read every field.” Overriding `_load_pos_data_fields()` with only the custom field turns
+that into “read only this field” and removes the core configuration from the POS payload.
+
+**Fix:** do not override `pos.config._load_pos_data_fields()` for an ordinary stored
+field; Odoo's empty-list read already includes it. This exception does not apply to
+models such as `pos.category`, whose base method returns an explicit list.
+
+---
+
+### `/kds` returns 500 with “Cannot convert non-stored field to SQL”
+
+**Symptom:** the KDS controller fails while searching `pos.config.current_session_id`.
+
+**Cause:** `current_session_id` is a non-stored computed field in Odoo 19 and cannot be
+used in a database domain.
+
+**Fix:** search active `pos.session` records by state and read their `config_id`; fall
+back to the first POS config only when no active session exists.
+
+---
+
+### Configurable-product click blanks the POS only in debug assets
+
+**Symptom:** Sell loads, but opening the item-options sheet destroys the Owl root. The
+debug console reports invalid props because `orderline` is `null`.
+
+**Cause:** Owl `optional: true` permits an omitted prop, not a prop explicitly passed as
+`null`. The parent template always passes both `product` and `orderline` expressions.
+
+**Fix:** allow `{ value: null }` in both prop validators. Also wrap any exported
+`reactive()` singleton with the consuming component's `useState()`; mutating a global
+proxy alone does not subscribe that component to rerenders.
+
+---
+
+### Payment or receipt still shows stock mobile controls after a “successful” redesign
+
+**Symptom:** desktop looks custom, while phone payment keeps Odoo's stock methods/keypad,
+or the receipt shows both stock and custom success/actions.
+
+**Cause:** Odoo 19's mobile `PaymentScreen` branch has no `.main-content`, and replacing
+only `.pos-receipt-container` leaves all surrounding stock receipt controls intact.
+
+**Fix:** replace the full `payment-screen`, `receipt-screen`, and (for the custom bills
+workflow) `ticket-screen` roots. Validate both `ui.isSmall` branches in a real browser;
+well-formed XML and a clean module upgrade do not prove that the intended runtime branch
+was replaced.

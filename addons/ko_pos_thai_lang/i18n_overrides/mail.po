@@ -1,0 +1,450 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 16.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-07-17 17:37+0000\n"
+"PO-Revision-Date: 2026-08-02 13:13+0000\n"
+"Last-Translator: MAHAMADASIF ANSARI <maan@odoo.com>\n"
+"Language-Team: Thai <https://translate.odoo.com/projects/odoo-19/mail/th/>\n"
+"Language: th\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 2026.6.1\n"
+"X-KO-Override: ko_pos_thai_lang\n"
+
+#. module: mail
+#. odoo-python
+#: code:addons/mail/models/mail_alias.py:0
+msgid ""
+"Aliases %(alias_names)s is already used as bounce or catchall address. "
+"Please choose another alias."
+msgstr ""
+"มีการใช้นามแฝง %(alias_names)s เป็นที่อยู่ตีกลับหรือที่รับทั้งหมดแล้ว "
+"กรุณาเลือกนามแฝงอื่น"
+
+#. module: mail
+#. odoo-python
+#: code:addons/mail/models/fetchmail.py:0
+msgid ""
+"An SSL exception occurred. Check SSL/TLS configuration on server port.\n"
+" %s"
+msgstr ""
+"มีข้อผิดพลาด SSL เกิดขึ้น ตรวจสอบการตั้งค่า SSL/TLS บนพอร์ตเซิร์ฟเวอร์\n"
+" %s"
+
+#. module: mail
+#: model_terms:ir.ui.view,arch_db:mail.mail_template_reset_view_form
+msgid ""
+"Are you sure you want to reset these email templates to their original "
+"configuration? Changes and translations will be lost."
+msgstr ""
+"คุณแน่ใจหรือไม่ว่าต้องการรีเซ็ตเทมเพลตอีเมลเหล่านี้เป็นการตั้งค่าเดิม "
+"การเปลี่ยนแปลงและการแปลจะหายไป"
+
+#. module: mail
+#: model:ir.model.fields,help:mail.field_discuss_channel__channel_type
+msgid ""
+"Chat is private and unique between 2 persons. Group is private among invited"
+" persons. Channel can be freely joined (depending on its configuration)."
+msgstr ""
+"การแชทเป็นแบบส่วนตัวและไม่ซ้ำกันระหว่าง 2 คน "
+"กลุ่มเป็นแบบส่วนตัวในกลุ่มผู้ได้รับเชิญ สามารถเข้าร่วมช่องได้อย่างอิสระ "
+"(ขึ้นอยู่กับการตั้งค่า)"
+
+#. module: mail
+#: model:ir.model,name:mail.model_res_config_settings
+msgid "Config Settings"
+msgstr "ตั้งค่าการตั้งค่า"
+
+#. module: mail
+#: model:ir.model.fields,field_description:mail.field_fetchmail_server__configuration
+#: model:ir.ui.menu,name:mail.menu_configuration
+#: model_terms:ir.ui.view,arch_db:mail.view_email_server_form
+msgid "Configuration"
+msgstr "การตั้งค่า"
+
+#. module: mail
+#: model_terms:ir.ui.view,arch_db:mail.res_config_settings_view_form
+msgid "Configure your activity types"
+msgstr "ตั้งค่าประเภทกิจกรรมของคุณ"
+
+#. module: mail
+#: model_terms:ir.ui.view,arch_db:mail.res_config_settings_view_form
+msgid "Configure your own email servers"
+msgstr "ตั้งค่าเซิร์ฟเวอร์อีเมลของคุณเอง"
+
+#. module: mail
+#. odoo-python
+#: code:addons/mail/models/mail_alias.py:0
+msgid ""
+"Email aliases %(alias_name)s cannot be used on several records at the same "
+"time. Please update records one by one."
+msgstr ""
+"ไม่สามารถใช้นามแฝงอีเมล %(alias_name)s กับหลายระเบียนพร้อมกันได้ "
+"กรุณาอัปเดตบันทึกทีละรายการ"
+
+#. module: mail
+#: model:ir.model.fields,field_description:mail.field_mail_mail__starred_partner_ids
+#: model:ir.model.fields,field_description:mail.field_mail_message__starred_partner_ids
+msgid "Favorited By"
+msgstr "เพิ่มเป็นรายการกรุณาโดย"
+
+#. module: mail
+#. odoo-javascript
+#: code:addons/mail/static/src/discuss/gif_picker/common/gif_picker.xml:0
+msgid "Favorites"
+msgstr "รายการกรุณา"
+
+#. module: mail
+#. odoo-javascript
+#: code:addons/mail/static/src/discuss/gif_picker/common/gif_picker.xml:0
+msgid "GIF Favorites"
+msgstr "GIF รายการกรุณา"
+
+#. module: mail
+#: model:ir.actions.act_window,name:mail.discuss_gif_favorite_action
+#: model:ir.ui.menu,name:mail.discuss_gif_favorite_menu
+#: model_terms:ir.ui.view,arch_db:mail.discuss_gif_favorite_view_form
+#: model_terms:ir.ui.view,arch_db:mail.discuss_gif_favorite_view_tree
+msgid "GIF favorite"
+msgstr "GIF โปรด"
+
+#. module: mail
+#: model:ir.model.fields,help:mail.field_mail_mail__is_internal
+#: model:ir.model.fields,help:mail.field_mail_message__is_internal
+msgid ""
+"Hide to public / portal users, independently from subtype configuration."
+msgstr "ซ่อนสำหรับผู้ใช้สาธารณะ/พอร์ทัล โดยไม่ขึ้นอยู่กับการตั้งค่าประเภทย่อย"
+
+#. module: mail
+#: model:ir.model.fields,help:mail.field_res_config_settings__alias_domain_id
+msgid ""
+"If you have setup a catch-all email domain redirected to the Odoo server, "
+"enter the domain name here."
+msgstr ""
+"หากคุณได้ตั้งค่าโดเมนอีเมลที่รับทั้งหมดซึ่งเปลี่ยนเส้นทางไปยังเซิร์ฟเวอร์ "
+"Odoo ให้ใส่ชื่อโดเมนที่นี่"
+
+#. module: mail
+#. odoo-python
+#: code:addons/mail/models/discuss/discuss_channel_member.py:0
+msgid ""
+"It appears you're trying to create a channel member, but it seems like you "
+"forgot to specify the related channel. To move forward, please make sure to "
+"provide the necessary channel information."
+msgstr ""
+"ดูเหมือนว่าคุณกำลังพยายามสร้างสมาชิกของช่อง "
+"แต่ดูเหมือนว่าคุณลืมระบุช่องที่เกี่ยวข้อง หากต้องการดำเนินการต่อ "
+"ตรวจสอบว่าได้ให้ข้อมูลช่องที่จำเป็นแล้ว"
+
+#. module: mail
+#: model:ir.model.fields,help:mail.field_discuss_channel__group_ids
+msgid ""
+"Members of those groups will automatically added as followers. Note that "
+"they will be able to manage their subscription manually if necessary."
+msgstr ""
+"สมาชิกของกลุ่มเหล่านั้นจะถูกเพิ่มเป็นผู้ติดตามโดยอัตโนมัติ "
+"กรุณาทราบว่าพวกเขาจะสามารถจัดการการสมัครสมาชิกด้วยตนเองได้หากจำเป็น"
+
+#. module: mail
+#: model:ir.model.fields,help:mail.field_mail_compose_message__message_type
+msgid ""
+"Message type: email for email message, notification for system message, "
+"comment for other messages such as user replies"
+msgstr ""
+"ประเภทข้อความ: อีเมลสำหรับข้อความอีเมล, การแจ้งเตือนสำหรับข้อความของระบบ, "
+"ข้อคิดเห็นสำหรับข้อความอื่น ๆ เช่นการตอบกลับของผู้ใช้"
+
+#. module: mail
+#: model:ir.model.fields,field_description:mail.field_discuss_channel__message_needaction_counter
+#: model:ir.model.fields,field_description:mail.field_ir_actions_server__message_needaction_counter
+#: model:ir.model.fields,field_description:mail.field_ir_cron__message_needaction_counter
+#: model:ir.model.fields,field_description:mail.field_mail_blacklist__message_needaction_counter
+#: model:ir.model.fields,field_description:mail.field_mail_thread__message_needaction_counter
+#: model:ir.model.fields,field_description:mail.field_mail_thread_blacklist__message_needaction_counter
+#: model:ir.model.fields,field_description:mail.field_mail_thread_cc__message_needaction_counter
+#: model:ir.model.fields,field_description:mail.field_mail_thread_main_attachment__message_needaction_counter
+#: model:ir.model.fields,field_description:mail.field_mail_tracking_duration_mixin__message_needaction_counter
+#: model:ir.model.fields,field_description:mail.field_res_partner__message_needaction_counter
+#: model:ir.model.fields,field_description:mail.field_res_users__message_needaction_counter
+msgid "Number of Actions"
+msgstr "จำนวนการดำเนินการ"
+
+#. module: mail
+#: model:ir.model.fields,field_description:mail.field_discuss_channel__message_has_error_counter
+#: model:ir.model.fields,field_description:mail.field_ir_actions_server__message_has_error_counter
+#: model:ir.model.fields,field_description:mail.field_ir_cron__message_has_error_counter
+#: model:ir.model.fields,field_description:mail.field_mail_blacklist__message_has_error_counter
+#: model:ir.model.fields,field_description:mail.field_mail_thread__message_has_error_counter
+#: model:ir.model.fields,field_description:mail.field_mail_thread_blacklist__message_has_error_counter
+#: model:ir.model.fields,field_description:mail.field_mail_thread_cc__message_has_error_counter
+#: model:ir.model.fields,field_description:mail.field_mail_thread_main_attachment__message_has_error_counter
+#: model:ir.model.fields,field_description:mail.field_mail_tracking_duration_mixin__message_has_error_counter
+#: model:ir.model.fields,field_description:mail.field_res_partner__message_has_error_counter
+#: model:ir.model.fields,field_description:mail.field_res_users__message_has_error_counter
+msgid "Number of errors"
+msgstr "จำนวนข้อผิดพลาด"
+
+#. module: mail
+#: model:ir.model.fields,help:mail.field_discuss_channel__message_has_error_counter
+#: model:ir.model.fields,help:mail.field_ir_actions_server__message_has_error_counter
+#: model:ir.model.fields,help:mail.field_ir_cron__message_has_error_counter
+#: model:ir.model.fields,help:mail.field_mail_blacklist__message_has_error_counter
+#: model:ir.model.fields,help:mail.field_mail_thread__message_has_error_counter
+#: model:ir.model.fields,help:mail.field_mail_thread_blacklist__message_has_error_counter
+#: model:ir.model.fields,help:mail.field_mail_thread_cc__message_has_error_counter
+#: model:ir.model.fields,help:mail.field_mail_thread_main_attachment__message_has_error_counter
+#: model:ir.model.fields,help:mail.field_mail_tracking_duration_mixin__message_has_error_counter
+#: model:ir.model.fields,help:mail.field_res_partner__message_has_error_counter
+#: model:ir.model.fields,help:mail.field_res_users__message_has_error_counter
+msgid "Number of messages with delivery error"
+msgstr "จำนวนข้อความที่มีข้อผิดพลาดในการส่ง"
+
+#. module: mail
+#: model_terms:ir.ui.view,arch_db:mail.mail_bounce_catchall
+msgid "Please contact us instead using"
+msgstr "กรุณาติดต่อเราแทนการใช้"
+
+#. module: mail
+#: model:ir.model.fields,help:mail.field_mail_template__email_from
+msgid ""
+"Sender address (placeholders may be used here). If not set, the default "
+"value will be the author's email alias if configured, or email address."
+msgstr ""
+"ที่อยู่ผู้ส่ง (อาจใช้ตัวยึดตำแหน่งที่นี่) หากไม่ได้ตั้งค่า "
+"ค่าเริ่มต้นจะเป็นอีเมลแทนของผู้เขียนหากตั้งค่าไว้ หรือที่อยู่อีเมล"
+
+#. module: mail
+#. odoo-javascript
+#: code:addons/mail/static/src/discuss/gif_picker/common/gif_picker.xml:0
+msgid "So uhh... maybe go favorite some GIFs?"
+msgstr "เอ่ออ... ลองไปเลือก GIF เป็นรายการกรุณาดูไหม?"
+
+#. module: mail
+#. odoo-python
+#: code:addons/mail/models/mail_alias.py:0
+msgid ""
+"The message below could not be accepted by the address %(alias_display_name)s.\n"
+"                 Only %(contact_description)s are allowed to contact it.<br /><br />\n"
+"                 Please make sure you are using the correct address or contact us at %(default_email)s instead."
+msgstr ""
+"ไม่สามารถยอมรับที่อยู่ข้อความด้านล่างได้ %(alias_display_name)s\n"
+"                 อนุญาตให้เฉพาะ %(contact_description)s ติดต่อได้<br /><br />\n"
+"                 ตรวจสอบว่าคุณใช้ที่อยู่ที่ถูกต้อง หรือติดต่อเราที่ %(default_email)s แทน"
+
+#. module: mail
+#. odoo-python
+#: code:addons/mail/models/mail_alias.py:0
+msgid ""
+"The message below could not be accepted by the address %(alias_display_name)s.\n"
+"Please try again later or contact %(company_name)s instead."
+msgstr ""
+"ไม่สามารถยอมรับที่อยู่ %(alias_display_name)s ข้อความด้านล่างได้\n"
+"กรุณาลองอีกครั้งในภายหลังหรือติดต่อ %(company_name)s แทน"
+
+#. module: mail
+#. odoo-python
+#: code:addons/mail/models/mail_activity.py:0
+msgid ""
+"The requested operation cannot be completed due to security restrictions. Please contact your system administrator.\n"
+"\n"
+"(Document type: %(type)s, Operation: %(operation)s)\n"
+"\n"
+"Records: %(records)s, User: %(user)s"
+msgstr ""
+"ไม่สามารถดำเนินการตามที่ร้องขอได้เนื่องจากข้อจำกัดด้านความปลอดภัย กรุณาติดต่อผู้ดูแลระบบของคุณ\n"
+"\n"
+"(ประเภทเอกสาร: %(type)s, การดำเนินการ: %(operation)s)\n"
+"\n"
+"บันทึก: %(records)s, ผู้ใช้: %(user)s"
+
+#. module: mail
+#. odoo-python
+#: code:addons/mail/wizard/mail_followers_edit.py:0
+msgid "Unable to post message, please configure the sender's email address."
+msgstr "ไม่สามารถโพสต์ข้อความ กรุณาตั้งค่าที่อยู่อีเมลของผู้ส่ง"
+
+#. module: mail
+#: model:ir.model.fields,help:mail.field_mail_mail__message_type
+#: model:ir.model.fields,help:mail.field_mail_message__message_type
+msgid ""
+"Used to categorize message generator\n"
+"'email': generated by an incoming email e.g. mailgateway\n"
+"'comment': generated by user input e.g. through discuss or composer\n"
+"'email_outgoing': generated by a mailing\n"
+"'notification': generated by system e.g. tracking messages\n"
+"'auto_comment': generated by automated notification mechanism e.g. acknowledgment\n"
+"'user_notification': generated for a specific recipient"
+msgstr ""
+"ใช้เพื่อจัดหมวดหมู่ตัวสร้างข้อความ\n"
+"'อีเมล': สร้างโดยอีเมลขาเข้า เช่น mailgateway\n"
+"'ความคิดเห็น': สร้างโดยการใส่ข้อมูลของผู้ใช้ เช่น ผ่านการพูดคุยหรือการแต่ง\n"
+"'อีเมลขาออก': สร้างโดยการส่งจดหมาย\n"
+"'การแจ้งเตือน': สร้างโดยระบบ เช่น ติดตามข้อความ\n"
+"'ความคิดเห็นอัตโนมัติ': สร้างโดยกลไกการแจ้งเตือนอัตโนมัติ เช่น การรับทราบ\n"
+"'การแจ้งเตือนผู้ใช้': สร้างขึ้นสำหรับผู้รับที่เฉพาะเจาะจง"
+
+#. module: mail
+#: model:ir.model.constraint,message:mail.constraint_discuss_gif_favorite_user_gif_favorite
+msgid "User should not have duplicated favorite GIF"
+msgstr "ผู้ใช้ไม่ควรมี GIF รายการกรุณาที่ซ้ำกัน"
+
+#. module: mail
+#. odoo-python
+#: code:addons/mail/models/mail_thread_blacklist.py:0
+msgid ""
+"You do not have the access right to unblacklist emails. Please contact your "
+"administrator."
+msgstr ""
+"คุณไม่มีสิทธิ์เข้าถึงอีเมลที่ไม่อยู่ในบัญชีแบล็คลิสต์ "
+"กรุณาติดต่อผู้ดูแลระบบของคุณ"
+
+#. module: mail
+#. odoo-python
+#: code:addons/mail/models/models.py:0
+msgid "incorrectly configured alias"
+msgstr "นามแฝงที่ตั้งค่าไม่ถูกต้อง"
+
+#. module: mail
+#. odoo-python
+#: code:addons/mail/models/models.py:0
+msgid "incorrectly configured alias (unknown reference record)"
+msgstr "นามแฝงที่ตั้งค่าไว้ไม่ถูกต้อง (บันทึกอ้างอิงที่ไม่รู้จัก)"
+
+#. module: mail
+#: model:ir.actions.act_window,name:mail.mail_guest_action
+#: model:ir.ui.menu,name:mail.mail_guest_menu
+#: model_terms:ir.ui.view,arch_db:mail.mail_guest_view_tree
+msgid "Guests"
+msgstr "ผู้ใช้ชั่วคราว (Guest)"
+
+#. module: mail
+#. odoo-javascript
+#: model:ir.model.fields.selection,name:mail.selection__mail_presence__status__away
+#: model:ir.model.fields.selection,name:mail.selection__res_users__manual_im_status__away
+#: code:addons/mail/static/src/core/common/im_status_dropdown.js:0
+msgid "Away"
+msgstr "ไม่อยู่"
+
+#. module: mail
+#: model:ir.ui.menu,name:mail.discuss_channel_integrations_menu
+#: model_terms:ir.ui.view,arch_db:mail.discuss_channel_view_form
+msgid "Integrations"
+msgstr "การเชื่อมต่อ"
+
+#. module: mail
+#: model:ir.model.fields.selection,name:mail.selection__mail_activity_type__category__phonecall
+msgid "Phonecall"
+msgstr "โทรศัพท์"
+
+#. module: mail
+#. odoo-javascript
+#: model:ir.model.fields.selection,name:mail.selection__mail_notification__notification_status__bounce
+#: code:addons/mail/static/src/core/common/notification_model.js:0
+msgid "Bounced"
+msgstr "ตีกลับ"
+
+#. module: mail
+#. odoo-javascript
+#: model:ir.model.fields,field_description:mail.field_mail_thread_blacklist__message_bounce
+#: model:ir.model.fields,field_description:mail.field_res_company__bounce_formatted
+#: model:ir.model.fields,field_description:mail.field_res_partner__message_bounce
+#: model:ir.model.fields,field_description:mail.field_res_users__message_bounce
+#: model:ir.model.fields.selection,name:mail.selection__mail_notification__failure_type__mail_bounce
+#: code:addons/mail/static/src/core/common/notification_model.js:0
+msgid "Bounce"
+msgstr "ตีกลับ"
+
+#. module: mail
+#. odoo-javascript
+#: model:ir.actions.act_window,name:mail.mail_message_schedule_action
+#: model:ir.model,name:mail.model_mail_message_schedule
+#: model:ir.ui.menu,name:mail.mail_message_schedule_menu
+#: model_terms:ir.ui.view,arch_db:mail.mail_message_schedule_view_search
+#: code:addons/mail/static/src/chatter/web/chatter.xml:0
+msgid "Scheduled Messages"
+msgstr "ข้อความตั้งเวลาส่ง"
+
+#. module: mail
+#. odoo-javascript
+#: model:ir.model.fields.selection,name:mail.selection__mail_mail__failure_type__mail_spam
+#: model:ir.model.fields.selection,name:mail.selection__mail_notification__failure_type__mail_spam
+#: code:addons/mail/static/src/core/common/notification_model.js:0
+msgid "Detected As Spam"
+msgstr "ถูกตรวจว่าเป็นสแปม"
+
+#. module: mail
+#: model:ir.model.fields.selection,name:mail.selection__mail_message__message_type__out_of_office
+msgid "Out-of-office Message"
+msgstr "ข้อความตอบกลับอัตโนมัติ (ไม่อยู่)"
+
+#. module: mail
+#: model:ir.model.fields.selection,name:mail.selection__mail_compose_message__composition_comment_option__reply_all
+#: model:ir.model.fields.selection,name:mail.selection__mail_scheduled_message__composition_comment_option__reply_all
+msgid "Reply-All"
+msgstr "ตอบกลับทั้งหมด"
+
+#. module: mail
+#: model:ir.model.fields.selection,name:mail.selection__res_users__notification_type__email
+msgid "By Emails"
+msgstr "ทางอีเมล"
+
+#. module: mail
+#: model:ir.model.fields.selection,name:mail.selection__ir_actions_server__followers_type__generic
+msgid "Dynamic Followers"
+msgstr "ผู้ติดตามอัตโนมัติ"
+
+#. module: mail
+#: model:ir.model.fields.selection,name:mail.selection__ir_actions_server__followers_type__specific
+msgid "Specific Followers"
+msgstr "ผู้ติดตามที่ระบุ"
+
+#. module: mail
+#: model:ir.actions.act_window,name:mail.discuss_call_history_action
+#: model:ir.model.fields,field_description:mail.field_discuss_channel__call_history_ids
+#: model:ir.model.fields,field_description:mail.field_mail_mail__call_history_ids
+#: model:ir.model.fields,field_description:mail.field_mail_message__call_history_ids
+#: model:ir.ui.menu,name:mail.discuss_call_history_menu
+#: model_terms:ir.ui.view,arch_db:mail.discuss_call_history_view_form
+#: model_terms:ir.ui.view,arch_db:mail.discuss_call_history_view_tree
+msgid "Call History"
+msgstr "ประวัติการโทร"
+
+#. module: mail
+#: model:ir.model.fields.selection,name:mail.selection__mail_activity_type__delay_from__current_date
+msgid "after previous activity completion date"
+msgstr "หลังวันที่เสร็จของกิจกรรมก่อนหน้า"
+
+#. module: mail
+#: model:ir.model.fields.selection,name:mail.selection__mail_ice_server__server_type__stun
+msgid "stun:"
+msgstr "stun:"
+
+#. module: mail
+#: model:ir.model.fields.selection,name:mail.selection__mail_ice_server__server_type__turn
+msgid "turn:"
+msgstr "turn:"
+
+#. module: mail
+#. odoo-javascript
+#: model:ir.model.fields.selection,name:mail.selection__mail_mail__failure_type__mail_from_missing
+#: model:ir.model.fields.selection,name:mail.selection__mail_notification__failure_type__mail_from_missing
+#: code:addons/mail/static/src/core/common/notification_model.js:0
+msgid "Missing from address"
+msgstr "ไม่มีที่อยู่ผู้ส่ง"
+
+#. module: mail
+#. odoo-javascript
+#: model:ir.model.fields.selection,name:mail.selection__mail_mail__failure_type__mail_from_invalid
+#: model:ir.model.fields.selection,name:mail.selection__mail_notification__failure_type__mail_from_invalid
+#: code:addons/mail/static/src/core/common/notification_model.js:0
+msgid "Invalid from address"
+msgstr "ที่อยู่ผู้ส่งไม่ถูกต้อง"
+
+#. module: mail
+#: model:ir.model.fields,field_description:mail.field_mail_activity__state
+msgid "State"
+msgstr "สถานะ"

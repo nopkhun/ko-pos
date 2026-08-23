@@ -99,15 +99,22 @@ EOF
 
 ## Step 4 — Get it into the repo
 
+**The patch pipeline (`patch/thai_v2/`, `patch/thai_v3/`) was retired on 2026-08-23.**
+Everything it delivered is folded into `addons.tar.gz`, which is now the single
+source of truth. The section below is kept for historical reference only.
+
 ### If you have a real clone (Codex, Antigravity, local shell) — do it this way
 
 Unpack `addons.tar.gz`, edit `ko_pos_thai_lang/i18n_overrides/<module>.po` directly,
-repack, commit. Then please also carry out the cleanup in `../AGENTS.md` §4: delete
-`patch/thai_v2/` and `patch/thai_v3/` and strip their handling out of the Compose
-file. The patch pipeline below exists only because a chat-only agent could not write
-binary files, and it is a liability once someone has real git access.
+repack, commit:
 
-### If you are a chat-only agent with a text-only push tool
+```bash
+mkdir /tmp/ko && tar xzf addons.tar.gz -C /tmp/ko
+# edit files under /tmp/ko/...
+cd /tmp/ko && COPYFILE_DISABLE=1 tar czf <repo>/addons.tar.gz .
+```
+
+### Historical: chat-only agent with a text-only push tool (pipeline retired 2026-08-23)
 
 **Small text file → just push it.** `.po` fragments are plain UTF-8. Put them in
 `patch/thai_v3/<module>.append.po`; `addons-init` appends them onto the matching

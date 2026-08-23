@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_thai_receipt" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.ko.thai.receipt</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <block id="pos_bills_and_receipts_section" position="inside">
+                <setting id="ko_thai_receipt" string="ใบกำกับภาษีอย่างย่อ (ไทย)"
+                         help="แสดงหัวใบเสร็จแบบใบกำกับภาษีอย่างย่อ พร้อมเลขประจำตัวผู้เสียภาษีและเลขรหัสประจำเครื่อง POS">
+                    <field name="pos_thai_receipt_enabled"/>
+                    <div class="content-group mt16" invisible="not pos_thai_receipt_enabled">
+                        <div class="row">
+                            <label string="เลขรหัสประจำเครื่อง POS" for="pos_rd_machine_no" class="col-lg-5 o_light_label"/>
+                            <field name="pos_rd_machine_no" placeholder="เช่น A1234567890"/>
+                        </div>
+                    </div>
+                </setting>
+            </block>
+        </field>
+    </record>
+</odoo>

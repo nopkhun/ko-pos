@@ -5,6 +5,7 @@ import { ProductTemplate } from "@point_of_sale/app/models/product_template";
 import { formatCurrency } from "@web/core/currency";
 import { normalize } from "@web/core/l10n/utils";
 import { patch } from "@web/core/utils/patch";
+import { openKoItemOptions } from "./ko_item_options_sheet";
 
 function plainText(value) {
     return String(value || "")
@@ -70,9 +71,18 @@ patch(ProductCard.prototype, {
         return Number(this.props.productCartQty || 0) > 0;
     },
 
+    koHandleClick(event) {
+        const product = this.props.product;
+        if (product?.isConfigurable?.() && !product?.isCombo?.()) {
+            openKoItemOptions(product);
+            return;
+        }
+        return this.props.onClick(event);
+    },
+
     koIncrement(event) {
         event.stopPropagation();
-        return this.props.onClick(event);
+        return this.koHandleClick(event);
     },
 
     koDecrement(event) {

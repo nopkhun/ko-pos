@@ -1,0 +1,579 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 16.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-04-10 18:37+0000\n"
+"PO-Revision-Date: 2026-08-13 03:54+0000\n"
+"Last-Translator: Nusara Boonma <nuboo@odoo.com>\n"
+"Language-Team: Thai <https://translate.odoo.com/projects/odoo-19/mrp/th/>\n"
+"Language: th\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 2026.6.1\n"
+"X-KO-Override: ko_pos_thai_lang\n"
+
+#. module: mrp
+#: model:ir.model.fields,help:mrp.field_stock_warehouse__manufacture_steps
+msgid ""
+"1 Step: Consume components from stock and produce.\n"
+"              2 Steps: Pick components from stock and then produce.\n"
+"              3 Steps: Pick components from stock, produce, and then move final product(s) from production area to stock."
+msgstr ""
+"ขั้นตอนที่ 1: บริโภคส่วนประกอบจากสต็อกและผลิตผล\n"
+"              ขั้นตอนที่ 2: เลือกส่วนประกอบจากสต็อกแล้วผลิต\n"
+"              ขั้นตอนที่ 3: เลือกส่วนประกอบจากสต็อก ผลิต และย้ายสินค้าขั้นสุดท้ายจากพื้นที่การผลิตไปยังสต็อก"
+
+#. module: mrp
+#: model_terms:ir.ui.view,arch_db:mrp.res_config_settings_view_form
+msgid ""
+"Add by-products to bills of materials. This can be used to get several "
+"finished products as well. Without this option you only do: A + B = C. With "
+"the option: A + B = C + D."
+msgstr ""
+"เพิ่มสินค้าพลอยได้ในรายการวัสดุ "
+"สามารถใช้เพื่อให้ได้สินค้าสำเร็จรูปหลายอย่างเช่นกัน หากไม่มีตัวเลือกนี้ "
+"คุณจะทำได้เพียง: A + B = C ด้วยตัวเลือก: A + B = C + D"
+
+#. module: mrp
+#: model:ir.model.fields,field_description:mrp.field_stock_picking_type__auto_print_done_mrp_product_labels
+msgid "Auto Print Produced Product Labels"
+msgstr "พิมพ์ฉลากสินค้าที่ผลิตโดยอัตโนมัติ"
+
+#. module: mrp
+#: model:ir.model.fields,field_description:mrp.field_product_product__variant_bom_ids
+msgid "BOM Product Variants"
+msgstr "BOM ตัวเลือกสินค้า"
+
+#. module: mrp
+#: model:ir.model.fields,help:mrp.field_mrp_bom_byproduct__bom_product_template_attribute_value_ids
+#: model:ir.model.fields,help:mrp.field_mrp_bom_line__bom_product_template_attribute_value_ids
+#: model:ir.model.fields,help:mrp.field_mrp_routing_workcenter__bom_product_template_attribute_value_ids
+msgid "BOM Product Variants needed to apply this line."
+msgstr "ตัวเลือกสินค้า BOM จำเป็นต้องใช้รายการนี้"
+
+#. module: mrp
+#. odoo-javascript
+#: model:ir.model.fields,field_description:mrp.field_res_config_settings__group_mrp_byproducts
+#: model_terms:ir.ui.view,arch_db:mrp.mo_overview_byproducts
+#: model_terms:ir.ui.view,arch_db:mrp.mrp_production_form_view
+#: code:addons/mrp/static/src/components/bom_overview_special_line/mrp_bom_overview_special_line.xml:0
+msgid "By-Products"
+msgstr "สินค้าพลอยได้"
+
+#. module: mrp
+#: model:ir.model.fields,field_description:mrp.field_mrp_bom_byproduct__product_id
+msgid "By-product"
+msgstr "สินค้าพลอยได้"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_bom.py:0
+msgid "By-product %s should not be the same as BoM product."
+msgstr "สินค้าพลอยได้ %s ไม่ควรเป็นสินค้า BoM เดียวกัน"
+
+#. module: mrp
+#: model:ir.model.fields,help:mrp.field_stock_move__byproduct_id
+msgid "By-product line that generated the move in a manufacturing order"
+msgstr "รายการสินค้าพลอยได้ที่สร้างการเคลื่อนไหวในใบสั่งผลิต"
+
+#. module: mrp
+#: model:ir.model.fields,field_description:mrp.field_mrp_bom__byproduct_ids
+#: model:ir.model.fields,field_description:mrp.field_stock_move__byproduct_id
+#: model_terms:ir.ui.view,arch_db:mrp.mrp_bom_form_view
+msgid "By-products"
+msgstr "สินค้าพลอยได้"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_bom.py:0
+msgid "By-products cost shares must be positive."
+msgstr "ส่วนแบ่งต้นทุนสินค้าพลอยได้ต้องเป็นค่าบวก"
+
+#. module: mrp
+#: model:ir.model,name:mrp.model_mrp_bom_byproduct
+#: model_terms:ir.ui.view,arch_db:mrp.mrp_bom_byproduct_form_view
+msgid "Byproduct"
+msgstr "สินค้าพลอยได้"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/report/mrp_report_bom_structure.py:0
+msgid "Byproducts"
+msgstr "สินค้าพลอยได้"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_bom.py:0
+msgid ""
+"Cannot compute days to prepare due to missing route info for at least 1 "
+"component or for the final product."
+msgstr ""
+"ไม่สามารถคำนวณวันในการเตรียมการได้เนื่องจากขาดข้อมูลเส้นทางสำหรับส่วนประกอบอย่างน้อย"
+" 1 ชิ้นหรือสำหรับสินค้าขั้นสุดท้าย"
+
+#. module: mrp
+#: model:ir.model,name:mrp.model_res_config_settings
+msgid "Config Settings"
+msgstr "ตั้งค่าการตั้งค่า"
+
+#. module: mrp
+#: model:ir.ui.menu,name:mrp.menu_mrp_configuration
+#: model_terms:ir.ui.view,arch_db:mrp.stock_production_type_kanban
+msgid "Configuration"
+msgstr "การตั้งค่า"
+
+#. module: mrp
+#: model:ir.model.fields,help:mrp.field_mrp_bom__consumption
+msgid ""
+"Defines if you can consume more or less components than the quantity defined on the BoM:\n"
+"  * Allowed: allowed for all manufacturing users.\n"
+"  * Allowed with warning: allowed for all manufacturing users with summary of consumption differences when closing the manufacturing order.\n"
+"  Note that in the case of component Highlight Consumption, where consumption is registered manually exclusively, consumption warnings will still be issued when appropriate also.\n"
+"  * Blocked: only a manager can close a manufacturing order when the BoM consumption is not respected."
+msgstr ""
+"กำหนดว่าคุณสามารถใช้ส่วนประกอบมากกว่าหรือน้อยกว่าปริมาณที่กำหนดไว้ใน BoM:\n"
+"* อนุญาต: อนุญาตสำหรับผู้ใช้การผลิตทั้งหมด\n"
+"* อนุญาตแบบมีคำเตือน: อนุญาตสำหรับผู้ใช้การผลิตทั้งหมดโดยสรุปผลต่างการบริโภคเมื่อปิดใบสั่งผลิต\n"
+"กรุณาทราบว่าในกรณีของการใช้ส่วนประกอบด้วยตนเอง โดยที่ปริมาณการใช้ถูกบันทึกด้วยตนเองโดยเฉพาะ ไฮไลท์การบริโภคจะยังคงออกตามความเหมาะสมด้วย\n"
+"* บล็อค: มีเพียงผู้จัดการเท่านั้นที่สามารถปิดใบสั่งผลิตได้เมื่อไม่คำนึงถึงการใช้ BoM"
+
+#. module: mrp
+#: model:ir.model.fields,help:mrp.field_mrp_bom__product_id
+msgid ""
+"If a product variant is defined the BOM is available only for this product."
+msgstr "หากมีการกำหนดตัวเลือกสินค้า BOM จะพร้อมใช้งานสำหรับสินค้านี้เท่านั้น"
+
+#. module: mrp
+#: model:ir.model.fields,help:mrp.field_mrp_production__components_availability
+msgid ""
+"Latest component availability status for this MO. If green, then the MO's "
+"readiness status is ready, as per BOM configuration."
+msgstr ""
+"สถานะความพร้อมใช้งานของส่วนประกอบล่าสุดสำหรับ MO นี้ หากเป็นสีเขียว "
+"แสดงว่าสถานะความพร้อมของ MO พร้อมแล้ว ตามการตั้งค่า BOM"
+
+#. module: mrp
+#: model:ir.model.fields,help:mrp.field_product_document__attached_on_mrp
+msgid ""
+"Leave hidden if document only accessible on product form.\n"
+"Select Bill of Materials to visualise this document as a product attachment when this product is in a bill of material."
+msgstr ""
+"ปล่อยการซ่อนไว้หากเอกสารเข้าถึงได้เฉพาะในแบบฟอร์มสินค้าเท่านั้น\n"
+"เลือก รายการวัสดุ เพื่อให้เห็นภาพเอกสารนี้เป็นเอกสารแนบของสินค้า เมื่อสินค้านี้อยู่ในรายการวัสดุ"
+
+#. module: mrp
+#: model_terms:ir.actions.act_window,help:mrp.mrp_workcenter_kanban_action
+msgid ""
+"Manufacturing operations are processed at Work Centers. A Work Center can be composed of\n"
+"                workers and/or machines, they are used for costing, scheduling, capacity planning, etc.\n"
+"                They can be defined via the configuration menu."
+msgstr ""
+"ปฏิบัติการผลิตที่ศูนย์งาน ศูนย์งานสามารถประกอบด้วย\n"
+"            พนักงานและ/หรือเครื่องจักรที่ใช้ในการคิดต้นทุน การจัดกำหนดการ การวางแผนกำลังการผลิต และอื่น ๆ \n"
+"                สามารถกำหนดได้ผ่านเมนูการตั้งค่า"
+
+#. module: mrp
+#: model:ir.model.fields,help:mrp.field_mrp_production__reservation_state
+#: model:ir.model.fields,help:mrp.field_mrp_workorder__production_availability
+msgid ""
+"Manufacturing readiness for this MO, as per bill of material configuration:\n"
+"            * Ready: The material is available to start the production.\n"
+"            * Waiting: The material is not available to start the production.\n"
+msgstr ""
+"ความพร้อมในการผลิตสำหรับ MO นี้ ต่อรายการตั้งค่าบิลวัสดุ:\n"
+"            * พร้อม: มีวัสดุเพื่อเริ่มการผลิต\n"
+"            * รอ: วัสดุไม่พร้อมใช้งานเพื่อเริ่มการผลิต\n"
+
+#. module: mrp
+#: model_terms:ir.ui.view,arch_db:mrp.mrp_production_form_view
+msgid "Note that another version of this BOM is available."
+msgstr "กรุณาทราบว่า BOM นี้มีเวอร์ชันอื่นให้ใช้งานแล้ว"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_workcenter.py:0
+msgid ""
+"Note that archived work center(s): '%s' is/are still linked to active Bill "
+"of Materials, which means that operations can still be planned on it/them. "
+"To prevent this, deletion of the work center is recommended instead."
+msgstr ""
+"กรุณาทราบว่าศูนย์งานที่เก็บถาวร: '%s' ยังคงเชื่อมโยงกับบิลวัสดุที่ใช้งานอยู่"
+" ซึ่งหมายความว่ายังคงสามารถวางแผนการปฏิบัติการได้ เพื่อป้องกันสิ่งนี้ "
+"ขอแนะนำให้ลบศูนย์งานแทน"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/product.py:0
+msgid ""
+"Note that product(s): '%s' is/are still linked to active Bill of Materials, "
+"which means that the product can still be used on it/them."
+msgstr ""
+"กรุณาทราบว่าสินค้า: '%s' ยังคงเชื่อมโยงกับรายการวัสดุที่ใช้งานอยู่ "
+"ซึ่งหมายความว่าสินค้ายังคงสามารถใช้กับสินค้านั้นได้"
+
+#. module: mrp
+#: model:ir.model.fields,field_description:mrp.field_mrp_bom__message_needaction_counter
+#: model:ir.model.fields,field_description:mrp.field_mrp_production__message_needaction_counter
+#: model:ir.model.fields,field_description:mrp.field_mrp_routing_workcenter__message_needaction_counter
+#: model:ir.model.fields,field_description:mrp.field_mrp_unbuild__message_needaction_counter
+#: model:ir.model.fields,field_description:mrp.field_mrp_workcenter__message_needaction_counter
+msgid "Number of Actions"
+msgstr "จำนวนการดำเนินการ"
+
+#. module: mrp
+#: model:ir.model.fields,field_description:mrp.field_mrp_bom__message_has_error_counter
+#: model:ir.model.fields,field_description:mrp.field_mrp_production__message_has_error_counter
+#: model:ir.model.fields,field_description:mrp.field_mrp_routing_workcenter__message_has_error_counter
+#: model:ir.model.fields,field_description:mrp.field_mrp_unbuild__message_has_error_counter
+#: model:ir.model.fields,field_description:mrp.field_mrp_workcenter__message_has_error_counter
+msgid "Number of errors"
+msgstr "จำนวนข้อผิดพลาด"
+
+#. module: mrp
+#: model:ir.model.fields,help:mrp.field_mrp_bom__message_has_error_counter
+#: model:ir.model.fields,help:mrp.field_mrp_production__message_has_error_counter
+#: model:ir.model.fields,help:mrp.field_mrp_routing_workcenter__message_has_error_counter
+#: model:ir.model.fields,help:mrp.field_mrp_unbuild__message_has_error_counter
+#: model:ir.model.fields,help:mrp.field_mrp_workcenter__message_has_error_counter
+msgid "Number of messages with delivery error"
+msgstr "จำนวนข้อความที่มีข้อผิดพลาดในการส่ง"
+
+#. module: mrp
+#: model_terms:ir.ui.view,arch_db:mrp.view_picking_type_form_inherit_mrp
+msgid ""
+"Odoo opens a PDF preview by default. If you want to print instantly,\n"
+"                                install the IoT App on a computer that is on the same local network as the\n"
+"                                barcode operator and configure the routing of the reports."
+msgstr ""
+"Odoo เปิดตัวอย่าง PDF ตามค่าเริ่มต้น หากคุณต้องการพิมพ์ทันที\n"
+"                                ติดตั้ง IoT App บนคอมพิวเตอร์ที่อยู่ในเครือข่ายในพื้นที่เดียวกันกับ\n"
+"                                ตัวดำเนินการบาร์โค้ดและตั้งค่าการกำหนดเส้นทางของรายงาน"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_production.py:0
+msgid "Please set the first Serial Number or a default sequence"
+msgstr "กรุณาตั้งค่าหมายเลขซีเรียลแรกหรือลำดับเริ่มต้น"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_workorder.py:0
+msgid "Please unblock the work center to start the work order."
+msgstr "กรุณาปลดบล็อคศูนย์งานเพื่อเริ่มใบสั่งงาน"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_workorder.py:0
+msgid "Please unblock the work center to validate the work order"
+msgstr "กรุณาปลดบล็อคศูนย์งานเพื่อตรวจสอบใบสั่งงาน"
+
+#. module: mrp
+#: model:ir.model.fields,field_description:mrp.field_res_config_settings__module_mrp_plm
+msgid "Product Lifecycle Management (PLM)"
+msgstr "การจัดการวงจรชีวิตสินค้า (PLM)"
+
+#. module: mrp
+#: model:ir.model,name:mrp.model_stock_replenish_mixin
+msgid "Product Replenish Mixin"
+msgstr "เติมสินค้ามิกซ์ซิน"
+
+#. module: mrp
+#: model:ir.model,name:mrp.model_product_product
+#: model:ir.model.fields,field_description:mrp.field_mrp_bom__product_id
+msgid "Product Variant"
+msgstr "ตัวเลือกสินค้า"
+
+#. module: mrp
+#: model:ir.actions.act_window,name:mrp.mrp_product_variant_action
+#: model:ir.ui.menu,name:mrp.product_variant_mrp
+msgid "Product Variants"
+msgstr "ตัวเลือกสินค้า"
+
+#. module: mrp
+#. odoo-javascript
+#: code:addons/mrp/static/src/mrp_forecasted/forecasted_details.xml:0
+msgid "Production of Draft MO"
+msgstr "การผลิตร่าง MO"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_production.py:0
+msgid "Scrap Products"
+msgstr "สินค้าเศษเหล็ก"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_bom.py:0
+msgid ""
+"The current configuration is incorrect because it would create a cycle "
+"between these products: %s."
+msgstr ""
+"การตั้งค่าปัจจุบันไม่ถูกต้อง "
+"เนื่องจากจะสร้างการหมุนเวียนระหว่างสินค้าเหล่านี้: %s"
+
+#. module: mrp
+#: model:ir.model.fields,help:mrp.field_mrp_bom_byproduct__cost_share
+msgid ""
+"The percentage of the final production cost for this by-product line "
+"(divided between the quantity produced).The total of all by-products' cost "
+"share must be less than or equal to 100."
+msgstr ""
+"เปอร์เซ็นต์ของต้นทุนการผลิตขั้นสุดท้ายสำหรับรายการสินค้าพลอยได้นี้ "
+"(หารด้วยปริมาณที่ผลิตได้) "
+"ส่วนแบ่งต้นทุนรวมของสินค้าพลอยได้ทั้งหมดต้องน้อยกว่าหรือเท่ากับ 100"
+
+#. module: mrp
+#: model:ir.model.fields,help:mrp.field_stock_move__cost_share
+msgid ""
+"The percentage of the final production cost for this by-product. The total "
+"of all by-products' cost share must be smaller or equal to 100."
+msgstr ""
+"เปอร์เซ็นต์ของต้นทุนการผลิตขั้นสุดท้ายสำหรับสินค้าพลอยได้นี้ "
+"ส่วนแบ่งต้นทุนรวมของสินค้าพลอยได้ทั้งหมดต้องน้อยกว่าหรือเท่ากับ 100"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_workorder.py:0
+msgid ""
+"The planned end date of the work order cannot be prior to the planned start "
+"date, please correct this to save the work order."
+msgstr ""
+"วันที่สิ้นสุดตามแผนของคำสั่งงานไม่สามารถอยู่ก่อนวันที่เริ่มต้นที่วางแผนไว้ "
+"กรุณาแก้ไขให้ถูกต้องเพื่อบันทึกคำสั่งงาน"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_production.py:0
+msgid ""
+"The serial number %(number)s used for byproduct %(product_name)s has already"
+" been produced"
+msgstr ""
+"หมายเลขซีเรียล %(number)s ที่ใช้สำหรับสินค้าพลอยได้%(product_name)s "
+"ถูกผลิตแล้ว"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_bom.py:0
+msgid "The total cost share for a BoM's by-products cannot exceed 100."
+msgstr "ส่วนแบ่งต้นทุนรวมสำหรับสินค้าพลอยได้ของ BoM ต้องไม่เกิน 100"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_production.py:0
+msgid ""
+"The total cost share for a manufacturing order's by-products cannot exceed "
+"100."
+msgstr "ส่วนแบ่งต้นทุนรวมสำหรับสินค้าพลอยได้ของใบสั่งผลิตต้องไม่เกิน 100"
+
+#. module: mrp
+#: model:ir.model.fields,help:mrp.field_mrp_bom__product_qty
+msgid ""
+"This should be the smallest quantity that this product can be produced in. "
+"If the BOM contains operations, make sure the work center capacity is "
+"accurate."
+msgstr ""
+"นี่ควรเป็นปริมาณที่น้อยที่สุดที่สามารถผลิตสินค้านี้ได้ ถ้า BOM "
+"ประกอบด้วยการดำเนินงาน ตรวจสอบว่ากำลังการผลิตของศูนย์งานนั้นถูกต้อง"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/wizard/mrp_consumption_warning.py:0
+msgid ""
+"Values cannot be set and validated because a Lot/Serial Number needs to be "
+"specified for a tracked product that is having its consumed amount "
+"increased:%(products)s"
+msgstr ""
+"ไม่สามารถตั้งค่าและตรวจสอบค่าได้ "
+"เนื่องจากต้องระบุหมายเลขล็อต/หมายเลขซีเรียลสำหรับสินค้าที่ติดตามซึ่งมีปริมาณการใช้ที่เพิ่มขึ้น:%(products)s"
+
+#. module: mrp
+#: model_terms:ir.ui.view,arch_db:mrp.report_mrporder
+msgid "Vendor ABC"
+msgstr "ซัพพลายเออร์ ABC"
+
+#. module: mrp
+#: model_terms:ir.ui.view,arch_db:mrp.view_mrp_consumption_warning_form
+msgid ""
+"You consumed a different quantity than expected for the following products.\n"
+"                        <b invisible=\"consumption == 'strict'\">\n"
+"                            Please confirm it has been done on purpose.\n"
+"                        </b>\n"
+"                        <b invisible=\"consumption != 'strict'\">\n"
+"                            Please review your component consumption or ask a manager to validate\n"
+"                            <span invisible=\"mrp_production_count != 1\">this manufacturing order</span>\n"
+"                            <span invisible=\"mrp_production_count == 1\">these manufacturing orders</span>.\n"
+"                        </b>"
+msgstr ""
+"คุณใช้ปริมาณที่แตกต่างจากที่คาดไว้สำหรับสินค้าต่อไปนี้\n"
+"                        <b invisible=\"consumption == 'strict'\">\n"
+"                            กรุณายืนยันว่าได้ดำเนินการโดยตั้งใจ\n"
+"                        </b>\n"
+"                        <b invisible=\"consumption != 'strict'\">\n"
+"                            กรุณาตรวจสอบปริมาณการใช้ส่วนประกอบของคุณหรือขอให้ผู้จัดการตรวจสอบ\n"
+"                            <span invisible=\"mrp_production_count != 1\">ความถูกต้องของใบสั่งผลิตนี้</span>\n"
+"                            <span invisible=\"mrp_production_count == 1\">การสั่งผลิตเหล่านี้</span>\n"
+"                        </b>"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_workorder.py:0
+msgid ""
+"You need to define at least one productivity loss in the category "
+"'Performance'. Create one from the Manufacturing app, menu: Configuration / "
+"Productivity Losses."
+msgstr ""
+"คุณต้องกำหนดการสูญเสียผลิตผลอย่างน้อยหนึ่งรายการในหมวดหมู่ 'ประสิทธิภาพ' "
+"สร้างหนึ่งรายการจากแอปการผลิต เมนู: การตั้งค่า / การสูญเสียผลผลิต"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_workorder.py:0
+msgid ""
+"You need to define at least one productivity loss in the category "
+"'Productivity'. Create one from the Manufacturing app, menu: Configuration /"
+" Productivity Losses."
+msgstr ""
+"คุณต้องกำหนดการสูญเสียผลผลิตอย่างน้อยหนึ่งรายการในหมวดหมู่ 'ผลผลิต' "
+"สร้างหนึ่งรายการจากแอปการผลิต เมนู: การตั้งค่า / การสูญเสียผลผลิต"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/mrp_workcenter.py:0
+msgid ""
+"You need to define at least one unactive productivity loss in the category "
+"'Performance'. Create one from the Manufacturing app, menu: Configuration / "
+"Productivity Losses."
+msgstr ""
+"คุณต้องกำหนดการสูญเสียผลผลิตที่ไม่ได้ใช้งานอย่างน้อยหนึ่งรายการในหมวดหมู่ "
+"'ประสิทธิภาพ' สร้างหนึ่งรายการจากแอปการผลิต เมนู: การตั้งค่า / "
+"การสูญเสียผลผลิต"
+
+#. module: mrp
+#. odoo-python
+#: code:addons/mrp/models/stock_quant.py:0
+msgid ""
+"You should update the components quantity instead of directly updating the "
+"quantity of the kit product."
+msgstr ""
+"คุณควรอัปเดตปริมาณส่วนประกอบแทนที่จะอัปเดตปริมาณของสินค้าชุดอุปกรณ์โดยตรง"
+
+#. module: mrp
+#: model:ir.actions.act_window,name:mrp.product_open_bom
+#: model:ir.actions.act_window,name:mrp.template_open_bom
+#: model:ir.model.fields,field_description:mrp.field_product_product__bom_ids
+#: model:ir.model.fields,field_description:mrp.field_product_template__bom_ids
+#: model:ir.model.fields,field_description:mrp.field_stock_replenishment_info__bom_id
+#: model:ir.model.fields,field_description:mrp.field_stock_warehouse_orderpoint__bom_id
+#: model:ir.model.fields.selection,name:mrp.selection__product_document__attached_on_mrp__bom
+#: model_terms:ir.ui.view,arch_db:mrp.mrp_bom_tree_view
+#: model_terms:ir.ui.view,arch_db:mrp.product_product_form_view_bom_button
+#: model_terms:ir.ui.view,arch_db:mrp.product_template_form_view_bom_button
+#: model_terms:ir.ui.view,arch_db:mrp.view_mrp_bom_filter
+msgid "Bill of Materials"
+msgstr "สูตรการผลิต (BoM)"
+
+#. module: mrp
+#: model:ir.actions.act_window,name:mrp.mrp_bom_form_action
+#: model:ir.ui.menu,name:mrp.menu_mrp_bom_form_action
+#: model_terms:ir.ui.view,arch_db:mrp.view_stock_replenishment_info_stock_mrp_inherit
+msgid "Bills of Materials"
+msgstr "สูตรการผลิต (BoM)"
+
+#. module: mrp
+#: model:ir.model.fields,field_description:mrp.field_stock_scrap__bom_id
+#: model:ir.model.fields.selection,name:mrp.selection__mrp_bom__type__phantom
+#: model_terms:ir.ui.view,arch_db:mrp.view_mrp_bom_filter
+msgid "Kit"
+msgstr "ชุด (Kit)"
+
+#. module: mrp
+#: model:ir.actions.act_window,name:mrp.mrp_unbuild
+#: model:ir.ui.menu,name:mrp.menu_mrp_unbuild
+#: model_terms:ir.ui.view,arch_db:mrp.mrp_unbuild_form_view
+msgid "Unbuild Orders"
+msgstr "ใบสั่งแยกชิ้นคืน"
+
+#. module: mrp
+#: model:ir.actions.act_window,name:mrp.action_mrp_routing_time
+#: model:ir.actions.act_window,name:mrp.action_mrp_workorder_production_specific
+#: model:ir.actions.act_window,name:mrp.action_work_orders
+#: model:ir.actions.act_window,name:mrp.mrp_workorder_mrp_production_form
+#: model:ir.actions.act_window,name:mrp.mrp_workorder_todo
+#: model:ir.model.fields,field_description:mrp.field_mrp_production__workorder_ids
+#: model:ir.model.fields,field_description:mrp.field_mrp_routing_workcenter__workorder_ids
+#: model:ir.ui.menu,name:mrp.menu_mrp_work_order_report
+#: model:ir.ui.menu,name:mrp.menu_mrp_workorder_todo
+#: model_terms:ir.ui.view,arch_db:mrp.mrp_production_form_view
+#: model_terms:ir.ui.view,arch_db:mrp.res_config_settings_view_form
+msgid "Work Orders"
+msgstr "ใบสั่งงาน"
+
+#. module: mrp
+#: model:ir.model.fields.selection,name:mrp.selection__mrp_production__state__to_close
+#: model_terms:ir.ui.view,arch_db:mrp.view_mrp_production_filter
+msgid "To Close"
+msgstr "รอปิดงาน"
+
+#. module: mrp
+#. odoo-javascript
+#: model:ir.model.fields.selection,name:mrp.selection__mrp_workorder__state__ready
+#: model_terms:ir.ui.view,arch_db:mrp.view_mrp_production_filter
+#: model_terms:ir.ui.view,arch_db:mrp.view_mrp_production_work_order_search
+#: model_terms:ir.ui.view,arch_db:mrp.view_mrp_production_workorder_form_view_filter
+#: code:addons/mrp/static/src/components/wo_list_view_dropdown/wo_list_view_dropdown.xml:0
+msgid "To Do"
+msgstr "รอทำ"
+
+#. module: mrp
+#. odoo-javascript
+#: model:ir.model.fields.selection,name:mrp.selection__mrp_bom__consumption__strict
+#: model:ir.model.fields.selection,name:mrp.selection__mrp_consumption_warning__consumption__strict
+#: model:ir.model.fields.selection,name:mrp.selection__mrp_production__consumption__strict
+#: model:ir.model.fields.selection,name:mrp.selection__mrp_workcenter__working_state__blocked
+#: model:ir.model.fields.selection,name:mrp.selection__mrp_workorder__state__blocked
+#: model_terms:ir.ui.view,arch_db:mrp.view_mrp_production_work_order_search
+#: model_terms:ir.ui.view,arch_db:mrp.view_mrp_production_workorder_form_view_filter
+#: code:addons/mrp/static/src/components/wo_list_view_dropdown/wo_list_view_dropdown.xml:0
+msgid "Blocked"
+msgstr "ติดขัด"
+
+#. module: mrp
+#: model:ir.model.fields.selection,name:mrp.selection__mrp_workorder__cost_mode__actual
+msgid "Actual"
+msgstr "ตามจริง"
+
+#. module: mrp
+#: model:ir.model.fields.selection,name:mrp.selection__mrp_routing_workcenter__cost_mode__actual
+msgid "Actual time"
+msgstr "เวลาจริง"
+
+#. module: mrp
+#: model:ir.model.fields.selection,name:mrp.selection__mrp_workorder__cost_mode__estimated
+msgid "Estimated"
+msgstr "ประมาณการ"
+
+#. module: mrp
+#: model:ir.model.fields.selection,name:mrp.selection__mrp_routing_workcenter__time_mode__auto
+msgid "Computed"
+msgstr "คำนวณอัตโนมัติ"
+
+#. module: mrp
+#: model:ir.model.fields.selection,name:mrp.selection__mrp_routing_workcenter__cost_mode__estimated
+msgid "Theorical time"
+msgstr "เวลาตามทฤษฎี"
+
+#. module: mrp
+#: model:ir.model.fields.selection,name:mrp.selection__mrp_production__components_availability_state__expected
+msgid "Expected"
+msgstr "คาดการณ์"
+
+#. module: mrp
+#: model:ir.actions.server,name:mrp.action_production_order_scrap
+#: model:ir.model,name:mrp.model_stock_scrap
+#: model:ir.model.fields,field_description:mrp.field_mrp_workorder__scrap_ids
+#: model:ir.ui.menu,name:mrp.menu_mrp_scrap
+msgid "Scrap"
+msgstr "ตัดของเสีย"
