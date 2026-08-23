@@ -97,6 +97,9 @@
                 <i class="fa fa-cutlery"/>
             </div>
         </xpath>
+        <xpath expr="//div[hasclass('product-img')]/img" position="attributes">
+            <attribute name="t-on-error">koHandleImageError</attribute>
+        </xpath>
         <xpath expr="//div[hasclass('product-name')]" position="after">
             <div class="ko-product-meta">
                 <span t-if="this.koEnglishName"><t t-esc="this.koEnglishName"/> · </span>

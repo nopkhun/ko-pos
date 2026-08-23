@@ -25,6 +25,9 @@ patch(ProductScreen.prototype, {
     },
 
     get koDirectSaleName() {
+        if (this.currentOrder?.isDirectSale) {
+            return "ขายหน้าเคาน์เตอร์";
+        }
         return this.currentOrder?.preset_id?.name || this.pos.config?.name || "ขายหน้าร้าน";
     },
 
@@ -40,6 +43,7 @@ patch(ProductScreen.prototype, {
         if (sessionName) {
             return String(sessionName).split("/").at(-1);
         }
-        return session?.id || "-";
+        const sessionId = session?.id || globalThis.odoo?.pos_session_id;
+        return sessionId ? String(sessionId).padStart(4, "0") : "-";
     },
 });

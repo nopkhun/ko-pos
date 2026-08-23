@@ -287,6 +287,17 @@
     object-fit: cover;
 }
 
+.pos .ko-product-card .product-img.ko-image-error::after {
+    display: grid;
+    width: 54px;
+    height: 54px;
+    place-items: center;
+    color: var(--ko-muted);
+    content: "\f03e";
+    font-family: FontAwesome;
+    font-size: 18px;
+}
+
 .pos .ko-product-card .product-content {
     display: flex !important;
     flex: 1 1 auto;

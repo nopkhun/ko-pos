@@ -98,4 +98,9 @@ patch(ProductCard.prototype, {
             line.setQuantity(nextQuantity, Boolean(line.combo_line_ids?.length));
         }
     },
+
+    koHandleImageError(event) {
+        event.currentTarget.hidden = true;
+        event.currentTarget.parentElement?.classList.add("ko-image-error");
+    },
 });
