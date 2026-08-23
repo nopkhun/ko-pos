@@ -420,3 +420,63 @@ only `.pos-receipt-container` leaves all surrounding stock receipt controls inta
 workflow) `ticket-screen` roots. Validate both `ui.isSmall` branches in a real browser;
 well-formed XML and a clean module upgrade do not prove that the intended runtime branch
 was replaced.
+
+---
+
+### The kitchen display shows orders from another shop
+
+**Symptom:** with more than one POS (`pos.config`), `/kds` mixes every shop's tickets on
+one board; a cook at ร้านหวานอยู่ sees ร้านชอบแกง's orders.
+
+**Cause:** `/kds/data` searched `ko.kds.ticket` with no `config_id` filter at all, and the
+bus channel was the single global string `ko_pos_kds`. Tickets already carried
+`config_id` from the POS payload — nothing ever read it.
+
+**Fix (`ko_pos_kds` 19.0.5.0.0):** a screen is bound to exactly one POS.
+`/kds` is a shop picker (it redirects straight through when the user can see only one
+POS), the board lives at `/kds/pos/<config_id>`, and `/kds/data` **requires** `config_id`
+and answers `400 config_required` without one — an unscoped request must never fall back
+to "everything". Bus channels are `ko_pos_kds_<config_id>`. Tickets and lines carry
+`company_id` (stored related from the POS) with global `ir.rule`s, so a second company is
+isolated as well. Every mutating `/kds/*` route re-checks that the ticket's POS is one the
+user may see.
+
+**If you add another KDS query, scope it.** The default in this module is *not* safe:
+`ko.kds.ticket` has no implicit POS filter, so a new search without `('config_id','=',…)`
+reintroduces exactly this bug.
+
+---
+
+### A change is pushed and deployed, but production still runs the old code
+
+**Symptom:** the deploy action succeeds, containers are healthy, yet the fix is not there.
+
+**Cause:** until 2026-08-23 `addons-init` preferred `/tmp/repo/addons.tar.gz` over
+`/tmp/repo/addons/`. The tarball is binary, so an agent session (which can only push text
+through the GitHub MCP) could update `addons/` and leave the tarball stale — and the
+tarball is what got deployed.
+
+**Fix:** `addons-init` now copies `/tmp/repo/addons/.` and **exits 1** if that directory
+is missing; it never reads the tarball. It also echoes the deployed manifest versions:
+
+```
+DEPLOYED_ko_pos_kds:
+'version': '19.0.5.0.0',
+```
+
+Read that line after every deploy. It is the only cheap proof that the clone carried your
+commit.
+
+---
+
+### `rm` and `tar x` fail with "Operation not permitted" in the owner's mounted folder
+
+**Symptom:** working on `KO-DOO` through the desktop bridge, `rm -rf addons` and
+`tar xzf … -C addons` both fail on every file; the tree looks corrupted mid-command.
+
+**Cause:** the mounted folder is writable but deletion is blocked, and GNU `tar` unlinks a
+file before extracting over it.
+
+**Fix:** extract into a scratch dir outside the mount (`/tmp/...`) and `cp -R /tmp/x/. dest/`
+— `cp` truncates in place and needs no unlink. Same trick for replacing
+`deploy-secrets.zip`: build the new zip in `/tmp`, then `cp` it over.
