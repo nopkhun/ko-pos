@@ -1,0 +1,48 @@
+/* Control buttons row under the order (ลูกค้า / โน้ต / ทานที่ร้าน / คอร์ส …).
+   Odoo 19 renders these with `.text-truncate` inside a single non-wrapping
+   `d-flex justify-content-between` row sized for short English labels, so Thai
+   labels get cut to "ลู…" / "ทา…". Fix = KO chip styling + allow wrapping, and
+   hide Odoo's own `.more-btn` because ko-order-heading already has the KO "⋯"
+   button bound to the same displayAllControlPopup handler. */
+.pos .ko-pos-product-screen .control-buttons {
+    flex-wrap: wrap;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    padding-top: 10px !important;
+}
+
+.pos .ko-pos-product-screen .control-buttons > button {
+    flex: 0 0 auto;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 40px;
+    margin: 0 !important;
+    padding: 7px 14px !important;
+    overflow: visible !important;
+    color: var(--ko-ink) !important;
+    border: 1px solid var(--ko-border) !important;
+    border-radius: 999px !important;
+    background: var(--ko-surface) !important;
+    box-shadow: none !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    line-height: 1.5 !important;
+    white-space: nowrap !important;
+    text-overflow: clip !important;
+}
+
+/* Active preset (ทานที่ร้าน / กลับบ้าน) — Odoo tags it with o_colorlist_item_color_* */
+.pos .ko-pos-product-screen .control-buttons > button[class*="o_colorlist_item_color"] {
+    color: var(--ko-primary-dark) !important;
+    border-color: var(--ko-primary) !important;
+    background: var(--ko-primary-soft) !important;
+}
+
+/* A selected partner can have a very long name — keep that one ellipsised */
+.pos .ko-pos-product-screen .control-buttons > button > div.text-truncate {
+    max-width: 150px;
+}
+
+.pos .ko-pos-product-screen .control-buttons > button.more-btn {
+    display: none !important;
+}
