@@ -41,7 +41,10 @@ patch(ProductScreen.prototype, {
         const session = this.currentOrder?.session_id || this.pos.session;
         const sessionName = session?.name || session?.display_name;
         if (sessionName) {
-            return String(sessionName).split("/").at(-1);
+            const shortName = String(sessionName).split("/").at(-1);
+            if (shortName) {
+                return shortName;
+            }
         }
         const sessionId = session?.id || globalThis.odoo?.pos_session_id;
         return sessionId ? String(sessionId).padStart(4, "0") : "-";
