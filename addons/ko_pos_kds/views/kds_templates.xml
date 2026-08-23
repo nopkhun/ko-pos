@@ -167,29 +167,6 @@
                         background: #e4ebeb;
                     }
 
-                    .station-chips {
-                        display: flex;
-                        gap: 6px;
-                        overflow-x: auto;
-                    }
-
-                    .stn-chip {
-                        padding: 6px 12px;
-                        border-radius: 999px;
-                        font-size: 12.5px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        border: 1.5px solid var(--ko-border);
-                        color: var(--ko-muted-2);
-                        background: #fff;
-                    }
-
-                    .stn-chip.active {
-                        border-color: var(--ko-primary);
-                        color: var(--ko-primary-dark);
-                        background: var(--ko-primary-soft);
-                    }
-
                     .kds-shop-name {
                         font-size: 15px;
                         font-weight: 600;
@@ -357,9 +334,10 @@
                         flex: none;
                     }
 
-                    .stn-hot { color: oklch(0.6 0.15 40); }
-                    .stn-cold { color: oklch(0.55 0.12 250); }
-                    .stn-drink { color: oklch(0.62 0.13 85); }
+                    /* Station colour now comes from the ko.kds.station record
+                       itself (inline style), so a shop can add ครัวขนม / บาร์น้ำ
+                       without anyone editing this stylesheet. */
+                    .stn-label.stn-none { color: var(--ko-muted); }
 
                     .st-chip {
                         font-size: 11px;
@@ -396,6 +374,124 @@
                         padding-left: 32px;
                         font-weight: 500;
                     }
+
+                    /* ---- kitchen → front of house alerts ---- */
+                    .line-issue {
+                        margin: 4px 0 2px 32px;
+                        padding: 6px 10px;
+                        border-radius: 8px;
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: var(--ko-danger-text);
+                        background: var(--ko-danger-bg);
+                        border: 1px solid var(--ko-danger);
+                    }
+
+                    .line-issue.acked {
+                        color: var(--ko-muted-2);
+                        background: #f2f5f5;
+                        border-color: var(--ko-border);
+                        font-weight: 500;
+                    }
+
+                    .line-issue-btn {
+                        flex: none;
+                        border: 1px solid var(--ko-danger);
+                        background: #fff;
+                        color: var(--ko-danger-text);
+                        border-radius: 999px;
+                        font-size: 11px;
+                        font-weight: 600;
+                        padding: 3px 9px;
+                        cursor: pointer;
+                        font-family: inherit;
+                    }
+
+                    .issue-backdrop {
+                        position: fixed;
+                        inset: 0;
+                        background: rgba(15, 25, 27, 0.45);
+                        display: flex;
+                        align-items: flex-end;
+                        justify-content: center;
+                        z-index: 60;
+                    }
+
+                    .issue-sheet {
+                        width: 100%;
+                        max-width: 520px;
+                        background: #fff;
+                        border-radius: 18px 18px 0 0;
+                        padding: 18px 18px 24px;
+                        box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
+                    }
+
+                    .issue-sheet h3 {
+                        font-size: 17px;
+                        font-weight: 600;
+                        margin-bottom: 4px;
+                    }
+
+                    .issue-sheet .issue-sub {
+                        font-size: 12.5px;
+                        color: var(--ko-muted-2);
+                        margin-bottom: 14px;
+                    }
+
+                    .issue-opts {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 8px;
+                        margin-bottom: 12px;
+                    }
+
+                    .issue-opt {
+                        padding: 12px 10px;
+                        border-radius: 12px;
+                        border: 1.5px solid var(--ko-border);
+                        background: #fff;
+                        font-size: 14px;
+                        font-weight: 600;
+                        font-family: inherit;
+                        color: var(--ko-ink);
+                        cursor: pointer;
+                    }
+
+                    .issue-opt.active {
+                        border-color: var(--ko-danger);
+                        color: var(--ko-danger-text);
+                        background: var(--ko-danger-bg);
+                    }
+
+                    .issue-note-input {
+                        width: 100%;
+                        padding: 11px 12px;
+                        border-radius: 10px;
+                        border: 1.5px solid var(--ko-border);
+                        font-size: 14px;
+                        font-family: inherit;
+                        margin-bottom: 12px;
+                    }
+
+                    .issue-actions {
+                        display: flex;
+                        gap: 8px;
+                    }
+
+                    .issue-actions button {
+                        flex: 1;
+                        padding: 13px;
+                        border-radius: 12px;
+                        border: 0;
+                        font-size: 15px;
+                        font-weight: 600;
+                        font-family: inherit;
+                        cursor: pointer;
+                    }
+
+                    .issue-cancel { background: #eef3f3; color: var(--ko-muted-2); }
+                    .issue-send { background: var(--ko-danger); color: #fff; }
+                    .issue-send[disabled] { opacity: 0.45; cursor: not-allowed; }
 
                     .card-action-btn {
                         margin: 0 14px 14px;
@@ -495,6 +591,8 @@
                     <div class="header-top">
                         <div class="header-title">
                             จอครัว <span t-if="pos_config" class="kds-shop-name" t-esc="pos_config.display_name"/>
+                            <span t-if="station" class="kds-shop-name" t-esc="station.name"/>
+                            <span t-if="not station">· ทุกสถานี</span>
                             <span t-if="not pos_config">· Kitchen display</span>
                         </div>
                         <div class="header-meta">
@@ -520,17 +618,16 @@
                             <button class="kds-view-btn active" id="view-order" onclick="kdsSetView('order')">แบบออเดอร์</button>
                             <button class="kds-view-btn" id="view-menu" onclick="kdsSetView('menu')">แบบเมนู</button>
                         </div>
-                        <div class="divider"></div>
-                        <div class="station-chips">
-                            <button class="stn-chip active" id="stn-all" onclick="kdsSetStation('all')">ทุกครัว</button>
-                            <button class="stn-chip" id="stn-hot" onclick="kdsSetStation('hot')">ครัวร้อน</button>
-                            <button class="stn-chip" id="stn-cold" onclick="kdsSetStation('cold')">ครัวเย็น</button>
-                            <button class="stn-chip" id="stn-drink" onclick="kdsSetStation('drink')">เครื่องดื่ม</button>
-                        </div>
                     </div>
 
-                    <div t-if="len(stations) &gt; 1 or len(all_configs) &gt; 1" class="kds-scope-bar">
-                        <t t-if="len(stations) &gt; 1">
+                    <!--
+                      One station control only. Until 19.0.6.0.0 this page carried
+                      two: hard-coded ครัวร้อน/ครัวเย็น/เครื่องดื่ม chips that filtered
+                      in the browser, plus these links that filter on the server by
+                      ko.kds.station. They disagreed with each other. The chips are gone.
+                    -->
+                    <div t-if="stations or len(all_configs) &gt; 1" class="kds-scope-bar">
+                        <t t-if="stations">
                             <span class="kds-scope-label">สถานี:</span>
                             <a class="kds-scope-chip" t-att-class="'kds-scope-chip active' if not station else 'kds-scope-chip'"
                                t-att-href="'/kds/pos/%s' % pos_config.id">ทั้งหมด</a>
@@ -561,6 +658,26 @@
                     <div class="toast-pill" id="toast-msg"></div>
                 </div>
 
+                <!-- แจ้งปัญหากลับหน้าร้าน: ของหมด / ล่าช้า / ขอเปลี่ยน / อื่น ๆ -->
+                <div class="issue-backdrop" id="issue-backdrop" style="display:none;">
+                    <div class="issue-sheet" id="issue-sheet">
+                        <h3>แจ้งปัญหาให้หน้าร้าน</h3>
+                        <div class="issue-sub" id="issue-target">—</div>
+                        <div class="issue-opts">
+                            <button type="button" class="issue-opt" data-issue="out_of_stock">ของหมด</button>
+                            <button type="button" class="issue-opt" data-issue="delay">ล่าช้า</button>
+                            <button type="button" class="issue-opt" data-issue="substitute">ขอเปลี่ยนรายการ</button>
+                            <button type="button" class="issue-opt" data-issue="other">อื่น ๆ</button>
+                        </div>
+                        <input type="text" class="issue-note-input" id="issue-note"
+                               maxlength="250" placeholder="รายละเอียดเพิ่มเติม (ไม่บังคับ) เช่น เหลือ 1 ที่, รออีก 10 นาที"/>
+                        <div class="issue-actions">
+                            <button type="button" class="issue-cancel" id="issue-cancel">ยกเลิก</button>
+                            <button type="button" class="issue-send" id="issue-send" disabled="disabled">ส่งให้หน้าร้าน</button>
+                        </div>
+                    </div>
+                </div>
+
                 <nav t-if="pos_config" class="kds-bottom-nav" aria-label="เมนูหลัก">
                     <a t-att-href="'/pos/ui/%s' % pos_config.id">ขาย<small>Sell</small></a>
                     <a t-att-href="'/pos/ui/%s/ticket' % pos_config.id">บิล<small>Orders</small></a>
@@ -575,7 +692,7 @@
                 <!-- This script is served directly rather than through an Odoo asset
                      bundle. Keep a version query so browsers cannot reuse an older KDS
                      runtime after an addon upgrade. -->
-                <script src="/ko_pos_kds/static/src/kds/kds.js?v=19.0.5.0.0"/>
+                <script src="/ko_pos_kds/static/src/kds/kds.js?v=19.0.6.0.0"/>
             </body>
         </html>
     </template>
