@@ -120,6 +120,13 @@ bundle. A browser can reuse the older script at the same URL after an addon upgr
 runtime changes (currently `kds.js?v=19.0.4.0.1`). Verify with a fresh tab that SLA loads
 and active/served/cancelled plus order/menu controls work.
 
+An Odoo banner saying `หน้านี้เลิกใช้งานแล้ว` can remain in a browser session after an
+asset-changing deploy even when the new KDS runtime is healthy. First verify that SLA and
+ticket data update, controls work, and console/server logs are clean; then dismiss the
+banner with `ปิด`. It is browser-local and does not mean the KDS backend failed. If a tab
+still raises `kdsSetTab is not defined`, close that tab and open `/kds` again so the
+versioned runtime is requested.
+
 ---
 
 ### Every nested POS category turns green

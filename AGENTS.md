@@ -328,6 +328,10 @@ Working and confirmed against the live system:
   the live session was not closed.
 - KDS currently shows pre-existing active ticket **K0003 / queue 1003**
   (`ข้าวผัดกุ้ง`) as over SLA. QA did not change its state because ownership is unknown.
+- A per-browser Odoo “หน้านี้เลิกใช้งานแล้ว” asset notification left by the deploy was
+  dismissed during authenticated KDS QA. KDS continued polling, SLA/ticket data remained
+  live, and both browser console and current server logs were error-free. This notification
+  is not a backend failure; see `docs/GOTCHAS.md` if it appears in another open browser.
 
 ---
 
