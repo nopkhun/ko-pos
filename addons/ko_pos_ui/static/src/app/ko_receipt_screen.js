@@ -83,7 +83,15 @@ patch(ReceiptScreen.prototype, {
                 payload: item.payload,
             });
         }
-        this.pos.navigate("ProductScreen", { orderUuid: this.pos.getOrder().uuid });
+        // Same trap as the bottom nav: with no line restored (an empty intent)
+        // there may be no current order, and getOrder() returns undefined.
+        const editOrder = this.pos.getOrder();
+        if (editOrder) {
+            this.pos.navigate("ProductScreen", { orderUuid: editOrder.uuid });
+        } else {
+            const page = this.pos.defaultPage;
+            this.pos.navigate(page.page, page.params);
+        }
         showKoToast("โหลดรายการเดิมแล้ว กรุณาแก้ไขและชำระใหม่");
     },
 });
