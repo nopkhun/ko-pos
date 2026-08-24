@@ -192,34 +192,13 @@ patch(PaymentScreen.prototype, {
         if (!this.koCanValidate) {
             return;
         }
-        const order = this.currentOrder;
-        let refundIntent =
-            order?.isRefund && this.pos.koRefundIntent?.refundOrderUuid === order.uuid
-                ? this.pos.koRefundIntent
-                : null;
-        if (order?.isRefund && !refundIntent) {
-            try {
-                refundIntent = JSON.parse(
-                    sessionStorage.getItem(`ko_pos_refund_intent_${order.uuid}`) || "null"
-                );
-            } catch {
-                refundIntent = null;
-            }
-        }
         try {
+            // Everything that has to happen around a validated order — sending
+            // it to the kitchen, and striking refunded dishes off the board —
+            // hangs off OrderPaymentValidation in ko_pos_kds, not off this
+            // button. Odoo's own validate button is still reachable on some
+            // layouts, and behaviour must not depend on which one was pressed.
             await this.validateOrder(false);
-            if (refundIntent?.sourceOrderUuid) {
-                try {
-                    await this.pos.data.call(
-                        "ko.kds.ticket",
-                        "cancel_by_order_uuid",
-                        [refundIntent.sourceOrderUuid]
-                    );
-                } catch (error) {
-                    console.error("KO KDS cancellation sync failed", error);
-                    showKoToast("คืนเงินสำเร็จ แต่จอครัวยังไม่อัปเดต");
-                }
-            }
         } catch (error) {
             console.error("KO POS payment validation failed", error);
             showKoToast("ชำระเงินไม่สำเร็จ กรุณาตรวจสอบอีกครั้ง");
