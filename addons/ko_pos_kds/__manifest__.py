@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KO Restaurant - Kitchen Display (KDS)',
-    'version': '19.0.6.0.0',
+    'version': '19.0.7.0.0',
     'category': 'Sales/Point of Sale',
     'summary': 'จอครัว (Kitchen Display System) สำหรับ Odoo Community',
     'description': """
@@ -13,6 +13,7 @@ Kitchen Display System for POS Restaurant (community edition):
 - การ์ดออเดอร์: โต๊ะ/ชื่อลูกค้า, เวลา, รายการ + หมายเหตุ, สถานะ ใหม่/กำลังทำ/เสร็จ
 - แจ้งเตือนเสียงเมื่อมีรายการใหม่เข้าครัว (รวมถึงรายการที่เพิ่มเข้าออเดอร์เดิม)
 - ครัวแจ้งปัญหากลับหน้าร้านได้ (ของหมด / ล่าช้า / ขอเปลี่ยน) พร้อมเสียงและแถบเตือนค้างจนกดรับทราบ
+- คืนเงินแล้วจานที่คืนจะถูกยกเลิกบนจอครัวให้อัตโนมัติ คืนบางรายการก็ตัดเฉพาะจานนั้น
 """,
     'author': 'KO',
     'license': 'LGPL-3',
