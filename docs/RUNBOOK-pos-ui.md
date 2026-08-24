@@ -160,6 +160,57 @@ The verified root/repo `addons.tar.gz` SHA-256 is
   deleted from the KDS history list. The live board then showed zero active tickets;
   K0001/K0002 and POS sale orders were not selected or deleted.
 
+## บิล & ออเดอร์ — how it works (from `ko_pos_ui` 19.0.6.0.0)
+
+Read this straight to staff.
+
+### แท็บ "ออเดอร์ค้าง" — orders still owed something
+
+Everything unfinished lives here: unpaid orders, takeaway orders paid up front whose dishes
+are not all out yet, and refunds that were started and never finished
+(`คืนเงิน · ยังไม่จบ`).
+
+On each order card:
+
+| What you tap | What happens |
+| --- | --- |
+| the card header, or **เพิ่ม / แก้ไขรายการ** | opens the order in the sell screen, on its own table |
+| **−** / **+** on a line | changes that dish's quantity |
+| **✕** on a line | removes that dish |
+| **เสิร์ฟ** | marks that dish served (unchanged) |
+| **ยกเลิกออเดอร์** | throws the whole order away |
+
+If a dish is already **กำลังทำ**, **พร้อมเสิร์ฟ**, or **เสิร์ฟแล้ว**, removing it or reducing it
+asks for confirmation first, and the kitchen board is updated the moment you confirm.
+Removing the last dish cancels the order.
+
+A card labelled `คืนเงิน · ยังไม่จบ` is a refund somebody walked away from: **ทำรายการคืนเงินต่อ**
+finishes it, **ทิ้งรายการนี้** discards it. Leave neither hanging — an unfinished refund
+counts as an open order at session close.
+
+### แท็บ "บิลแล้ว" — bills that are paid
+
+Tap a bill to open its sheet. Each line that still has something refundable shows **− 0 +**:
+set how many of that dish you are giving money back for, or press **เลือกทั้งบิล** to select
+everything left. The red button at the bottom shows the count and the amount; pressing it
+opens the payment screen for the refund, and the refund is only real once you validate it
+there.
+
+- **ยกเลิกบิล** = select the whole bill and refund it (two taps, the second confirms).
+- **แก้ไขบิล** = refund the whole bill, then the receipt screen offers
+  **โหลดรายการเพื่อแก้ไข** which brings the same dishes back as a fresh order on the same
+  table, ready to change and charge again.
+- A bill only reads **คืนเงินครบแล้ว** once refunds that were actually *paid* cover every line.
+  Starting a refund and abandoning it changes nothing.
+
+### Two things to know
+
+- A refund is taken as **เงินสด** by default, whatever the bill was paid with. If you gave the
+  money back another way, change the method on the payment screen before validating.
+- Refunding one dish out of a bill does **not** strike that dish off the kitchen board — the
+  bill was already paid and the food was already made. Only ยกเลิกบิล and แก้ไขบิล cancel the
+  kitchen ticket.
+
 ## Rollback
 
 Remove `ko_pos_ui` from both `-i` and `-u` lists in the saved Compose, redeploy, and
