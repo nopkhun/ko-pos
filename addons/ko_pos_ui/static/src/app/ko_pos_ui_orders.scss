@@ -1,0 +1,164 @@
+// Styles for the refund-per-line bill sheet and for the edit / cancel controls
+// on an open order card.
+//
+// These live in their own file rather than in ko_pos_ui.scss so the 35 KB base
+// stylesheet does not have to be rewritten to add a button. The asset glob in
+// the manifest picks the file up automatically, and it loads after
+// ko_pos_ui.scss alphabetically, which is what these additive rules want.
+//
+// Line comments, not block comments: a SCSS block comment ends at the first
+// "*/", so writing an asset glob inside one closes it early and the rest of the
+// file becomes garbage. That is exactly what broke the whole POS stylesheet
+// once already ("A css error occured, using an old style to render this page").
+
+.pos .ko-bill-act-btn.refund {
+    color: var(--ko-primary, #0f766e);
+    border-color: #cfe6e2;
+}
+
+.pos .ko-bill-act-btn.refund.disabled,
+.pos .ko-bill-act-btn.refund:disabled {
+    color: var(--ko-muted);
+    border-color: var(--ko-border);
+    background: #f6f8f8;
+    cursor: not-allowed;
+}
+
+/* --- per-line refund stepper in the bill sheet --- */
+.pos .ko-refund-stepper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+    margin-left: 10px;
+}
+
+.pos .ko-refund-stepper button {
+    width: 34px;
+    height: 34px;
+    font-size: 19px;
+    line-height: 1;
+    font-weight: 600;
+    color: var(--ko-ink);
+    background: #fff;
+    border: 1.5px solid var(--ko-border);
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.pos .ko-refund-stepper strong {
+    min-width: 20px;
+    text-align: center;
+    font-size: 16px;
+    color: var(--ko-ink);
+}
+
+.pos .ko-bill-item-refunded {
+    margin-top: 2px;
+    font-size: 11.5px;
+    color: var(--ko-danger-text);
+}
+
+.pos .ko-bill-sheet-total-row.refund span,
+.pos .ko-bill-sheet-total-row.refund strong {
+    color: var(--ko-danger-text);
+}
+
+/* --- unfinished refund banner --- */
+.pos .ko-bill-pending-refund {
+    margin: 0 22px 10px;
+    padding: 12px 14px;
+    background: #fff6ed;
+    border: 1.5px solid #f2d3b0;
+    border-radius: 14px;
+}
+
+.pos .ko-bill-pending-text {
+    font-size: 13px;
+    color: #8a5a1c;
+    font-weight: 500;
+}
+
+.pos .ko-bill-pending-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.pos .ko-bill-pending-btn {
+    flex: 1;
+    padding: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 11px;
+    border: 1.5px solid var(--ko-border);
+    background: #fff;
+    color: var(--ko-ink);
+    cursor: pointer;
+}
+
+.pos .ko-bill-pending-btn.resume {
+    color: #fff;
+    background: #b4711f;
+    border-color: #b4711f;
+}
+
+.pos .ko-bill-pending-btn.discard {
+    color: var(--ko-danger-text);
+    border-color: #f3d4da;
+}
+
+/* --- edit / cancel on an open order card --- */
+.pos .ko-open-order-actions {
+    display: flex;
+    gap: 10px;
+    padding: 10px 14px 14px;
+    border-top: 1px solid var(--ko-line);
+}
+
+.pos .ko-open-act-btn {
+    flex: 1;
+    padding: 12px 10px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 12px;
+    border: 1.5px solid var(--ko-border);
+    background: #fff;
+    color: var(--ko-ink);
+    cursor: pointer;
+}
+
+.pos .ko-open-act-btn small {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 400;
+    color: var(--ko-muted);
+}
+
+.pos .ko-open-act-btn.edit {
+    color: #fff;
+    background: var(--ko-primary, #0f766e);
+    border-color: var(--ko-primary, #0f766e);
+}
+
+.pos .ko-open-act-btn.edit small {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pos .ko-open-act-btn.cancel {
+    color: var(--ko-danger-text);
+    border-color: #f3d4da;
+}
+
+.pos .ko-open-act-btn.cancel.confirm {
+    color: #fff;
+    background: var(--ko-danger);
+    border-color: var(--ko-danger);
+}
+
+.pos .ko-open-order-paid-note {
+    padding: 10px 14px 14px;
+    border-top: 1px solid var(--ko-line);
+    font-size: 12px;
+    color: var(--ko-muted);
+}
