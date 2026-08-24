@@ -14,7 +14,7 @@ The log shows the surrounding lines but not the ones inside the loop.
 
 **Cause:** Compose interpolates `$VAR` before the container ever runs and substitutes an
 empty string. `for m in account payment; do cat …/$m.append.po; done` becomes
-`cat ….append.po`, matches nothing, exits cleanly.
+`cat …/.append.po`, matches nothing, exits cleanly.
 
 **Tell:** the build log contains `The "m" variable is not set. Defaulting to a blank string.`
 
