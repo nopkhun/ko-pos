@@ -218,24 +218,13 @@ patch(PaymentScreen.prototype, {
             return;
         }
 
-        // Only voiding or replacing the WHOLE bill cancels the kitchen ticket.
-        // Refunding one dish out of four used to wipe the whole ticket off the
-        // kitchen board, taking the three dishes the customer is still waiting
-        // for with it. ("void" is the label older sessions wrote into storage.)
-        if (
-            refundIntent?.sourceOrderUuid &&
-            ["full", "void", "edit"].includes(refundIntent.type)
-        ) {
-            try {
-                await this.pos.data.call("ko.kds.ticket", "cancel_by_order_uuid", [
-                    refundIntent.sourceOrderUuid,
-                    this.pos.config.id,
-                ]);
-            } catch (error) {
-                console.error("KO KDS cancellation sync failed", error);
-                showKoToast("คืนเงินสำเร็จ แต่จอครัวยังไม่อัปเดต");
-            }
-        }
+        // Striking the refunded dishes off the kitchen board is NOT done here.
+        // It hangs off OrderPaymentValidation in ko_pos_kds
+        // (koCancelKitchenForRefund), because the KO payment screen only
+        // replaces part of Odoo's template: on a wide screen the till validates
+        // through Odoo's own button and nothing wired to a KO handler would run.
+        // Doing it there also cancels exactly the refunded quantities, so
+        // refunding one plate out of four leaves the other three cooking.
 
         // An intent that is not an "edit" has nothing left to do. Leaving it in
         // place makes the receipt screen offer to reload lines that were never

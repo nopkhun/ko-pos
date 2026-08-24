@@ -192,18 +192,12 @@ patch(PosStore.prototype, {
         }
     },
 
-    /** Snapshot a line so it can still be cancelled after it is gone. */
+    /**
+     * Snapshot what the kitchen needs to strike a dish off, before front of
+     * house deletes the line and the object is gone.
+     */
     koKdsLineSnapshot(line) {
-        return {
-            uuid: line.uuid,
-            product_id: line.getProduct()?.id,
-            name: line.getFullProductName(),
-            display_name: line.getProduct()?.display_name,
-            quantity: Math.abs(line.getQuantity()),
-            note: line.getNote(),
-            customer_note: line.getCustomerNote(),
-            attribute_value_names: (line.attribute_value_ids || []).map((a) => a.name),
-        };
+        return { uuid: line.uuid, qty: Math.abs(line.getQuantity()) };
     },
 
     /**
@@ -215,20 +209,69 @@ patch(PosStore.prototype, {
      * preparation — so a dish deleted from an order kept cooking on the kitchen
      * screen forever. Front of house passes the lines it removed instead of
      * relying on Odoo remembering them.
+     *
+     * The quantities go to `cancel_lines_from_pos`, which knows how to take
+     * part of a plate off the board rather than all of it.
      */
     async koCancelKdsLines(order, lines) {
         if (!this.koKdsEnabled || !order || order.isRefund || !lines?.length) {
             return false;
         }
-        const payload = this.koKdsPayload(order, { new: [], cancelled: lines });
         try {
-            await this.data.call("ko.kds.ticket", "create_from_pos", [payload]);
+            await this.data.call("ko.kds.ticket", "cancel_lines_from_pos", [
+                order.uuid,
+                lines,
+                this.config.id,
+            ]);
             await this.koRefreshKdsStatus();
             return true;
         } catch (error) {
             console.warn("KDS: failed cancelling removed lines", error);
             return false;
         }
+    },
+
+    /**
+     * A refund has just been validated: take the returned dishes off the
+     * kitchen board. Only what was actually refunded is removed, so refunding
+     * one plate out of four leaves the other three cooking.
+     *
+     * This deliberately hangs off order validation rather than off a button.
+     * The KO payment screen only covers part of Odoo's template, so a till on
+     * a wide screen validates through Odoo's own button — anything wired to a
+     * KO button alone silently never runs there.
+     */
+    async koCancelKitchenForRefund(order) {
+        if (!this.koKdsEnabled || !order?.isRefund) {
+            return false;
+        }
+        const bySource = {};
+        for (const line of order.getOrderlines()) {
+            const source = line.refunded_orderline_id;
+            const sourceOrder = source?.order_id;
+            if (!source || !sourceOrder?.uuid) {
+                continue;
+            }
+            const bucket = (bySource[sourceOrder.uuid] = bySource[sourceOrder.uuid] || []);
+            bucket.push({ uuid: source.uuid, qty: Math.abs(line.getQuantity()) });
+        }
+        const sources = Object.keys(bySource);
+        if (!sources.length) {
+            return false;
+        }
+        for (const orderUuid of sources) {
+            try {
+                await this.data.call("ko.kds.ticket", "cancel_lines_from_pos", [
+                    orderUuid,
+                    bySource[orderUuid],
+                    this.config.id,
+                ]);
+            } catch (error) {
+                console.warn("KDS: failed cancelling refunded dishes", error);
+            }
+        }
+        await this.koRefreshKdsStatus();
+        return true;
     },
 
     async sendOrderInPreparation(order, opts = {}) {
@@ -325,6 +368,18 @@ patch(OrderPaymentValidation.prototype, {
         const result = await super.afterOrderValidation(...arguments);
         const pos = this.pos;
         const order = this.order;
+        if (order?.isRefund && pos?.koKdsEnabled) {
+            // Money went back to the customer: the kitchen must stop cooking
+            // whatever was returned. Doing it here rather than in the KO
+            // payment screen matters — a wide screen validates through Odoo's
+            // own button, which never runs KO's handler.
+            try {
+                await pos.koCancelKitchenForRefund(order);
+            } catch (error) {
+                console.warn("KDS: refund cancellation failed", error);
+            }
+            return result;
+        }
         if (
             pos?.config?.module_pos_restaurant &&
             pos.koKdsEnabled &&
