@@ -330,10 +330,18 @@
     <!-- ========================================== -->
     <!-- 11. PaymentScreen Overhaul                 -->
     <!-- ========================================== -->
+    <!--
+      Odoo's PaymentScreen template is TWO screens: `t-if="ui.isSmall"` for a
+      phone and `t-else` for anything wider. Replacing only the first match —
+      which is what `//div[hasclass('payment-screen')]` does — left every till
+      on a tablet looking at raw Odoo, numpad and all, and meant koValidatePayment
+      never ran there. Both branches are collapsed into the KO screen below.
+    -->
     <t t-name="ko_pos_ui.PaymentScreen"
        t-inherit="point_of_sale.PaymentScreen"
        t-inherit-mode="extension">
-        <xpath expr="//div[hasclass('payment-screen')]" position="replace">
+        <xpath expr="//t[@t-else='']" position="replace"/>
+        <xpath expr="//t[@t-if='ui.isSmall']" position="replace">
             <div class="payment-screen screen ko-payment-screen d-flex flex-column h-100">
               <div class="ko-pay-container">
                 <!-- Header -->
@@ -463,7 +471,7 @@
                 <div class="ko-success-actions">
                     <button class="ko-receipt-reprint-btn" t-on-click="koPrintReceipt">พิมพ์ใบเสร็จ · Receipt</button>
                     <button class="ko-receipt-new-btn" t-on-click="koNewOrder">
-                        <t t-if="koIsEditRefund">โหลดรายการเพื่อแก้ไข · Edit order</t>
+                        <t t-if="koIsRefund">เสร็จสิ้น · Done</t>
                         <t t-else="">ออเดอร์ใหม่ · New order</t>
                     </button>
                 </div>
@@ -538,6 +546,21 @@
                                     </div>
                                 </t>
                             </div>
+                            <div t-if="o.canEdit" class="ko-open-order-actions">
+                                <button class="ko-open-act-btn edit"
+                                        t-on-click="() =&gt; this.koEditOrder(o.order)">
+                                    แก้ไขออเดอร์ <small>· เพิ่ม/ลบรายการ</small>
+                                </button>
+                                <button class="ko-open-act-btn cancel"
+                                        t-att-class="{'confirm': o.confirmCancel}"
+                                        t-on-click="() =&gt; this.koCancelOrder(o.order)">
+                                    <t t-if="o.confirmCancel">ยืนยันยกเลิก?</t>
+                                    <t t-else="">ยกเลิกออเดอร์</t>
+                                </button>
+                            </div>
+                            <div t-else="" class="ko-open-order-paid-note">
+                                บิลนี้ชำระแล้ว · แก้ไขไม่ได้ ต้องคืนเงินที่แท็บ "บิลแล้ว"
+                            </div>
                         </div>
                     </t>
                 </div>
@@ -574,16 +597,37 @@
                             <button class="ko-sheet-close" t-on-click="koCloseTicketSheet" aria-label="ปิด">✕</button>
                         </div>
 
+                        <div t-if="koSelectedTicket.pendingRefund" class="ko-bill-pending-refund">
+                            <div class="ko-bill-pending-text" t-esc="koSelectedTicket.pendingRefundLabel"/>
+                            <div class="ko-bill-pending-actions">
+                                <button class="ko-bill-pending-btn resume" t-on-click="koResumeRefund">
+                                    ทำต่อ · จ่ายคืน
+                                </button>
+                                <button class="ko-bill-pending-btn discard" t-on-click="koDiscardRefund">
+                                    ทิ้งบิลคืนเงิน
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="ko-bill-sheet-body">
                             <div class="ko-bill-items-list">
-                                <t t-foreach="koSelectedTicket.order.getOrderlines()" t-as="l" t-key="l.uuid">
+                                <t t-foreach="koSelectedTicket.lines" t-as="l" t-key="l.uuid">
                                     <div class="ko-bill-item-row">
-                                        <span class="ko-bill-item-qty"><t t-esc="l.getQuantity()"/>×</span>
+                                        <span class="ko-bill-item-qty"><t t-esc="l.qty"/>×</span>
                                         <div class="ko-bill-item-name-group">
-                                            <div class="ko-bill-item-name" t-esc="l.getFullProductName()"/>
-                                            <div t-if="l.getCustomerNote()" class="ko-bill-item-note" t-esc="l.getCustomerNote()"/>
+                                            <div class="ko-bill-item-name" t-esc="l.name"/>
+                                            <div t-if="l.note" class="ko-bill-item-note" t-esc="l.note"/>
+                                            <div t-if="l.settled" class="ko-bill-item-refunded">
+                                                คืนเงินแล้ว <t t-esc="l.settled"/> ชิ้น
+                                            </div>
                                         </div>
-                                        <div class="ko-bill-item-sum" t-esc="env.utils.formatCurrency(l.price_subtotal_incl)"/>
+                                        <div class="ko-bill-item-sum" t-esc="env.utils.formatCurrency(l.subtotal)"/>
+                                        <div t-if="!koSelectedTicket.isVoid and !koSelectedTicket.pendingRefund and l.refundable"
+                                             class="ko-refund-stepper">
+                                            <button t-on-click.stop="() =&gt; this.koStepRefund(l, -1)" aria-label="ลดจำนวนที่จะคืน">−</button>
+                                            <strong t-esc="koRefundQtyOf(l)"/>
+                                            <button t-on-click.stop="() =&gt; this.koStepRefund(l, 1)" aria-label="เพิ่มจำนวนที่จะคืน">+</button>
+                                        </div>
                                     </div>
                                 </t>
                             </div>
@@ -591,10 +635,13 @@
                                 <span>รวมทั้งหมด</span>
                                 <strong t-esc="koSelectedTicket.totalFormatted"/>
                             </div>
+                            <div t-if="koRefundSelectedCount" class="ko-bill-sheet-total-row refund">
+                                <span>เลือกคืนเงิน <t t-esc="koRefundSelectedCount"/> ชิ้น</span>
+                                <strong t-esc="koRefundSelectedTotal"/>
+                            </div>
                         </div>
 
-                        <!-- 2x2 Action Grid -->
-                        <div t-if="!koSelectedTicket.isVoid" class="ko-bill-actions-grid">
+                        <div class="ko-bill-actions-grid">
                             <button class="ko-bill-act-btn" t-on-click="koReprintTicket">
                                 <div>พิมพ์ใบเสร็จอีกครั้ง</div>
                                 <small>Reprint receipt</small>
@@ -603,18 +650,23 @@
                                 <div>ใบกำกับภาษีเต็มรูป</div>
                                 <small>Full tax invoice</small>
                             </button>
-                            <button class="ko-bill-act-btn" t-on-click="koEditBill">
-                                <div>แก้ไขบิล</div>
-                                <small>คืนเงินก่อน แล้วโหลดรายการเดิม</small>
-                            </button>
-                            <button class="ko-bill-act-btn void"
-                                    t-att-class="{'confirm': koConfirmVoid}"
-                                    t-on-click="koVoidBill">
-                                <div><t t-if="koConfirmVoid">ยืนยันยกเลิก?</t><t t-else="">ยกเลิกบิล</t></div>
-                                <small>Refund bill</small>
-                            </button>
+                            <t t-if="!koSelectedTicket.isVoid and !koSelectedTicket.pendingRefund">
+                                <button class="ko-bill-act-btn refund"
+                                        t-att-class="{'disabled': !koRefundSelectedCount}"
+                                        t-att-disabled="!koRefundSelectedCount"
+                                        t-on-click="koRefundSelected">
+                                    <div>คืนเงินรายการที่เลือก</div>
+                                    <small>กด +/− ที่รายการด้านบน</small>
+                                </button>
+                                <button class="ko-bill-act-btn void"
+                                        t-att-class="{'confirm': koConfirmVoid}"
+                                        t-on-click="koVoidBill">
+                                    <div><t t-if="koConfirmVoid">ยืนยันคืนทั้งบิล?</t><t t-else="">คืนเงินทั้งบิล</t></div>
+                                    <small>Refund whole bill</small>
+                                </button>
+                            </t>
                         </div>
-                        <div t-else="" class="ko-bill-voided-notice">
+                        <div t-if="koSelectedTicket.isVoid" class="ko-bill-voided-notice">
                             บิลนี้เป็นรายการคืนเงิน หรือคืนเงินครบแล้ว · Refunded
                         </div>
                     </div>
