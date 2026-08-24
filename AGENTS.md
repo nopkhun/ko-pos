@@ -388,7 +388,7 @@ Working and confirmed against the live system:
   with `!important`, keeps `.product-content` / `.product-name` left aligned (Odoo centers
   the no-image variant), hides Odoo's own `.product-cart-qty` badge, and gives the
   orderline stepper 10 px of room so it no longer touches the line price.
-  Deploy action `110899755`: `DEPLOYED_ko_pos_ui: "version": "19.0.4.2.0"`,
+  Deploy action **110899755**: `DEPLOYED_ko_pos_ui: "version": "19.0.4.2.0"`,
   `KDS_SECURITY_PRESENT=yes`, translations still exactly 57 files, `ko_pos_ui` loaded.
   Verified live at `kodoo.viakuma.com` (POS 2, ร้านชอบแกง) at 1600 px, 760 px and 420 px:
   rows are 54 px thumbnail + name + `฿price` + `+` / stepper, 81 px tall, contiguous with
@@ -408,7 +408,7 @@ Working and confirmed against the live system:
   `--ko-primary-soft`, keeps only a selected partner's name ellipsised at 150 px, and hides
   Odoo's own `.more-btn` — `ko-order-heading` already renders the KO `⋯` button bound to the
   same `displayAllControlPopup` handler, so it was a duplicate that pushed the row over its
-  width. Deploy action `110902588`: `DEPLOYED_ko_pos_ui: "version": "19.0.4.3.0"`,
+  width. Deploy action **110902588**: `DEPLOYED_ko_pos_ui: "version": "19.0.4.3.0"`,
   `KDS_SECURITY_PRESENT=yes`, translations still exactly 57 files, `ko_pos_ui` loaded.
   Verified live at `kodoo.viakuma.com` (POS 2, ร้านชอบแกง, table 1) after a hard refresh:
   all five buttons fit one 50 px row with rendered width ≥ scroll width (no truncation), the
