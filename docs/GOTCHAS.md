@@ -633,3 +633,38 @@ there.
 **Fix:** it only affects lines that existed before the upgrade. Re-point them by hand in
 หลังบ้าน → ประวัติออเดอร์ครัว, or clear `station_id` and run the migration again once the
 stations exist.
+
+---
+
+### The ขาย tab does nothing and the console says `Cannot read properties of undefined (reading 'uuid')`
+
+**Symptom:** reported from production. Tapping **ขาย** in the KO bottom nav does nothing at
+all; the browser console shows
+
+```
+TypeError: Cannot read properties of undefined (reading 'uuid')
+    at KoBottomNav.goSell (…/point_of_sale.assets_prod.min.js)
+```
+
+**Cause:** `goSell()` did `this.pos.getOrder().uuid`, and **restaurant mode very often has
+no current order**. `PosStore.getOrder()` returns `undefined` whenever `selectedOrderUuid`
+is unset, and `afterOrderDeletion()` only re-selects an order when
+`module_pos_restaurant` is **off**. So opening the POS onto the floor plan, or finishing
+or clearing a sale, leaves nothing selected — and the very next tap on ขาย throws.
+
+**Reproduce (takes a minute):** open the POS → floor plan → tap บิล → tap ขาย.
+
+**Fix (`ko_pos_ui` 19.0.5.0.1):** guard the read, and pick a sensible destination when
+there is no order:
+
+- an order in hand → back to that order's ProductScreen (unchanged);
+- restaurant mode with nothing selected → **FloorScreen**, so staff pick a table;
+- otherwise → `pos.defaultPage`.
+
+**Do not** reach for `pos.openOrder` as the fallback. It returns
+`models["pos.order"].find(o => o.state === "draft")` — in a restaurant that is very
+likely *another table's* draft order, so the ขาย tab would silently drop the cashier into
+someone else's bill.
+
+`ko_receipt_screen.js` had the same unguarded read on the edit-bill path (an empty refund
+intent restores no line, so no order exists) and is guarded the same way.
