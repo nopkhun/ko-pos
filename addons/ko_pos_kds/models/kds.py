@@ -429,6 +429,71 @@ class KdsTicket(models.Model):
         return True
 
     @api.model
+    def cancel_lines_from_pos(self, order_uuid, refunded_lines=None, config_id=None):
+        """A refund was taken: strike the refunded dishes off the kitchen board.
+
+        `refunded_lines` is a list of the ORIGINAL order's pos.order.line uuids,
+        or of ``{'uuid': ..., 'qty': ...}`` dicts when only part of a line was
+        returned. Passing nothing cancels every live dish, which is what voiding
+        a whole bill means.
+
+        This is deliberately driven by the refund lines rather than by the whole
+        order: refunding one plate out of four must not wipe the other three off
+        the board while the kitchen is still cooking them.
+
+        Returns how many kitchen lines were touched, so the POS can tell staff
+        whether the kitchen saw anything at all.
+        """
+        domain = [('pos_order_uuid', '=', order_uuid), ('remake', '=', False)]
+        if config_id:
+            domain.append(('config_id', '=', int(config_id)))
+        tickets = self.sudo().search(domain)
+        if not tickets:
+            return 0
+
+        wanted = {}
+        for raw in refunded_lines or []:
+            if isinstance(raw, dict):
+                uuid = raw.get('uuid')
+                if not uuid:
+                    continue
+                try:
+                    qty = abs(float(raw.get('qty') or 0))
+                except (TypeError, ValueError):
+                    qty = 0
+                wanted[uuid] = wanted.get(uuid, 0) + qty
+            elif raw:
+                # No quantity given: the whole line came back.
+                wanted[raw] = None
+
+        lines = tickets.mapped('line_ids').filtered(lambda item: not item.cancelled)
+        if wanted:
+            lines = lines.filtered(lambda item: item.pos_order_line_uuid in wanted)
+        if not lines:
+            return 0
+
+        touched = 0
+        for line in lines:
+            returned = wanted.get(line.pos_order_line_uuid) if wanted else None
+            if returned is not None and returned < line.qty:
+                # Part of the plate stays on the board.
+                line.write({'qty': line.qty - returned})
+            else:
+                line.write({'cancelled': True, 'done': False, 'state': 'cancelled'})
+            touched += 1
+
+        now = fields.Datetime.now()
+        for ticket in tickets:
+            live = ticket.line_ids.filtered(lambda item: not item.cancelled)
+            if not live:
+                ticket.write({'state': 'cancelled', 'cancelled_time': now})
+            elif ticket.state == 'cancelled':
+                # A partial refund left work behind: the ticket is alive again.
+                ticket.write({'state': 'progress', 'cancelled_time': False})
+        tickets._notify_kds('refund_cancelled')
+        return touched
+
+    @api.model
     def get_pos_status(self, order_uuids, config_id=None):
         domain = [
             ('pos_order_uuid', 'in', order_uuids or []),
