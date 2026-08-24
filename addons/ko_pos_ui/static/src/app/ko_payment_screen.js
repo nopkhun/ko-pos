@@ -188,20 +188,71 @@ patch(PaymentScreen.prototype, {
         this.koSetCashAmount(Number(this.koState.cashInput || "0"));
     },
 
+    _koRefundIntentFor(order) {
+        if (!order?.isRefund) {
+            return null;
+        }
+        if (this.pos.koRefundIntent?.refundOrderUuid === order.uuid) {
+            return this.pos.koRefundIntent;
+        }
+        try {
+            return JSON.parse(
+                sessionStorage.getItem(`ko_pos_refund_intent_${order.uuid}`) || "null"
+            );
+        } catch {
+            return null;
+        }
+    },
+
     async koValidatePayment() {
         if (!this.koCanValidate) {
             return;
         }
+        const order = this.currentOrder;
+        const refundIntent = this._koRefundIntentFor(order);
         try {
-            // Everything that has to happen around a validated order — sending
-            // it to the kitchen, and striking refunded dishes off the board —
-            // hangs off OrderPaymentValidation in ko_pos_kds, not off this
-            // button. Odoo's own validate button is still reachable on some
-            // layouts, and behaviour must not depend on which one was pressed.
             await this.validateOrder(false);
         } catch (error) {
             console.error("KO POS payment validation failed", error);
             showKoToast("ชำระเงินไม่สำเร็จ กรุณาตรวจสอบอีกครั้ง");
+            return;
+        }
+
+        // Only voiding or replacing the WHOLE bill cancels the kitchen ticket.
+        // Refunding one dish out of four used to wipe the whole ticket off the
+        // kitchen board, taking the three dishes the customer is still waiting
+        // for with it. ("void" is the label older sessions wrote into storage.)
+        if (
+            refundIntent?.sourceOrderUuid &&
+            ["full", "void", "edit"].includes(refundIntent.type)
+        ) {
+            try {
+                await this.pos.data.call("ko.kds.ticket", "cancel_by_order_uuid", [
+                    refundIntent.sourceOrderUuid,
+                    this.pos.config.id,
+                ]);
+            } catch (error) {
+                console.error("KO KDS cancellation sync failed", error);
+                showKoToast("คืนเงินสำเร็จ แต่จอครัวยังไม่อัปเดต");
+            }
+        }
+
+        // An intent that is not an "edit" has nothing left to do. Leaving it in
+        // place makes the receipt screen offer to reload lines that were never
+        // meant to come back.
+        if (refundIntent && refundIntent.type !== "edit") {
+            this.pos.koRefundIntent = null;
+            try {
+                sessionStorage.removeItem(`ko_pos_refund_intent_${order.uuid}`);
+            } catch {
+                // Storage being unavailable is not a reason to fail the refund.
+            }
+        }
+
+        try {
+            await this.pos.koRefreshKdsStatus?.();
+        } catch (error) {
+            console.warn("KO KDS refresh after refund failed", error);
         }
     },
 
