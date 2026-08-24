@@ -668,3 +668,160 @@ someone else's bill.
 
 `ko_receipt_screen.js` had the same unguarded read on the edit-bill path (an empty refund
 intent restores no line, so no order exists) and is guarded the same way.
+
+---
+
+### An order in ออเดอร์ค้าง cannot be opened, so a dish can never be added or removed
+
+**Symptom:** the owner reports "แก้ไขออเดอร์ไม่ได้ ถ้าจะลบหรือเพิ่ม". Tapping an order card
+in the ออเดอร์ค้าง tab does nothing at all — no navigation, no error, nothing in the
+console.
+
+**Cause:** the KO TicketScreen replaces Odoo's entire screen body, and the replacement
+card carried **no click handler**. Odoo's own `onClickOrder` / `onDblClickOrder` were
+replaced along with the markup. The only interactive control on the card was the per-dish
+เสิร์ฟ button. A table order could still be reopened from the floor plan by chance; a
+**takeaway has no table at all**, so once keyed it could not be reopened from anywhere.
+
+**Reproduce:** key a dish to a table, go to บิล → ออเดอร์ค้าง, tap the card. The URL does
+not change and `posmodel.getOrder()` stays `null`.
+
+**Fix (`ko_pos_ui` 19.0.6.0.0):** each unpaid card gets **แก้ไขออเดอร์** and a two-tap
+**ยกเลิกออเดอร์**. Editing calls `TicketScreen.setOrder(order)` — Odoo's own helper, which
+refuses while the order is syncing, flushes shared orders first, then selects and
+navigates. Do not hand-roll `pos.setOrder` + `navigate` here; the sync guard matters.
+
+Cancelling goes through a local `_koDeleteOrder` rather than `pos.onDeleteOrder`, because
+`onDeleteOrder` opens its own **English** "are you sure" dialog on top of the card's Thai
+two-tap confirm — two prompts for one decision, and in an automated test the second one
+blocks forever. `_koDeleteOrder` keeps everything else `onDeleteOrder` does, including
+`deleteOrders()` (which is what tells the kitchen) and clearing the `lineToRefund` entries
+a deleted refund order leaves behind.
+
+---
+
+### A bill reads คืนเงินครบแล้ว the moment ยกเลิกบิล is tapped, and every button disappears
+
+**Symptom:** tap ยกเลิกบิล once, walk away without taking the refund payment, and the
+original bill now shows **คืนเงินครบแล้ว · Refunded**. Its whole action grid is gone: no
+reprint, no tax invoice, no way to finish the refund and no way to undo it. The bill is
+bricked.
+
+**Cause:** `pos.order.line.refundedQty` in Odoo 19 is
+
+```js
+this.refund_orderline_ids?.reduce((acc, line) =>
+    (line.order_id.state !== "cancel" ? acc - line.qty : acc), 0)
+```
+
+— it counts refund lines whose order is merely **`draft`**. Creating the refund order is
+enough; no money has to move. Anything that decides "is this bill settled?" from
+`refundedQty` therefore flips the instant the refund is *started*.
+
+**Fix (`ko_pos_ui` 19.0.6.0.0):** `settledRefundQty(line)` counts only refund lines whose
+order is `finalized`. Use that for the bill's status label and for dropping a bill out of
+ออเดอร์ค้าง. An unfinished refund is a *third* state, not a settled one: the bill sheet
+shows an orange banner naming the amount, with **ทำต่อ · จ่ายคืน** and **ทิ้งบิลคืนเงิน**,
+and hides the refund buttons meanwhile so the same bill cannot be refunded twice.
+
+**Related trap in the same area:** Odoo's `_getRefundableDetails` skips any
+`uiState.lineToRefund` entry that already has a `destination_order_uuid`. An abandoned
+refund therefore poisons every later attempt on that bill — the next refund comes out as
+an **empty order for 0 บาท**. Clear `order.uiState.lineToRefund` before starting a new
+refund. That is only safe because a *pending* refund is refused first; without that check
+you would be dropping a live intent.
+
+---
+
+### The payment screen is the KO one on a phone and raw Odoo on a tablet
+
+**Symptom:** the redesigned payment screen appears on a phone but a tablet or desktop
+shows stock Odoo — Odoo's numpad, `ยืนยัน`/`กลับ` buttons, the payment-lines list. No
+console error. The bundle contains the KO template, and every other KO screen renders
+fine.
+
+**Cause:** `point_of_sale.PaymentScreen` is **two whole screens in one template**:
+
+```xml
+<t t-name="point_of_sale.PaymentScreen">
+    <t t-if="ui.isSmall">   <div class="payment-screen …">  …phone…   </div></t>
+    <t t-else="">           <div class="payment-screen …">  …desktop… </div></t>
+</t>
+```
+
+`<xpath expr="//div[hasclass('payment-screen')]" position="replace">` matches the **first**
+node only, so it replaced the phone branch and left the desktop branch untouched.
+ProductScreen, TicketScreen and ReceiptScreen each have a single root, which is why only
+this screen was affected.
+
+**Why it mattered beyond looks:** the KDS refund cancellation was wired to
+`koValidatePayment`, the KO button. On a tablet the cashier validated through Odoo's own
+button, so the kitchen was **never told about a refund at all**.
+
+**Fix (`ko_pos_ui` 19.0.6.0.0):** target the branches, not the class —
+
+```xml
+<xpath expr="//t[@t-else='']" position="replace"/>
+<xpath expr="//t[@t-if='ui.isSmall']" position="replace"> …KO screen… </xpath>
+```
+
+Remove the `t-else` first: a `t-else` with no preceding `t-if` is a template error.
+
+**The wider lesson:** anything that must happen when an order is validated belongs on
+`OrderPaymentValidation.afterOrderValidation`, not on a KO button. Behaviour must not
+depend on which button the cashier happened to press. Check any replaced screen for a
+second match with
+`grep -c "class=\"<screen>-screen" <odoo>/addons/point_of_sale/static/src/app/screens/…`.
+
+---
+
+### The kitchen keeps cooking a dish that was refunded
+
+**Symptom:** a bill is refunded — partly or in full — and the dishes are still on the
+kitchen board. The refunded order also stays in ออเดอร์ค้าง with live เสิร์ฟ buttons.
+
+**Cause:** two gaps. `koSendToKds` returns early for `order.isRefund`, so a refund order
+never reaches the KDS at all; and the only cancellation call was on a KO button that does
+not exist on wide screens (previous entry).
+
+**Fix (`ko_pos_kds` 19.0.7.0.0):** `ko.kds.ticket.cancel_lines_from_pos(order_uuid,
+refunded_lines, config_id)` takes the **original** order's line uuids — with quantities
+when only part of a line came back — and cancels exactly those. A line only partly
+returned has its `qty` reduced instead of being struck off. When nothing is left alive the
+ticket closes; when a partial refund leaves work behind on an already-cancelled ticket, the
+ticket returns to `progress`.
+
+It is called from `PosStore.koCancelKitchenForRefund`, driven by
+`afterOrderValidation` — every refund, every screen width. Refund lines carry
+`refunded_orderline_id`, which is how the original line and its order are recovered.
+
+Deleting an unpaid order is handled separately: `deleteOrders()` already fires
+`sendOrderInPreparation({cancelled: true})`, but that diff only knows the dishes **this
+device** remembers sending, so a dish fired from another till survived it. The
+`sendOrderInPreparation` patch now also calls `cancel_by_order_uuid`, which closes the
+ticket outright. Cancelling an already-cancelled ticket is a no-op, so doing both is safe.
+
+---
+
+### One new .scss file breaks the entire POS stylesheet
+
+**Symptom:** after adding a new `.scss` file to `ko_pos_ui/static/src/app/`, the POS
+renders unstyled with a red bar reading **"A css error occured, using an old style to
+render this page"**. The Odoo log says
+
+```
+Error: Invalid CSS after "...tic/src/app/**/": expected 1 selector or at-rule
+```
+
+**Cause:** the file's header comment was a C-style block comment that mentioned the asset
+glob `ko_pos_ui/static/src/app/**/*`. A SCSS block comment ends at the **first** `*/` — and
+`**/` is one. Everything after it was parsed as CSS, so the whole bundle failed and Odoo
+fell back to the previous stylesheet.
+
+**Fix:** use `//` line comments in `.scss` files, or never write `*/` (including inside a
+glob) within a block comment. The failure is loud in the log but easy to misread as
+unrelated, because it names the bundle rather than your file.
+
+**Worth knowing anyway:** a new file under `static/src/app/` needs no manifest change —
+the glob picks it up — and files load in alphabetical order, so `ko_pos_ui_orders.scss`
+lands after `ko_pos_ui.scss` and its additive rules win.

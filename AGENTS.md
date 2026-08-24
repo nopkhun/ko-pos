@@ -253,7 +253,7 @@ means containers started. Verify the translation count line from §5 and check t
 
 ---
 
-## 8. Current state (verified 2026-08-23)
+## 8. Current state (verified 2026-08-24)
 
 Working and confirmed against the live system:
 
@@ -492,15 +492,61 @@ Working and confirmed against the live system:
   disposable database (no order → floor plan, order in hand → same order, 0 console
   errors), and the production bundle now carries the guarded `goSell`. **Not verified
   live by clicking:** the register was PIN-locked and an agent must not enter a staff PIN.
+- **The bills & orders screen was reworked (2026-08-24, `ko_pos_ui` 19.0.6.0.0,
+  `ko_pos_kds` 19.0.7.0.0, action `111041058`).** The owner reported two things —
+  an order in ออเดอร์ค้าง could not be edited, and the refund/void logic was wrong. Three
+  faults were found, each verified on the disposable Odoo 19 database before and after the
+  fix:
+  1. **An order card had no click handler at all.** Odoo's `onClickOrder` went with the
+     replaced markup, so nothing could be added or removed once keyed, and a takeaway with
+     no table could not be reopened from anywhere. Each unpaid card now carries
+     **แก้ไขออเดอร์** (`TicketScreen.setOrder`, which keeps Odoo's sync guard) and a two-tap
+     **ยกเลิกออเดอร์**. Cancelling routes through a local `_koDeleteOrder` so Odoo's English
+     "are you sure" dialog does not stack on top of the Thai confirm.
+  2. **A bill locked itself the moment ยกเลิกบิล was tapped.** `line.refundedQty` counts
+     refund lines whose order is still `draft`, so the source bill read
+     "คืนเงินครบแล้ว" before any money moved and its whole action grid vanished — no
+     reprint, no invoice, no retry, no undo. Settlement is now measured only from
+     **finalised** refunds; an unfinished one shows as a banner with ทำต่อ / ทิ้งบิลคืนเงิน.
+     Stale `uiState.lineToRefund` entries are cleared before a new refund, so a retry is
+     never an empty 0-baht bill.
+  3. **The KO payment screen only covered phones.** `point_of_sale.PaymentScreen` holds two
+     whole screens (`t-if="ui.isSmall"` / `t-else`) and the xpath matched only the first, so
+     every till wider than a phone rendered raw Odoo. Worse, the KDS refund cancellation
+     hung off the KO validate button, so on a tablet **the kitchen was never told about a
+     refund**. Both branches now collapse into the KO screen, and the cancellation moved to
+     `OrderPaymentValidation.afterOrderValidation` so it cannot depend on which button was
+     pressed.
+  Refunds are now per line: every line in the bill sheet has a +/− stepper with a running
+  total, so one plate can be returned while the rest of the table keeps eating.
+  `ko.kds.ticket.cancel_lines_from_pos` strikes off exactly what came back — a partly
+  returned line has its quantity reduced rather than cancelled. **แก้ไขบิล was removed**: it
+  refunded the whole bill and re-keyed every line onto a new order, which fired the entire
+  order at the kitchen a second time.
+  Verified on the disposable database, 0 console errors throughout: แก้ไขออเดอร์ returns to
+  the same order uuid and the steppers add/remove lines; ยกเลิกออเดอร์ empties the tab and
+  closes the kitchen ticket (K0006/K0007 — 0 live lines, state `cancelled`); a 1-of-2
+  partial refund leaves the other dish `cooking` on the ticket while the refunded one is
+  `cancelled`; a bill whose refund was abandoned still reads "คืนเงินบางส่วน" with a banner
+  and recovers cleanly through ทิ้งบิลคืนเงิน; the retry then produces a correct −60 refund
+  rather than an empty one; the KO payment screen renders on both 1400 px and 420 px
+  (`koPay:1, koValidate:1, stockNumpad:0`). 23/23 module tests pass. Deploy log confirms
+  `DEPLOYED_ko_pos_kds 19.0.7.0.0`, `DEPLOYED_ko_pos_ui 19.0.6.0.0`,
+  `ORDERS_SCSS_PRESENT=yes`, `REFUND_CANCEL_PRESENT=yes`, 88 modules, 57 Thai override
+  files, no error. **Not verified live:** neither the browser bridge nor the sandbox could
+  reach `kodoo.viakuma.com` at the time, so the live bundle was not inspected and nothing
+  was keyed, refunded or cancelled on production.
 
 ---
 
 ## 9. Outstanding work
 
-1. **Operate the kitchen display once with a real order.** Everything below the browser
-   was proved on a disposable Odoo 19 copy; on production nothing was keyed, sent, paid or
-   served on purpose. Ring up one dish per station, press ส่งครัว, watch it appear, mark it
-   ready, serve it from บิล, and raise one แจ้งปัญหา — then close the session normally.
+1. **Operate the POS and kitchen display once with a real order.** Everything below the
+   browser was proved on a disposable Odoo 19 copy; on production nothing was keyed, sent,
+   paid, refunded or served on purpose. Ring up one dish per station, press ส่งครัว, watch
+   it appear, mark it ready, serve it from บิล, raise one แจ้งปัญหา, then edit an open
+   order, refund one line of a paid bill and check the kitchen board — and close the session
+   normally.
 2. **ร้านหวานอยู่ (POS 3) has only the ขนม station.** Anything it sells outside ของหวาน will
    show as ไม่ได้กำหนดสถานี (visible everywhere, but unrouted). Add the stations that shop
    actually has, or widen ขนม, in ตั้งค่า → สถานีครัว.
@@ -521,6 +567,13 @@ Working and confirmed against the live system:
 8. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close. `docs/RUNBOOK-kds.md` is written to be read straight to staff.
 9. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
+
+> ✅ Completed 2026-08-24: reworked บิล & ออเดอร์ — open orders can be edited and cancelled,
+> refunds are per line, an unfinished refund no longer bricks the bill, the KO payment
+> screen now renders at every width, and the kitchen is told about refunds from
+> `afterOrderValidation` instead of from a button (`ko_pos_ui` 19.0.6.0.0, `ko_pos_kds`
+> 19.0.7.0.0). Deploy action `111041058`. Details in §8; the traps are in
+> `docs/GOTCHAS.md`; how to operate it in `docs/RUNBOOK-orders-refunds.md`.
 
 > ✅ Completed 2026-08-23: reworked the kitchen display against the owner's five
 > requirements — one configurable station model, both order-to-kitchen paths, per-dish serving
