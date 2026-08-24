@@ -388,7 +388,7 @@ Working and confirmed against the live system:
   with `!important`, keeps `.product-content` / `.product-name` left aligned (Odoo centers
   the no-image variant), hides Odoo's own `.product-cart-qty` badge, and gives the
   orderline stepper 10 px of room so it no longer touches the line price.
-  Deploy action **110899755**: `DEPLOYED_ko_pos_ui: "version": "19.0.4.2.0"`,
+  Deploy action `110899755`: `DEPLOYED_ko_pos_ui: "version": "19.0.4.2.0"`,
   `KDS_SECURITY_PRESENT=yes`, translations still exactly 57 files, `ko_pos_ui` loaded.
   Verified live at `kodoo.viakuma.com` (POS 2, ร้านชอบแกง) at 1600 px, 760 px and 420 px:
   rows are 54 px thumbnail + name + `฿price` + `+` / stepper, 81 px tall, contiguous with
@@ -408,7 +408,7 @@ Working and confirmed against the live system:
   `--ko-primary-soft`, keeps only a selected partner's name ellipsised at 150 px, and hides
   Odoo's own `.more-btn` — `ko-order-heading` already renders the KO `⋯` button bound to the
   same `displayAllControlPopup` handler, so it was a duplicate that pushed the row over its
-  width. Deploy action **110902588**: `DEPLOYED_ko_pos_ui: "version": "19.0.4.3.0"`,
+  width. Deploy action `110902588`: `DEPLOYED_ko_pos_ui: "version": "19.0.4.3.0"`,
   `KDS_SECURITY_PRESENT=yes`, translations still exactly 57 files, `ko_pos_ui` loaded.
   Verified live at `kodoo.viakuma.com` (POS 2, ร้านชอบแกง, table 1) after a hard refresh:
   all five buttons fit one 50 px row with rendered width ≥ scroll width (no truncation), the
@@ -492,8 +492,8 @@ Working and confirmed against the live system:
   disposable database (no order → floor plan, order in hand → same order, 0 console
   errors), and the production bundle now carries the guarded `goSell`. **Not verified
   live by clicking:** the register was PIN-locked and an agent must not enter a staff PIN.
-- **The bills & orders screen was reworked (2026-08-24, `ko_pos_ui` 19.0.6.0.0,
-  `ko_pos_kds` 19.0.7.0.0, action `111041058`).** The owner reported two things —
+- **The bills & orders screen was reworked (2026-08-24, `ko_pos_ui` 19.0.6.1.0,
+  `ko_pos_kds` 19.0.7.0.0; first half deployed by action `111041058`).** The owner reported two things —
   an order in ออเดอร์ค้าง could not be edited, and the refund/void logic was wrong. Three
   faults were found, each verified on the disposable Odoo 19 database before and after the
   fix:
@@ -520,22 +520,44 @@ Working and confirmed against the live system:
   Refunds are now per line: every line in the bill sheet has a +/− stepper with a running
   total, so one plate can be returned while the rest of the table keeps eating.
   `ko.kds.ticket.cancel_lines_from_pos` strikes off exactly what came back — a partly
-  returned line has its quantity reduced rather than cancelled. **แก้ไขบิล was removed**: it
-  refunded the whole bill and re-keyed every line onto a new order, which fired the entire
-  order at the kitchen a second time.
-  Verified on the disposable database, 0 console errors throughout: แก้ไขออเดอร์ returns to
-  the same order uuid and the steppers add/remove lines; ยกเลิกออเดอร์ empties the tab and
-  closes the kitchen ticket (K0006/K0007 — 0 live lines, state `cancelled`); a 1-of-2
-  partial refund leaves the other dish `cooking` on the ticket while the refunded one is
-  `cancelled`; a bill whose refund was abandoned still reads "คืนเงินบางส่วน" with a banner
-  and recovers cleanly through ทิ้งบิลคืนเงิน; the retry then produces a correct −60 refund
-  rather than an empty one; the KO payment screen renders on both 1400 px and 420 px
-  (`koPay:1, koValidate:1, stockNumpad:0`). 23/23 module tests pass. Deploy log confirms
-  `DEPLOYED_ko_pos_kds 19.0.7.0.0`, `DEPLOYED_ko_pos_ui 19.0.6.0.0`,
-  `ORDERS_SCSS_PRESENT=yes`, `REFUND_CANCEL_PRESENT=yes`, 88 modules, 57 Thai override
-  files, no error. **Not verified live:** neither the browser bridge nor the sandbox could
-  reach `kodoo.viakuma.com` at the time, so the live bundle was not inspected and nothing
-  was keyed, refunded or cancelled on production.
+  returned line has its quantity reduced rather than cancelled.
+  4. **A refund could swallow a live table.** `TicketScreen._getEmptyOrder()` reuses *any*
+     empty draft order as the refund's destination, and in a restaurant the commonest empty
+     draft order is the one tapping a table just created — so refunding a bill turned table
+     12's fresh order into the refund (reproduced: `{"hijacked":true,"refundTable":12}`).
+     It now only reuses orders with no `table_id` and no `is_refund`.
+  5. **แก้ไขบิล threw at the last step.** `koNewOrder()` called `orderDone()` and only then
+     `addLineToCurrentOrder()`; `navigate()` re-points `selectedOrderUuid` only when the
+     target route carries an `orderUuid`, and in restaurant mode `orderDone()` goes to the
+     floor plan without one — so the POS was still on the refund order it had just
+     finalized and `assertEditable()` threw *Finalized Order cannot be modified*. The
+     cashier refunded the bill and got nothing back. The replacement order is now built with
+     `createNewOrder()` *before* `orderDone()`, filled through `addLineToOrder(vals, order)`,
+     and keeps the original table and customer.
+
+  **แก้ไขบิล is kept, on the owner's instruction (2026-08-24), and fixed.** It is honestly
+  expensive and `docs/RUNBOOK-orders-refunds.md` §7 says so: the refund cancels the old
+  kitchen ticket and the corrected order is fired as a *new* one, so unchanged dishes are
+  cooked twice. It is the right tool for a bill keyed against the wrong table, and the wrong
+  tool for swapping one plate — refund that single line instead.
+
+  Verified on the disposable database, 0 console errors throughout. Playwright, driving the
+  real POS: **31/31** on the orders/refunds suite and **6/6** on the takeaway and
+  table-hijack suite; the KO payment screen renders at both 1400 px and 420 px
+  (`koPay:1, koValidate:1, stockNumpad:0`); **23/23** module tests pass. The same suites
+  were run against the pre-fix code first and fail 12 of the 15 assertions they can even
+  reach, including the exact `assertEditable` trace and the false คืนเงินครบแล้ว. Covered
+  end to end: +/− and ✕ on an open order card with the kitchen following
+  (`Water:cooking:3, Espresso:cancelled:1`); ยกเลิกออเดอร์ emptying the tab and closing the
+  ticket; a 1-of-2 partial refund reducing that kitchen line to `qty 1` while the other dish
+  stays `cooking`; an abandoned refund appearing in ออเดอร์ค้าง, leaving the bill refundable,
+  and the retry producing a real −7.59 refund rather than an empty one; แก้ไขบิล restoring
+  `Green Tea x2` on table 7. **Not verified live:** nothing was keyed, refunded or cancelled
+  on production, and the register is PIN-locked so an agent cannot click through it.
+
+  **Deploy state:** action `111041058` shipped the earlier `ko_pos_ui` 19.0.6.0.0 /
+  `ko_pos_kds` 19.0.7.0.0. The merged code above is `ko_pos_ui` **19.0.6.1.0** and needs a
+  new deploy before production runs it.
 
 ---
 
@@ -568,12 +590,20 @@ Working and confirmed against the live system:
    session close. `docs/RUNBOOK-kds.md` is written to be read straight to staff.
 9. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
-> ✅ Completed 2026-08-24: reworked บิล & ออเดอร์ — open orders can be edited and cancelled,
-> refunds are per line, an unfinished refund no longer bricks the bill, the KO payment
-> screen now renders at every width, and the kitchen is told about refunds from
-> `afterOrderValidation` instead of from a button (`ko_pos_ui` 19.0.6.0.0, `ko_pos_kds`
-> 19.0.7.0.0). Deploy action `111041058`. Details in §8; the traps are in
+> ✅ Completed 2026-08-24: reworked บิล & ออเดอร์ — open orders can be edited and cancelled
+> from the card itself, refunds are per line, an unfinished refund no longer bricks the bill
+> and is visible in ออเดอร์ค้าง, a refund can no longer swallow a live table's order, แก้ไขบิล
+> restores the bill it just refunded, the KO payment screen renders at every width, and the
+> kitchen is told about refunds from `afterOrderValidation` instead of from a button
+> (`ko_pos_ui` 19.0.6.1.0, `ko_pos_kds` 19.0.7.0.0). Details in §8; the traps are in
 > `docs/GOTCHAS.md`; how to operate it in `docs/RUNBOOK-orders-refunds.md`.
+>
+> ⚠️ Two agents worked this repo on 2026-08-24 and both pushed to `main`. Commits
+> `aba5bc4`…`e780237` are one implementation; `d7547dc`/`d423e13` are another, pushed from a
+> clone taken before the first landed, so they silently reverted four of its files. The
+> owner asked for the two to be merged; the entry in §8 describes the merged result. **Check
+> `git log origin/main` before pushing to this repo** — `push_files` replaces whole files and
+> will quietly undo work it never saw.
 
 > ✅ Completed 2026-08-23: reworked the kitchen display against the owner's five
 > requirements — one configurable station model, both order-to-kitchen paths, per-dish serving

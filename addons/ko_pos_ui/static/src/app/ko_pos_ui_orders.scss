@@ -1,164 +1,224 @@
-// Styles for the refund-per-line bill sheet and for the edit / cancel controls
-// on an open order card.
-//
-// These live in their own file rather than in ko_pos_ui.scss so the 35 KB base
-// stylesheet does not have to be rewritten to add a button. The asset glob in
-// the manifest picks the file up automatically, and it loads after
-// ko_pos_ui.scss alphabetically, which is what these additive rules want.
-//
-// Line comments, not block comments: a SCSS block comment ends at the first
-// "*/", so writing an asset glob inside one closes it early and the rest of the
-// file becomes garbage. That is exactly what broke the whole POS stylesheet
-// once already ("A css error occured, using an old style to render this page").
+/* ==========================================================================
+   บิล & ออเดอร์ — editing an open order, and picking what to refund
 
-.pos .ko-bill-act-btn.refund {
-    color: var(--ko-primary, #0f766e);
-    border-color: #cfe6e2;
+   Everything the orders tab needs beyond the base theme in ko_pos_ui.scss:
+   the per-line quantity controls on an open order, the order-level actions,
+   and the refund steppers inside the bill sheet.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Editing an open order straight from the orders tab
+   -------------------------------------------------------------------------- */
+.pos .ko-open-order-card.refund {
+    border-color: #f3d4da;
 }
 
-.pos .ko-bill-act-btn.refund.disabled,
-.pos .ko-bill-act-btn.refund:disabled {
-    color: var(--ko-muted);
-    border-color: var(--ko-border);
-    background: #f6f8f8;
-    cursor: not-allowed;
-}
-
-/* --- per-line refund stepper in the bill sheet --- */
-.pos .ko-refund-stepper {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: none;
-    margin-left: 10px;
-}
-
-.pos .ko-refund-stepper button {
-    width: 34px;
-    height: 34px;
-    font-size: 19px;
-    line-height: 1;
-    font-weight: 600;
-    color: var(--ko-ink);
-    background: #fff;
-    border: 1.5px solid var(--ko-border);
-    border-radius: 10px;
+.pos .ko-open-order-head.tappable {
     cursor: pointer;
 }
 
-.pos .ko-refund-stepper strong {
-    min-width: 20px;
+.pos .ko-open-order-head.tappable:active {
+    background: var(--ko-line);
+}
+
+.pos .ko-open-type-badge.refund {
+    color: var(--ko-danger-text);
+    background: var(--ko-danger-bg);
+}
+
+.pos .ko-qty-stepper {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: 0 0 auto;
+}
+
+.pos .ko-qty-btn {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--ko-primary-dark);
+    background: var(--ko-primary-soft);
+    border: 0;
+    border-radius: 9px;
+    cursor: pointer;
+}
+
+.pos .ko-qty-btn:disabled {
+    color: var(--ko-muted);
+    background: var(--ko-line);
+    cursor: default;
+}
+
+.pos .ko-qty-value {
+    min-width: 24px;
     text-align: center;
-    font-size: 16px;
+    font-size: 14px;
+    font-weight: 700;
     color: var(--ko-ink);
 }
 
-.pos .ko-bill-item-refunded {
-    margin-top: 2px;
-    font-size: 11.5px;
-    color: var(--ko-danger-text);
-}
-
-.pos .ko-bill-sheet-total-row.refund span,
-.pos .ko-bill-sheet-total-row.refund strong {
-    color: var(--ko-danger-text);
-}
-
-/* --- unfinished refund banner --- */
-.pos .ko-bill-pending-refund {
-    margin: 0 22px 10px;
-    padding: 12px 14px;
-    background: #fff6ed;
-    border: 1.5px solid #f2d3b0;
-    border-radius: 14px;
-}
-
-.pos .ko-bill-pending-text {
+.pos .ko-line-del-btn {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 13px;
-    color: #8a5a1c;
-    font-weight: 500;
+    color: var(--ko-danger-text);
+    background: var(--ko-danger-bg);
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
 }
 
-.pos .ko-bill-pending-actions {
+.pos .ko-line-del-btn:disabled {
+    color: var(--ko-muted);
+    background: var(--ko-line);
+    cursor: default;
+}
+
+.pos .ko-open-order-actions {
     display: flex;
     gap: 8px;
-    margin-top: 10px;
+    padding: 0 14px 12px;
 }
 
-.pos .ko-bill-pending-btn {
+.pos .ko-open-act-btn {
     flex: 1;
-    padding: 9px;
+    padding: 10px;
     font-size: 13px;
     font-weight: 600;
     border-radius: 11px;
     border: 1.5px solid var(--ko-border);
     background: #fff;
-    color: var(--ko-ink);
+    color: #3a4a4d;
     cursor: pointer;
 }
 
-.pos .ko-bill-pending-btn.resume {
-    color: #fff;
-    background: #b4711f;
-    border-color: #b4711f;
+.pos .ko-open-act-btn.primary {
+    color: var(--ko-primary-dark);
+    border-color: var(--ko-primary);
 }
 
-.pos .ko-bill-pending-btn.discard {
+.pos .ko-open-act-btn.danger {
     color: var(--ko-danger-text);
     border-color: #f3d4da;
 }
 
-/* --- edit / cancel on an open order card --- */
-.pos .ko-open-order-actions {
-    display: flex;
-    gap: 10px;
-    padding: 10px 14px 14px;
-    border-top: 1px solid var(--ko-line);
+.pos .ko-open-act-btn:disabled {
+    color: var(--ko-muted);
+    border-color: var(--ko-border);
+    cursor: default;
 }
 
-.pos .ko-open-act-btn {
-    flex: 1;
-    padding: 12px 10px;
-    font-size: 14px;
-    font-weight: 600;
-    border-radius: 12px;
-    border: 1.5px solid var(--ko-border);
-    background: #fff;
-    color: var(--ko-ink);
-    cursor: pointer;
-}
-
-.pos .ko-open-act-btn small {
-    display: block;
-    font-size: 10.5px;
-    font-weight: 400;
+/* --------------------------------------------------------------------------
+   Picking what to refund inside the bill sheet
+   -------------------------------------------------------------------------- */
+.pos .ko-refund-hint {
+    margin-bottom: 6px;
+    font-size: 12px;
     color: var(--ko-muted);
 }
 
-.pos .ko-open-act-btn.edit {
-    color: #fff;
-    background: var(--ko-primary, #0f766e);
-    border-color: var(--ko-primary, #0f766e);
+.pos .ko-bill-item-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
 }
 
-.pos .ko-open-act-btn.edit small {
+.pos .ko-bill-item-refunded {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ko-danger-text);
+    white-space: nowrap;
+}
+
+.pos .ko-refund-stepper {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.pos .ko-refund-qty {
+    min-width: 26px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ko-muted);
+}
+
+.pos .ko-refund-qty.active {
+    color: var(--ko-danger-text);
+}
+
+.pos .ko-refund-bar {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 22px 0;
+}
+
+.pos .ko-refund-pick {
+    padding: 10px 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #3a4a4d;
+    background: #fff;
+    border: 1.5px solid var(--ko-border);
+    border-radius: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.pos .ko-refund-pick.active {
+    color: var(--ko-primary-dark);
+    border-color: var(--ko-primary);
+    background: var(--ko-primary-soft);
+}
+
+.pos .ko-refund-pick:disabled {
+    color: var(--ko-muted);
+    cursor: default;
+}
+
+.pos .ko-refund-go {
+    flex: 1;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--ko-danger);
+    border: 0;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.pos .ko-refund-go small {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
     color: rgba(255, 255, 255, 0.85);
 }
 
-.pos .ko-open-act-btn.cancel {
-    color: var(--ko-danger-text);
-    border-color: #f3d4da;
-}
-
-.pos .ko-open-act-btn.cancel.confirm {
-    color: #fff;
-    background: var(--ko-danger);
-    border-color: var(--ko-danger);
-}
-
-.pos .ko-open-order-paid-note {
-    padding: 10px 14px 14px;
-    border-top: 1px solid var(--ko-line);
-    font-size: 12px;
+.pos .ko-refund-go:disabled {
     color: var(--ko-muted);
+    background: var(--ko-line);
+    cursor: default;
+}
+
+.pos .ko-refund-go:disabled small {
+    color: var(--ko-muted);
+}
+
+.pos .ko-bill-act-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
 }

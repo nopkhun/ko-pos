@@ -14,7 +14,7 @@ The log shows the surrounding lines but not the ones inside the loop.
 
 **Cause:** Compose interpolates `$VAR` before the container ever runs and substitutes an
 empty string. `for m in account payment; do cat …/$m.append.po; done` becomes
-`cat …/.append.po`, matches nothing, exits cleanly.
+`cat ….append.po`, matches nothing, exits cleanly.
 
 **Tell:** the build log contains `The "m" variable is not set. Defaulting to a blank string.`
 
@@ -825,3 +825,56 @@ unrelated, because it names the bundle rather than your file.
 **Worth knowing anyway:** a new file under `static/src/app/` needs no manifest change —
 the glob picks it up — and files load in alphabetical order, so `ko_pos_ui_orders.scss`
 lands after `ko_pos_ui.scss` and its additive rules win.
+
+---
+
+### Refunding a bill turned a live table into a refund
+
+**Symptom:** a waiter opens table 12, and while its blank order is still sitting there
+someone refunds an unrelated bill. Table 12's order *becomes* the refund — same uuid, still
+attached to the table.
+
+**Cause:** `TicketScreen._getEmptyOrder()` reuses **any** empty draft order as the refund's
+destination, and in a restaurant the most common empty draft order is the one tapping a
+table just created.
+
+**Reproduce:** pay a bill, tap an unused table to create its blank order, go to บิลแล้ว and
+refund the bill. Check `posmodel.getOrder()` — before the fix its `uuid` is the table's
+order and `table_id` is that table. Confirmed on the disposable database:
+`{"hijacked":true,"refundTable":12}`.
+
+**Fix (`ko_pos_ui` 19.0.6.1.0):** `_getEmptyOrder` is overridden to reuse only orders with
+no `table_id` and no `is_refund`; otherwise it creates a fresh one.
+
+---
+
+### "แก้ไขบิล" refunds the money and gives nothing back
+
+**Symptom:** the edit-bill flow refunds the bill, the receipt screen offers
+**โหลดรายการเพื่อแก้ไข · Edit order**, and tapping it lands on the floor plan with no order
+and no lines. The console shows:
+
+```
+Error: Finalized Order cannot be modified
+    at Proxy.assertEditable
+    at Proxy.addLineToCurrentOrder
+    at ReceiptScreen.koNewOrder
+```
+
+**Cause:** `koNewOrder()` called `orderDone()` and *then* `addLineToCurrentOrder()`.
+`orderDone()` navigates to `pos.defaultPage`, which in restaurant mode is FloorScreen — and
+`navigate()` only re-points `selectedOrderUuid` when the target route carries an
+`orderUuid`. FloorScreen's route carries none, so the POS was still pointing at the refund
+order it had just finalized. FloorScreen's `resetTable()` clears it, but only after the
+component mounts — far too late.
+
+**Fix (`ko_pos_ui` 19.0.6.1.0):** build the replacement order **before** `orderDone()`, with
+`pos.createNewOrder()` (which does *not* select it, so the receipt screen keeps rendering
+the refund), add the lines to it explicitly with `addLineToOrder(vals, order)`, and select
+and navigate to it afterwards. The intent also carries `tableId` and `partnerId`, so an
+edited dine-in bill comes back on its own table instead of turning into a takeaway.
+
+**Know what the button costs before offering it.** It cancels the old kitchen ticket (the
+refund does that) and fires the corrected order as a **new** ticket, so every unchanged dish
+is cooked again. It is the right tool for a bill keyed against the wrong table, and the
+wrong tool for swapping one plate — refund that one line instead.
