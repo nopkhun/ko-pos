@@ -477,6 +477,21 @@ Working and confirmed against the live system:
   seeds for a fresh database (ครัวร้อน / บาร์น้ำ / ครัวขนม) were **deactivated**, not deleted,
   because `noupdate="1"` data is recreated on the next upgrade if the record is missing. The
   one pre-existing ticket line was re-pointed to ครัวร้อน.
+- **The ขาย tab crashed when no order was selected (fixed 2026-08-24, `ko_pos_ui`
+  19.0.5.0.1, action `110957024`).** Reported from production at 01:54 GMT:
+  `TypeError: Cannot read properties of undefined (reading 'uuid') at KoBottomNav.goSell`.
+  `goSell()` read `this.pos.getOrder().uuid`, but restaurant mode routinely has **no**
+  current order — `getOrder()` returns `undefined` while `selectedOrderUuid` is unset, and
+  Odoo's `afterOrderDeletion()` only re-selects one when `module_pos_restaurant` is off. The
+  path is simply: open the POS onto the floor plan, tap บิล, tap ขาย. Reproduced exactly on
+  the disposable Odoo 19 database (identical stack), then fixed: with an order in hand ขาย
+  still returns to that order, otherwise it goes to FloorScreen so staff pick a table.
+  `pos.openOrder` was deliberately **not** used as the fallback — it hands back any draft
+  order, which in a restaurant is likely another table's bill. `ko_receipt_screen`'s
+  edit-bill path had the same unguarded read and is guarded too. Re-verified on the
+  disposable database (no order → floor plan, order in hand → same order, 0 console
+  errors), and the production bundle now carries the guarded `goSell`. **Not verified
+  live by clicking:** the register was PIN-locked and an agent must not enter a staff PIN.
 
 ---
 
