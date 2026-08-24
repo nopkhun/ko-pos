@@ -196,6 +196,22 @@ patch(PosStore.prototype, {
         if (!opts.byPassPrint) {
             // Send to KDS first — the (optional) kitchen printer may be slow.
             await this.koSendToKds(order, opts);
+            if (opts.cancelled && this.koKdsEnabled && order && !order.isRefund) {
+                // The diff above only knows the dishes *this* device remembers
+                // sending. A dish fired from another till would survive it and
+                // sit on the board for an order that no longer exists, so close
+                // the whole ticket as well. Doing both is harmless: cancelling
+                // an already-cancelled ticket is a no-op.
+                try {
+                    await this.data.call("ko.kds.ticket", "cancel_by_order_uuid", [
+                        order.uuid,
+                        this.config.id,
+                    ]);
+                    await this.koRefreshKdsStatus();
+                } catch (error) {
+                    console.warn("KDS: failed closing the cancelled ticket", error);
+                }
+            }
         }
         return await super.sendOrderInPreparation(order, opts);
     },
@@ -257,6 +273,49 @@ patch(PosStore.prototype, {
         }
     },
 
+    /**
+     * A refund has just been validated: take the returned dishes off the
+     * kitchen board. Only what was actually refunded is removed, so refunding
+     * one plate out of four leaves the other three cooking.
+     *
+     * This deliberately hangs off order validation rather than off a button.
+     * The KO payment screen only covers part of Odoo's template, so a till on
+     * a wide screen validates through Odoo's own button — anything wired to a
+     * KO button alone silently never runs there.
+     */
+    async koCancelKitchenForRefund(order) {
+        if (!this.koKdsEnabled || !order?.isRefund) {
+            return false;
+        }
+        const bySource = {};
+        for (const line of order.getOrderlines()) {
+            const source = line.refunded_orderline_id;
+            const sourceOrder = source?.order_id;
+            if (!source || !sourceOrder?.uuid) {
+                continue;
+            }
+            const bucket = (bySource[sourceOrder.uuid] = bySource[sourceOrder.uuid] || []);
+            bucket.push({ uuid: source.uuid, qty: Math.abs(line.getQuantity()) });
+        }
+        const sources = Object.keys(bySource);
+        if (!sources.length) {
+            return false;
+        }
+        for (const orderUuid of sources) {
+            try {
+                await this.data.call("ko.kds.ticket", "cancel_lines_from_pos", [
+                    orderUuid,
+                    bySource[orderUuid],
+                    this.config.id,
+                ]);
+            } catch (error) {
+                console.warn("KDS: failed cancelling refunded dishes", error);
+            }
+        }
+        await this.koRefreshKdsStatus();
+        return true;
+    },
+
     async koAckKitchenIssues(items) {
         const byOrder = {};
         for (const item of items || []) {
@@ -286,6 +345,16 @@ patch(OrderPaymentValidation.prototype, {
         const result = await super.afterOrderValidation(...arguments);
         const pos = this.pos;
         const order = this.order;
+        if (order?.isRefund && pos?.koKdsEnabled) {
+            // Money went back to the customer: the kitchen must stop cooking
+            // whatever was returned.
+            try {
+                await pos.koCancelKitchenForRefund(order);
+            } catch (error) {
+                console.warn("KDS: refund cancellation failed", error);
+            }
+            return result;
+        }
         if (
             pos?.config?.module_pos_restaurant &&
             pos.koKdsEnabled &&
