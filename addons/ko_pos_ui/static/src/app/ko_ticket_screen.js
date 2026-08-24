@@ -24,6 +24,37 @@ function shortOrderNumber(order) {
     return String(order.pos_reference || order.name || order.tracking_number || "-").split("/").at(-1);
 }
 
+/**
+ * How much of a line the customer has actually been paid back for.
+ *
+ * Odoo's own `line.refundedQty` counts refund lines whose order is merely
+ * *drafted* — so the instant someone taps ยกเลิกบิล the original bill looked
+ * fully refunded even though no money had moved, and the bill's whole action
+ * grid disappeared. Only a finalised refund counts as money returned.
+ */
+function settledRefundQty(line) {
+    return (line.refund_orderline_ids || []).reduce(
+        (total, refundLine) =>
+            refundLine.order_id?.finalized && refundLine.order_id?.state !== "cancel"
+                ? total - refundLine.qty
+                : total,
+        0
+    );
+}
+
+/** A refund for this bill that was started and never finished. */
+function pendingRefundOrder(order) {
+    for (const line of order.getOrderlines()) {
+        for (const refundLine of line.refund_orderline_ids || []) {
+            const refundOrder = refundLine.order_id;
+            if (refundOrder && !refundOrder.finalized && refundOrder.state !== "cancel") {
+                return refundOrder;
+            }
+        }
+    }
+    return null;
+}
+
 patch(TicketScreen, {
     components: {
         ...TicketScreen.components,
@@ -38,7 +69,10 @@ patch(TicketScreen.prototype, {
             koActiveTab: "open",
             koSelectedTicket: null,
             koConfirmVoid: false,
+            koConfirmCancelUuid: null,
             koBusy: false,
+            // uuid of the source orderline -> how many units to refund
+            koRefundQty: {},
         });
         this.koInvoiceService = useService("account_move");
         onWillStart(async () => {
@@ -91,9 +125,6 @@ patch(TicketScreen.prototype, {
         // Both ways an order can arrive belong in this tab. An unpaid table
         // order is obviously still open; a takeaway that was paid up front is
         // just as open until every dish has physically reached the customer.
-        // Before ko_pos_ui 19.0.5.0.0 a paid order dropped straight into
-        // "บิลแล้ว", where there is no per-dish serve button at all — so half
-        // the orders in the restaurant could never be ticked off.
         return this.koAllOrders
             .filter((order) => {
                 if (order.isEmpty() || order.isRefund) {
@@ -101,6 +132,15 @@ patch(TicketScreen.prototype, {
                 }
                 if (!order.finalized) {
                     return true;
+                }
+                // A bill that has been paid back in full is finished business:
+                // it must not sit here offering เสิร์ฟ buttons for food nobody
+                // is going to make.
+                const settled = order
+                    .getOrderlines()
+                    .every((line) => settledRefundQty(line) >= Math.abs(line.qty));
+                if (settled) {
+                    return false;
                 }
                 return order
                     .getOrderlines()
@@ -127,6 +167,11 @@ patch(TicketScreen.prototype, {
                         : partnerName || "สั่งกลับบ้าน",
                     isTakeaway,
                     isPaid: Boolean(order.finalized),
+                    // An unpaid order is still a working document: staff must be
+                    // able to walk back into it to add or remove a dish. A paid
+                    // one is a bill — changing it means refunding it.
+                    canEdit: !order.finalized,
+                    confirmCancel: this.state.koConfirmCancelUuid === order.uuid,
                     typeLabel: order.finalized ? `${typeLabel} · จ่ายแล้ว` : typeLabel,
                     elapsedMinutes,
                     isLate: elapsedMinutes >= (this.pos.config.ko_kds_sla_minutes || 15),
@@ -173,38 +218,144 @@ patch(TicketScreen.prototype, {
         return this.koAllOrders
             .filter((order) => order.finalized)
             .sort((a, b) => timestamp(b.date_order) - timestamp(a.date_order))
-            .map((order) => {
-                const fullyRefunded = order.getOrderlines().every(
-                    (line) => line.refundedQty >= Math.abs(line.qty)
-                );
-                const date = new Date(timestamp(order.date_order));
+            .map((order) => this._koBillTicket(order));
+    },
+
+    _koBillTicket(order) {
+        const lines = order.getOrderlines();
+        const fullyRefunded = lines.every(
+            (line) => settledRefundQty(line) >= Math.abs(line.qty)
+        );
+        const partlyRefunded =
+            !fullyRefunded && lines.some((line) => settledRefundQty(line) > 0);
+        const pending = order.isRefund ? null : pendingRefundOrder(order);
+        const date = new Date(timestamp(order.date_order));
+        return {
+            order,
+            no: `#${shortOrderNumber(order)}`,
+            tableName: order.table_id ? `โต๊ะ ${order.table_id.table_number}` : "สั่งกลับบ้าน",
+            timeStr: date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
+            count: lines.length,
+            paymentName: order.payment_ids[0]?.payment_method_id?.name || "-",
+            totalFormatted: formatCurrency(order.priceIncl || 0, this.pos.currency.id),
+            isVoid: fullyRefunded || order.isRefund,
+            // A refund that was started and abandoned blocks a second attempt,
+            // so it gets its own banner instead of silently locking the bill.
+            pendingRefund: pending,
+            pendingRefundLabel: pending
+                ? `มีบิลคืนเงินค้างอยู่ ${formatCurrency(
+                      Math.abs(pending.priceIncl || 0),
+                      this.pos.currency.id
+                  )} — ยังไม่ได้จ่ายคืนลูกค้า`
+                : "",
+            statusLabel: order.isRefund
+                ? "รายการคืนเงิน · Refund"
+                : fullyRefunded
+                ? "คืนเงินครบแล้ว · Refunded"
+                : partlyRefunded
+                ? "คืนเงินบางส่วน · Partly refunded"
+                : "ชำระแล้ว · Paid",
+            hasTaxInvoice: Boolean(order.raw.account_move),
+            lines: lines.map((line) => {
+                const total = Math.abs(line.qty);
+                const settled = settledRefundQty(line);
                 return {
-                    order,
-                    no: `#${shortOrderNumber(order)}`,
-                    tableName: order.table_id ? `โต๊ะ ${order.table_id.table_number}` : "สั่งกลับบ้าน",
-                    timeStr: date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-                    count: order.getOrderlines().length,
-                    paymentName: order.payment_ids[0]?.payment_method_id?.name || "-",
-                    totalFormatted: formatCurrency(order.priceIncl || 0, this.pos.currency.id),
-                    isVoid: fullyRefunded || order.isRefund,
-                    statusLabel: order.isRefund
-                        ? "รายการคืนเงิน · Refund"
-                        : fullyRefunded
-                        ? "คืนเงินครบแล้ว · Refunded"
-                        : "ชำระแล้ว · Paid",
-                    hasTaxInvoice: Boolean(order.raw.account_move),
+                    line,
+                    uuid: line.uuid,
+                    qty: line.getQuantity(),
+                    name: line.getFullProductName(),
+                    note: line.getCustomerNote(),
+                    subtotal: line.price_subtotal_incl,
+                    refundable: Math.max(0, total - settled),
+                    settled,
                 };
-            });
+            }),
+        };
     },
 
     koOpenTicketSheet(ticket) {
         this.state.koSelectedTicket = ticket;
         this.state.koConfirmVoid = false;
+        this.state.koRefundQty = {};
     },
 
     koCloseTicketSheet() {
         this.state.koSelectedTicket = null;
         this.state.koConfirmVoid = false;
+        this.state.koRefundQty = {};
+    },
+
+    // ------------------------------------------------------------------
+    // Open orders: edit and cancel
+    // ------------------------------------------------------------------
+
+    async koEditOrder(order) {
+        // `setOrder` is TicketScreen's own helper: it refuses while the order is
+        // syncing, flushes shared orders first, then selects it and lands on the
+        // right screen. Before this, the ออเดอร์ค้าง cards had no click handler
+        // at all, so a takeaway with no table could never be reopened.
+        if (this.state.koBusy || order.finalized) {
+            return;
+        }
+        this.state.koBusy = true;
+        try {
+            await this.setOrder(order);
+        } catch (error) {
+            console.error("KO POS could not open order", error);
+            showKoToast("เปิดออเดอร์ไม่สำเร็จ กรุณาลองอีกครั้ง");
+        } finally {
+            this.state.koBusy = false;
+        }
+    },
+
+    /**
+     * Delete an order without Odoo's own confirmation dialog.
+     *
+     * `pos.onDeleteOrder` opens an English "are you sure" prompt of its own.
+     * Both KO screens have already asked, in Thai, so this repeats the rest of
+     * its work minus the second prompt — including clearing the lineToRefund
+     * entries a deleted refund order leaves behind on the bill it refunded.
+     * `deleteOrders` is what tells the kitchen: for an order already sent to
+     * preparation it fires sendOrderInPreparation({cancelled: true}) first.
+     */
+    async _koDeleteOrder(order) {
+        const refundedOrderLines = order.lines
+            .filter((line) => line.refunded_orderline_id?.order_id)
+            .map((line) => ({
+                order: line.refunded_orderline_id.order_id,
+                uuid: line.refunded_orderline_id.uuid,
+            }));
+        const deleted = await this.pos.deleteOrders([order]);
+        if (!deleted) {
+            return false;
+        }
+        order.uiState.displayed = false;
+        for (const refundedLine of refundedOrderLines) {
+            delete refundedLine.order?.uiState?.lineToRefund[refundedLine.uuid];
+        }
+        await this.pos.afterOrderDeletion();
+        return true;
+    },
+
+    async koCancelOrder(order) {
+        if (this.state.koBusy || order.finalized) {
+            return;
+        }
+        if (this.state.koConfirmCancelUuid !== order.uuid) {
+            this.state.koConfirmCancelUuid = order.uuid;
+            return;
+        }
+        this.state.koConfirmCancelUuid = null;
+        this.state.koBusy = true;
+        try {
+            const deleted = await this._koDeleteOrder(order);
+            showKoToast(deleted ? "ยกเลิกออเดอร์แล้ว" : "ยกเลิกออเดอร์ไม่สำเร็จ");
+        } catch (error) {
+            console.error("KO POS could not cancel order", error);
+            showKoToast("ยกเลิกออเดอร์ไม่สำเร็จ");
+        } finally {
+            this.state.koBusy = false;
+        }
     },
 
     async koServeLine(order, line) {
@@ -299,105 +450,192 @@ patch(TicketScreen.prototype, {
         }
     },
 
-    _koReplacementLines(order) {
-        return order
-            .getOrderlines()
-            .filter((line) => !line.combo_parent_id)
-            .map((line) => ({
-                productTemplate: line.product_id.product_tmpl_id,
-                qty: Math.abs(line.qty),
-                customerNote: line.getCustomerNote(),
-                payload: {
-                    attribute_value_ids: line.attribute_value_ids.map((value) => value.id),
-                    attribute_custom_values: Object.fromEntries(
-                        (line.custom_attribute_value_ids || []).map((item) => [
-                            item.custom_product_template_attribute_value_id.id,
-                            item.custom_value,
-                        ])
-                    ),
-                    price_extra: line.price_extra || 0,
-                    qty: Math.abs(line.qty),
-                },
-            }));
+    // ------------------------------------------------------------------
+    // Refunds
+    // ------------------------------------------------------------------
+
+    koRefundQtyOf(item) {
+        const value = this.state.koRefundQty[item.uuid];
+        return typeof value === "number" ? value : 0;
     },
 
-    async _koStartFullRefund(type) {
+    koStepRefund(item, delta) {
+        const next = Math.min(item.refundable, Math.max(0, this.koRefundQtyOf(item) + delta));
+        this.state.koRefundQty = { ...this.state.koRefundQty, [item.uuid]: next };
+        this.state.koConfirmVoid = false;
+    },
+
+    koSelectAllForRefund() {
+        const ticket = this.koSelectedTicket;
+        if (!ticket) {
+            return;
+        }
+        const next = {};
+        for (const item of ticket.lines) {
+            next[item.uuid] = item.refundable;
+        }
+        this.state.koRefundQty = next;
+    },
+
+    get koRefundSelectedCount() {
+        const ticket = this.koSelectedTicket;
+        if (!ticket) {
+            return 0;
+        }
+        return ticket.lines.reduce((total, item) => total + this.koRefundQtyOf(item), 0);
+    },
+
+    get koRefundSelectedTotal() {
+        const ticket = this.koSelectedTicket;
+        if (!ticket) {
+            return formatCurrency(0, this.pos.currency.id);
+        }
+        const amount = ticket.lines.reduce((total, item) => {
+            const qty = this.koRefundQtyOf(item);
+            if (!qty) {
+                return total;
+            }
+            const unit = Math.abs(item.qty) ? item.subtotal / Math.abs(item.qty) : 0;
+            return total + unit * qty;
+        }, 0);
+        return formatCurrency(amount, this.pos.currency.id);
+    },
+
+    /**
+     * Start a refund for exactly the quantities in `wanted`.
+     *
+     * Odoo keeps refund intentions in `order.uiState.lineToRefund` and its
+     * `_getRefundableDetails` skips any entry already bound to a destination
+     * order. An abandoned refund therefore poisons every later attempt — the
+     * next one comes out as an empty bill for 0 บาท. Clearing the map first is
+     * safe because a *pending* refund is refused above, so nothing that is
+     * still live can be dropped here.
+     */
+    async _koStartRefund(wanted) {
         const ticket = this.koSelectedTicket;
         if (!ticket || this.state.koBusy) {
             return;
         }
         const order = ticket.order;
+        if (ticket.pendingRefund) {
+            showKoToast("บิลนี้มีรายการคืนเงินค้างอยู่ กรุณาทำให้จบหรือทิ้งก่อน");
+            return;
+        }
+        const totalQty = Object.values(wanted).reduce((sum, qty) => sum + qty, 0);
+        if (!totalQty) {
+            showKoToast("กรุณาเลือกรายการที่จะคืนเงินก่อน");
+            return;
+        }
+
+        order.uiState.lineToRefund = {};
         this.setSelectedOrder(order);
         const firstLine = order.getOrderlines()[0];
         if (firstLine) {
             this.state.selectedOrderlineIds[order.id] = firstLine.id;
         }
-        let refundable = 0;
         for (const line of order.getOrderlines()) {
-            const qty = Math.max(0, Math.abs(line.qty) - line.refundedQty);
             const detail = this.getToRefundDetail(line);
-            detail.qty = qty;
-            refundable += qty;
-        }
-        if (!refundable) {
-            showKoToast("บิลนี้คืนเงินครบแล้ว");
-            return;
+            detail.qty = wanted[line.uuid] || 0;
         }
 
-        this.pos.koRefundIntent = {
-            type,
-            sourceOrderUuid: order.uuid,
-            lines: type === "edit" ? this._koReplacementLines(order) : [],
-            refundOrderUuid: null,
-        };
         this.state.koBusy = true;
         try {
             await this.onDoRefund();
             const refundOrder = this.pos.getOrder();
             if (refundOrder?.isRefund) {
-                this.pos.koRefundIntent.refundOrderUuid = refundOrder.uuid;
-                try {
-                    sessionStorage.setItem(
-                        `ko_pos_refund_intent_${refundOrder.uuid}`,
-                        JSON.stringify({
-                            ...this.pos.koRefundIntent,
-                            lines: this.pos.koRefundIntent.lines.map((item) => ({
-                                productTemplateId: item.productTemplate.id,
-                                qty: item.qty,
-                                customerNote: item.customerNote,
-                                payload: item.payload,
-                            })),
-                        })
-                    );
-                } catch (error) {
-                    console.warn("KO POS could not persist refund edit intent", error);
-                }
                 this.koCloseTicketSheet();
-                showKoToast(
-                    type === "edit"
-                        ? "กรุณาคืนเงินบิลเดิม แล้วระบบจะโหลดรายการให้แก้ไข"
-                        : "สร้างรายการคืนเงินแล้ว กรุณาตรวจสอบและยืนยัน"
-                );
+                showKoToast("สร้างรายการคืนเงินแล้ว กรุณากดยืนยันเพื่อจ่ายคืนลูกค้า");
             } else {
-                this.pos.koRefundIntent = null;
+                showKoToast("สร้างรายการคืนเงินไม่สำเร็จ");
             }
+        } catch (error) {
+            console.error("KO POS refund failed", error);
+            showKoToast("สร้างรายการคืนเงินไม่สำเร็จ");
         } finally {
             this.state.koBusy = false;
         }
     },
 
-    koEditBill() {
-        return this._koStartFullRefund("edit");
+    koRefundSelected() {
+        const ticket = this.koSelectedTicket;
+        if (!ticket) {
+            return;
+        }
+        const wanted = {};
+        for (const item of ticket.lines) {
+            const qty = this.koRefundQtyOf(item);
+            if (qty) {
+                wanted[item.uuid] = qty;
+            }
+        }
+        return this._koStartRefund(wanted);
     },
 
     koVoidBill() {
-        if (!this.koSelectedTicket) {
+        const ticket = this.koSelectedTicket;
+        if (!ticket) {
             return;
         }
         if (!this.state.koConfirmVoid) {
             this.state.koConfirmVoid = true;
             return;
         }
-        return this._koStartFullRefund("void");
+        this.state.koConfirmVoid = false;
+        const wanted = {};
+        for (const item of ticket.lines) {
+            if (item.refundable) {
+                wanted[item.uuid] = item.refundable;
+            }
+        }
+        if (!Object.keys(wanted).length) {
+            showKoToast("บิลนี้คืนเงินครบแล้ว");
+            return;
+        }
+        return this._koStartRefund(wanted);
+    },
+
+    async koResumeRefund() {
+        const ticket = this.koSelectedTicket;
+        if (!ticket?.pendingRefund || this.state.koBusy) {
+            return;
+        }
+        this.state.koBusy = true;
+        try {
+            this.koCloseTicketSheet();
+            await this.setOrder(ticket.pendingRefund);
+        } catch (error) {
+            console.error("KO POS could not resume refund", error);
+            showKoToast("เปิดบิลคืนเงินไม่สำเร็จ");
+        } finally {
+            this.state.koBusy = false;
+        }
+    },
+
+    async koDiscardRefund() {
+        const ticket = this.koSelectedTicket;
+        if (!ticket?.pendingRefund || this.state.koBusy) {
+            return;
+        }
+        const confirmed = await ask(this.dialog, {
+            title: "ทิ้งบิลคืนเงินที่ค้างอยู่?",
+            body: "ยังไม่มีเงินคืนให้ลูกค้า บิลเดิมจะกลับมาคืนเงินใหม่ได้",
+            confirmLabel: "ทิ้งบิลคืนเงิน",
+            cancelLabel: "เก็บไว้ก่อน",
+        });
+        if (!confirmed) {
+            return;
+        }
+        this.state.koBusy = true;
+        try {
+            await this._koDeleteOrder(ticket.pendingRefund);
+            this.state.koSelectedTicket = this._koBillTicket(ticket.order);
+            this.state.koRefundQty = {};
+            showKoToast("ทิ้งบิลคืนเงินแล้ว");
+        } catch (error) {
+            console.error("KO POS could not discard refund", error);
+            showKoToast("ทิ้งบิลคืนเงินไม่สำเร็จ");
+        } finally {
+            this.state.koBusy = false;
+        }
     },
 });
