@@ -661,6 +661,15 @@ Working and confirmed against the live system:
     zero console errors, the page serves `kds.js?v=19.0.8.0.0`, `--tap` resolves to 56 px
     (proof the stylesheet parsed whole), 151 rules load, and no Odoo class rule matches a
     KDS element any more.
+  - **Re-checked live at 14:17 ICT from a second session** on `/kds/pos/2` and `/kds/pos/3`,
+    with the same result plus three things the first pass did not measure. The served
+    `kds.js` is **byte-identical to `main`** — 42,532 bytes, `sha256 bb2df3af65a9…`, zero
+    backslashes, zero control bytes — so both the `push_files` transfer and the deploy
+    landed the file intact. The page's `<style>` holds **26 opening and 26 closing** block
+    comments, which is the count that catches the `-->` trap. And the document is exactly as
+    wide as the window at 1470 px, so nothing overflows sideways. Shop switching works and
+    ร้านหวานอยู่ still offers only the ขนม station. The six console messages present all come
+    from a browser extension, not from the page.
   - **Not verified live:** both production boards were empty at the time, so no real ticket
     card, note block, issue banner or undo was exercised against production data — all of
     that was proved on the sandbox copy. Nothing was keyed, sent, marked ready or served on
@@ -703,6 +712,7 @@ Working and confirmed against the live system:
 > and a staff-adjustable text size (`ko_pos_kds` 19.0.8.0.0). Details in §8; the two traps
 > it uncovered are in `docs/GOTCHAS.md`, and how staff read the board is
 > `docs/RUNBOOK-kds.md` §7.
+> Two sessions worked this in parallel on 2026-08-25 as well; this entry is the merged record.
 >
 > ✅ Completed 2026-08-24: made the orders tab open instantly — the fetch moved out of the
 > rendering barrier, `getServerOrders` no longer blocks any screen, the kitchen-status query
