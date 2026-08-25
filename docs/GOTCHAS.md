@@ -617,5 +617,24 @@ and `แอปธนาคาร (QR)` under `การผสานรวม`, s
 class, not the terminal provider. Provider choices stay hidden until terminal mode is active.
 
 **Fix:** choose `เครื่องรูดบัตร` in `การผสานรวม`; Odoo then reveals `ผสานรวมกับ`, whose
-options include `Beam Bolt+`. This exact two-step flow was verified live on payment method
-id 8 on 2026-08-25; the inspection was discarded without saving.
+options include `Beam Bolt+`. This exact two-step flow and the shared-connection field were
+verified live on current payment method id 5 on 2026-08-25; the inspection did not change
+the record.
+
+---
+
+### A saved Odoo payment-method URL says the record no longer exists after Beam setup
+
+**Symptom:** opening a previously saved URL such as `/odoo/action-559/8` returns
+“ดูเหมือนว่าไม่พบบันทึก...” even though Beam payment still exists in the Payment Methods
+list.
+
+**Cause:** payment-method record IDs are database row identities, not stable configuration
+names. The prepared Beam records id 8/id 9 were removed or replaced; production now uses
+connected owner id 5, `บัตรเครดิต`. A stale bookmark is not evidence that the addon or
+connection disappeared.
+
+**Fix:** return to the Payment Methods list and open the current record by name. Before any
+Pair, Disconnect, or dependent-method setup, verify its environment, connected status,
+Device ID, and POS assignments. Update runbooks when the live record changes; never infer
+current IDs from an old URL.

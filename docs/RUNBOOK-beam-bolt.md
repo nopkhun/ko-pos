@@ -20,11 +20,12 @@ Odoo locks payment-method changes while a POS session is open. Configure or re-p
 terminal during an agreed maintenance window; never close a session with real sales just
 to unlock this form.
 
-Production has two prepared records: payment method id 8 is
-`Beam Bolt - Playground (ยังไม่เปิดใช้)` and id 9 is
-`Beam Bolt - Production (ยังไม่เปิดใช้)`. Both use journal `ธนาคาร`. The owner reported
-that id 8 is now paired in Playground; verify its POS assignment before testing. Leave id 9
-disabled until Playground passes.
+Current production state verified on 2026-08-25: payment method id 5, `บัตรเครดิต`, is the
+connection owner. It uses journal `ธนาคาร`, is assigned to both POS shops, is configured
+for Beam Production, and reports `เชื่อมต่อแล้ว`. The formerly documented prepared records
+id 8/id 9 no longer exist. Do not rely on historical record IDs: open the Payment Methods
+list and verify the owner name, environment, connected status, and POS assignments before
+creating a dependent method.
 
 ## 2. Configure the payment method
 

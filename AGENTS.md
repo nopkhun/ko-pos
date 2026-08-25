@@ -421,7 +421,8 @@ Working and confirmed against the live system:
 
 ---
 
-- **Beam Bolt Pairing Mode is deployed in production as `ko_pos_beam_bolt` 19.0.2.0.1.**
+- **Beam Bolt Pairing Mode and shared-device support are deployed in production as
+  `ko_pos_beam_bolt` 19.0.3.0.0.**
   The payment-method form can create, inspect, and
   delete a Bolt Connection from the Pairing code shown by the device or Android app and stores both the
   Connection ID and Device ID. Bolt Intent requests match Beam API v1.22.0, including all
@@ -440,27 +441,30 @@ Working and confirmed against the live system:
   90 modules, Beam loaded cleanly as module 73/90, Thai overrides remained exactly 57
   files, both one-shot services exited 0, Postgres is healthy, Odoo is running on 8069,
   and authenticated browser QA opened the live company with no console warning/error.
-  Live form inspection confirmed the neutral Pairing label/placeholder and accepted the
-  saved eight-character app code without client-side rejection. The owner subsequently
-  reported that the Playground device paired successfully; this pairing was not independently
-  verified by the agent and no payment transaction was sent during agent QA.
-  Two payment-method records were prepared on 2026-08-25:
-  `Beam Bolt - Playground (ยังไม่เปิดใช้)` (payment method id 8, now set to Beam Bolt+ and Playground) and
-  `Beam Bolt - Production (ยังไม่เปิดใช้)` (id 9), both using journal `ธนาคาร`.
-  Production id 9 remains disabled/unassigned. The owner reports Playground id 8 is paired;
-  its current POS assignment has not been re-verified by the agent.
+  Live form inspection after the 19.0.3.0.0 deploy found that the historical prepared
+  records id 8/id 9 no longer exist. The current connection owner is payment method id 5,
+  `บัตรเครดิต`, using journal `ธนาคาร`, assigned to both POS shops. It is configured for
+  Production, reports `เชื่อมต่อแล้ว`, and retained its Bolt Connection ID and Device ID
+  across the module upgrade. No Pair, Disconnect, or payment transaction was sent during
+  agent QA.
   Live form inspection also confirmed Odoo's two-step selector: choose `เครื่องรูดบัตร`
   under `การผสานรวม` first, then choose `Beam Bolt+` in the revealed `ผสานรวมกับ` field.
 
-- **Permanent shared-device support is ready on `main`, but is not deployed yet.**
+- **Permanent shared-device support is deployed and verified structurally in production.**
   `ko_pos_beam_bolt` **19.0.3.0.0** at commit `dca241e` adds an owner/dependent model:
   pair one payment method once, then select it in `ใช้การเชื่อมต่อ Beam จาก` on Card,
   QR PromptPay, or another Beam method. Every dependent sends its own Beam payment type
   while reusing the owner's Connection ID, Device ID, environment, and credentials.
   Chained sharing, cross-company sharing, re-pairing a dependent, and disconnecting an
   owner while dependents still use it are blocked. Local Odoo 19 tests and GitHub Actions
-  run `32837879611` passed with `0 failed, 0 error(s) of 12 tests`. Production remains on
-  19.0.2.0.1 until the owner explicitly approves deployment.
+  run `32837879611` passed with `0 failed, 0 error(s) of 12 tests`. Production action
+  **111210069** succeeded on 2026-08-25: `addons-init` and `odoo-upgrade` exited 0,
+  Postgres is healthy, Odoo is running on 8069, the clone reported
+  `DEPLOYED_ko_pos_beam_bolt: 'version': '19.0.3.0.0'`, upgrade and runtime each loaded
+  90 modules, Beam loaded cleanly as module 73/90, Thai overrides remained exactly 57
+  files, and `MASTER_PW_LINES=1`. Authenticated live form QA confirmed the new
+  `ใช้การเชื่อมต่อ Beam จาก` field and the preserved connected owner id 5. Not verified:
+  no dependent PromptPay method was created and no live payment was submitted.
 
 ---
 
@@ -475,13 +479,11 @@ Working and confirmed against the live system:
    available; do not complete payment or change kitchen state.
 3. **Real business data from the owner:** real PromptPay number (currently the placeholder
    `0812345678`), the real menu items & prices, and the kitchen printer's IP (Epson).
-4. **Beam Bolt+ shared-device go-live:** after explicit owner approval, deploy
-   `ko_pos_beam_bolt` 19.0.3.0.0. Keep the already paired Playground method id 8 as the
-   connection owner; create Card/QR PromptPay dependents by choosing id 8 in
-   `ใช้การเชื่อมต่อ Beam จาก` and do not Pair again. Attach only the agreed methods to the
-   test POS, then run the supervised scenarios in `docs/RUNBOOK-beam-bolt.md`. Keep
-   Production method id 9 disabled/unassigned until Production credentials and go-live
-   timing are approved.
+4. **Beam Bolt+ shared-device transaction QA:** create the required QR PromptPay dependent
+   by selecting connected owner id 5 (`บัตรเครดิต`) in `ใช้การเชื่อมต่อ Beam จาก`; do not
+   Pair again. Confirm the intended POS assignments, then run the supervised Card and
+   PromptPay scenarios in `docs/RUNBOOK-beam-bolt.md`. Production currently uses a live
+   Production connection, so every payment test must be explicitly coordinated.
 5. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close.
 6. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
