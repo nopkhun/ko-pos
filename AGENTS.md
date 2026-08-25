@@ -562,6 +562,35 @@ Working and confirmed against the live system:
   (Action `111041058` had shipped the earlier `ko_pos_ui` 19.0.6.0.0.) **Every till that
   already had the POS open needs one hard refresh** before it sees any of this.
 
+- **The orders tab now opens instantly (2026-08-24, `ko_pos_ui` 19.0.6.2.0,
+  `ko_pos_kds` 19.0.7.1.0).** The owner reported that tapping บิล from another screen took
+  a long time and did not feel smooth. Measured on the disposable database at 120 ms RTT
+  with 61 bills in the session: **1,334 ms to paint, every single time**, against 77 ms for
+  the ขาย tab.
+  - *Why.* `TicketScreen` fetched in `onWillStart`, and OWL paints nothing until every
+    `onWillStart` resolves. In restaurant mode that is six sequential round trips before a
+    pixel appears — `syncAllOrders` twice, `loadServerOrders`, `search_paid_order_ids`,
+    `read_pos_orders`, and `get_pos_status` carrying **every** order uuid in memory. It also
+    reset the paging state on each mount, so it never warmed up.
+  - *Fix.* The fetch moved to `onMounted` and is not awaited by anything that renders; the
+    three calls go out together; `PosStore.getServerOrders()` is patched to resolve
+    immediately and refresh behind the screen (deduplicated, skipped within 8 s), so no
+    screen can be blocked by it; and `koRefreshKdsStatus` only asks about orders that could
+    still have something live on the kitchen board — 30 uuids on every refresh became 30
+    once, then 0. A **↻ รีเฟรช** button forces an update when staff want one.
+  - *Rendering.* `koSelectedTicket` was rebuilding the whole billed list, and the template
+    reads it fifteen times per render — seventeen full passes over the session per render,
+    on every stepper tap. It is now an O(1) lookup plus one `_koBillTicket`, the template
+    computes the lists once into `t-set` variables, and the billed list renders 40 rows at a
+    time behind a **โหลดบิลเก่ากว่านี้** button.
+  - **Measured before → after** (same session, same 120 ms RTT): tap บิล **1,334 → 52–144
+    ms**; a second tap inside the throttle window fires **0 RPCs**; a refund stepper tap
+    **226 → 59 ms**; ขาย unchanged at ~60–100 ms. All existing tests still pass: 31/31
+    orders/refunds, 6/6 takeaway and table-hijack, 4/4 payment screen at 1400 px and 420 px,
+    23/23 module tests, 0 console errors.
+  - **Not verified live:** nothing was keyed or timed on production; the register is
+    PIN-locked and an agent must not enter a staff PIN.
+
 ---
 
 ## 9. Outstanding work
@@ -593,6 +622,12 @@ Working and confirmed against the live system:
    session close. `docs/RUNBOOK-kds.md` is written to be read straight to staff.
 9. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
+> ✅ Completed 2026-08-24: made the orders tab open instantly — the fetch moved out of the
+> rendering barrier, `getServerOrders` no longer blocks any screen, the kitchen-status query
+> only covers orders that can still change, and the bill sheet stopped rebuilding the whole
+> billed list on every render (`ko_pos_ui` 19.0.6.2.0, `ko_pos_kds` 19.0.7.1.0).
+> 1,334 ms → 52–144 ms to paint. Details in §8; the traps are in `docs/GOTCHAS.md`.
+>
 > ✅ Completed 2026-08-24: reworked บิล & ออเดอร์ — open orders can be edited and cancelled
 > from the card itself, refunds are per line, an unfinished refund no longer bricks the bill
 > and is visible in ออเดอร์ค้าง, a refund can no longer swallow a live table's order, แก้ไขบิล

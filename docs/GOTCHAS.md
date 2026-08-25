@@ -878,3 +878,73 @@ edited dine-in bill comes back on its own table instead of turning into a takeaw
 refund does that) and fires the corrected order as a **new** ticket, so every unchanged dish
 is cooked again. It is the right tool for a bill keyed against the wrong table, and the
 wrong tool for swapping one plate — refund that one line instead.
+
+---
+
+### Tapping บิล freezes on the previous screen for a second or more
+
+**Symptom:** every time staff tap **บิล**, the till sits on whatever screen it was
+already showing, then flips to the orders tab. It never gets faster on repeat taps, and it
+gets worse as the day fills up with bills. Going the other way (ขาย) is instant.
+
+**Measured** on a disposable Odoo 19 database at 120 ms RTT with 61 bills in the session:
+บิล took **1,334 ms** to paint, every single time; ขาย took **77 ms**.
+
+**Cause:** `TicketScreen` fetched everything in `onWillStart`, and **OWL paints nothing
+until every `onWillStart` promise resolves**. In restaurant mode that is six sequential
+round trips before a single pixel:
+
+| # | call | where from |
+| --- | --- | --- |
+| 1–2 | `syncAllOrders({table_ids})` then `syncAllOrders()` → `pos.config/notify_synchronisation` ×2 | `pos.getServerOrders()`, restaurant override + base |
+| 3 | `loadServerOrders(draft)` → `pos.order/read_pos_orders` | `pos.getServerOrders()` |
+| 4–5 | `pos.order/search_paid_order_ids` + `read_pos_orders` | KO `_fetchSyncedOrders()` |
+| 6 | `ko.kds.ticket/get_pos_status` with **every** order uuid in memory | KO `koRefreshKdsStatus()` |
+
+And it could not warm up: the screen reset `screenState.ticketSCreen.totalCount` and
+`offsetByDomain` on every mount, so page 1 was re-fetched from scratch each time.
+
+**Fix (`ko_pos_ui` 19.0.6.2.0, `ko_pos_kds` 19.0.7.1.0):**
+
+- the fetch moved from `onWillStart` to `onMounted` and is no longer awaited by anything
+  that renders. The tab paints immediately from the orders already in memory, shows
+  **กำลังอัปเดต…** while the rest arrives, and the three calls now go out together instead
+  of one after another;
+- `PosStore.getServerOrders()` is patched to return an already-resolved promise and do its
+  work behind the screen (deduplicated, and skipped if it ran in the last 8 seconds), so no
+  screen — not only this one — can be held back by it;
+- `koRefreshKdsStatus` only asks about orders that could still have something live on the
+  kitchen board. An order is dropped once it has been answered for and has nothing
+  outstanding; anything that touches the kitchen for it calls `koMarkKitchenDirty` to put it
+  back. The payload went from 30 orders on every single refresh to 30 once, then 0.
+
+**Result:** 1,334 ms → **52–144 ms** to paint, and a second tap inside the throttle window
+fires **no RPC at all**. A **↻ รีเฟรช** button in the header forces a refresh when staff
+want one.
+
+**The lesson for any screen in this POS:** `onWillStart` is a rendering barrier. Anything
+that talks to the server belongs in `onMounted` (or later), unless the screen genuinely
+cannot be drawn without the answer.
+
+---
+
+### The bill sheet gets sluggish as the day goes on
+
+**Symptom:** with the bill sheet open, each tap on a `+`/`−` refund stepper takes a
+noticeable moment — and it gets worse the more bills the session has.
+
+**Measured:** with 30 orders in memory, one stepper tap took **226 ms** to re-render.
+
+**Cause:** `koSelectedTicket` was implemented as
+`this.koBilledOrders.find(t => t.order.uuid === uuid)`, and the template reads
+`koSelectedTicket` **fifteen times** per render. Each read rebuilt the entire billed list —
+every order, every line, every refund total — so one render did seventeen full passes over
+the session, and OWL re-renders on every state change.
+
+**Fix (`ko_pos_ui` 19.0.6.2.0):** the per-order work is a single `_koBillTicket(order)`
+helper; `koSelectedTicket` looks the order up by uuid and builds that one ticket (O(1)); the
+template computes `koOpenOrders` and `koSelectedTicket` once into `t-set` variables and
+reads those. The billed list also renders 40 rows at a time with a **โหลดบิลเก่ากว่านี้**
+button, instead of putting every finalised order of the day in the DOM.
+
+**Result:** 226 ms → **59 ms** per tap, and it no longer grows with the number of bills.
