@@ -401,10 +401,11 @@
         } : null);
     };
 
-    window.kdsAllReadyBatch = function (ev, lineIdsJson) {
+    window.kdsAllReadyBatch = function (ev) {
         ev.stopPropagation();
+        // Read off the element, never interpolated into the onclick attribute.
         let ids = [];
-        try { ids = JSON.parse(lineIdsJson); } catch (e) { ids = []; }
+        try { ids = JSON.parse(ev.currentTarget.dataset.lines || "[]"); } catch (e) { ids = []; }
         const wasCooking = ids.filter(function (id) {
             const l = lineIndex.get(id);
             return l && !isDead(l) && !lineDone(l);
@@ -761,8 +762,9 @@
                     (note ? '<div class="tk-note"><b>⚠</b><span>' + esc(note) + "</span></div>" : "") +
                     '<div class="tk-lines">' + rows + "</div>" +
                     (pendingIds.length
-                        ? '<button type="button" class="tk-act act-ready" onclick="kdsAllReadyBatch(event,\'' +
-                          esc(JSON.stringify(pendingIds)) + '\')">✓ เสร็จทั้งหมด</button>'
+                        ? '<button type="button" class="tk-act act-ready" data-lines="' +
+                          esc(JSON.stringify(pendingIds)) +
+                          '" onclick="kdsAllReadyBatch(event)">✓ เสร็จทั้งหมด</button>'
                         : '<div class="tk-act act-wait">✓ ทำครบแล้ว</div>') +
                 "</article>"
             );
@@ -849,10 +851,10 @@
                 );
             });
         });
-        //  as the separator, not "": without it "1" + "23" and "12" + "3"
-        // produce the same string and a real change can go unnoticed. Written as an
-        // escape on purpose — a raw control byte here is invisible in every editor.
-        return parts.join("");
+        // JSON, not parts.join(""): joined with nothing, "1" + "23" and "12" + "3"
+        // collapse to the same string and a real change goes unnoticed. JSON quotes
+        // every part, so no separator character has to be chosen or defended.
+        return JSON.stringify(parts);
     }
 
     function render(force) {
