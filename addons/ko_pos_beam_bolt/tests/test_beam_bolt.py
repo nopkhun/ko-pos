@@ -88,6 +88,140 @@ class TestBeamBolt(TransactionCase):
         })
 
     @patch(REQUESTS_TARGET)
+    def test_shared_connection_uses_owner_credentials_and_own_payment_type(self, request):
+        self.method.write({
+            'beam_bolt_connection_id': 'boltc_shared',
+            'beam_device_id': 'device_shared',
+            'beam_connection_environment': 'playground',
+            'beam_connection_status': 'connected',
+            'beam_payment_method_type': 'CARD',
+        })
+        promptpay = self.env['pos.payment.method'].create({
+            'name': 'Beam PromptPay',
+            'split_transactions': True,
+            'payment_method_type': 'terminal',
+            'use_payment_terminal': 'beam_bolt',
+            'beam_connection_source_id': self.method.id,
+            'beam_expiry_sec': 120,
+            'beam_payment_method_type': 'QR_PROMPT_PAY',
+        })
+        self.assertFalse(promptpay.beam_merchant_id)
+        self.assertFalse(promptpay.beam_api_key)
+        request.return_value = self._response(201, {
+            'id': 'bolti_shared',
+            'status': 'ACTIVE',
+        })
+
+        result = promptpay.beam_create_bolt_intent({
+            'amount_thb': 50,
+            'reference_id': 'shared-001',
+            'idempotency_key': 'shared-idem',
+        })
+
+        self.assertEqual(result['id'], 'bolti_shared')
+        call = request.call_args
+        self.assertEqual(call.args[:2], (
+            'POST', 'https://playground.api.beamcheckout.com/api/v1/bolt-intents'))
+        self.assertEqual(call.kwargs['auth'], ('merchant_test', 'api_key_test'))
+        self.assertEqual(call.kwargs['json']['boltConnectionId'], 'boltc_shared')
+        self.assertEqual(call.kwargs['json']['paymentMethod'], {
+            'paymentMethodType': 'QR_PROMPT_PAY',
+            'qrPromptPay': {},
+        })
+        self.assertEqual(promptpay.beam_effective_device_id, 'device_shared')
+        self.assertEqual(promptpay.beam_effective_connection_status, 'connected')
+
+        request.return_value = self._response(200, {
+            'id': 'boltc_shared',
+            'deviceId': 'device_shared',
+            'merchantId': 'merchant_test',
+        })
+        promptpay.action_beam_check_connection()
+        self.assertEqual(request.call_args.args[:2], (
+            'GET', 'https://playground.api.beamcheckout.com/api/v1/bolt-connections/boltc_shared'))
+        self.assertTrue(self.method.beam_last_checked_at)
+
+    @patch(REQUESTS_TARGET)
+    def test_shared_method_does_not_pair_or_disconnect_device(self, request):
+        self.method.write({
+            'beam_bolt_connection_id': 'boltc_shared',
+            'beam_connection_environment': 'playground',
+            'beam_connection_status': 'connected',
+        })
+        promptpay = self.env['pos.payment.method'].create({
+            'name': 'Beam PromptPay',
+            'payment_method_type': 'terminal',
+            'use_payment_terminal': 'beam_bolt',
+            'beam_connection_source_id': self.method.id,
+            'beam_expiry_sec': 120,
+            'beam_payment_method_type': 'QR_PROMPT_PAY',
+        })
+
+        with self.assertRaises(UserError):
+            promptpay.action_beam_pair()
+        with self.assertRaises(UserError):
+            promptpay.action_beam_disconnect()
+        with self.assertRaises(UserError):
+            self.method.action_beam_disconnect()
+        request.assert_not_called()
+
+    def test_shared_connection_must_be_direct_paired_and_same_company(self):
+        unpaired = self.env['pos.payment.method'].create({
+            'name': 'Beam Unpaired',
+            'payment_method_type': 'terminal',
+            'use_payment_terminal': 'beam_bolt',
+            'beam_merchant_id': 'merchant_test',
+            'beam_api_key': 'api_key_test',
+            'beam_expiry_sec': 120,
+        })
+        with self.assertRaises(ValidationError):
+            self.env['pos.payment.method'].create({
+                'name': 'Beam Invalid Shared',
+                'payment_method_type': 'terminal',
+                'use_payment_terminal': 'beam_bolt',
+                'beam_connection_source_id': unpaired.id,
+                'beam_expiry_sec': 120,
+            })
+
+        self.method.write({
+            'beam_bolt_connection_id': 'boltc_shared',
+            'beam_connection_environment': 'playground',
+            'beam_connection_status': 'connected',
+        })
+        other_company = self.env['res.company'].create({'name': 'Beam Other Company'})
+        with self.assertRaises(ValidationError):
+            self.env['pos.payment.method'].create({
+                'name': 'Beam Cross Company',
+                'company_id': other_company.id,
+                'payment_method_type': 'terminal',
+                'use_payment_terminal': 'beam_bolt',
+                'beam_connection_source_id': self.method.id,
+                'beam_expiry_sec': 120,
+            })
+
+    def test_shared_connection_cannot_chain(self):
+        self.method.write({
+            'beam_bolt_connection_id': 'boltc_shared',
+            'beam_connection_environment': 'playground',
+            'beam_connection_status': 'connected',
+        })
+        promptpay = self.env['pos.payment.method'].create({
+            'name': 'Beam PromptPay',
+            'payment_method_type': 'terminal',
+            'use_payment_terminal': 'beam_bolt',
+            'beam_connection_source_id': self.method.id,
+            'beam_expiry_sec': 120,
+        })
+        with self.assertRaises(ValidationError):
+            self.env['pos.payment.method'].create({
+                'name': 'Beam Chained',
+                'payment_method_type': 'terminal',
+                'use_payment_terminal': 'beam_bolt',
+                'beam_connection_source_id': promptpay.id,
+                'beam_expiry_sec': 120,
+            })
+
+    @patch(REQUESTS_TARGET)
     def test_create_qr_bolt_intent_uses_v1_schema_and_idempotency(self, request):
         self.method.write({
             'beam_bolt_connection_id': 'boltc_test',

@@ -20,10 +20,10 @@ Odoo locks payment-method changes while a POS session is open. Configure or re-p
 terminal during an agreed maintenance window; never close a session with real sales just
 to unlock this form.
 
-Production already has two safe, unassigned shells: payment method id 8 is
+Production has two prepared records: payment method id 8 is
 `Beam Bolt - Playground (ยังไม่เปิดใช้)` and id 9 is
-`Beam Bolt - Production (ยังไม่เปิดใช้)`. Both use journal `ธนาคาร` but have no Beam
-integration, credentials, connection, or POS assignment. Configure id 8 first; leave id 9
+`Beam Bolt - Production (ยังไม่เปิดใช้)`. Both use journal `ธนาคาร`. The owner reported
+that id 8 is now paired in Playground; verify its POS assignment before testing. Leave id 9
 disabled until Playground passes.
 
 ## 2. Configure the payment method
@@ -34,17 +34,23 @@ bank payment method:
 1. In the Thai UI, set **การผสานรวม** to **เครื่องรูดบัตร** first. This reveals a
    second field named **ผสานรวมกับ**; select **Beam Bolt+** there. Beam does not appear
    in the first dropdown.
-2. Enter the Beam Merchant ID and API key.
-3. Turn on **Beam Playground (test)** while testing.
-4. Choose the payment method that this Odoo payment method should request on the device.
-   Create separate Odoo methods when the cashier needs separate Card and PromptPay buttons.
+2. For the first payment method on an environment/device, leave
+   **ใช้การเชื่อมต่อ Beam จาก** empty, enter the Beam Merchant ID/API key, and turn on
+   **Beam Playground (test)** while testing. This is the connection owner.
+3. Choose the payment method that this Odoo payment method should request on the device.
+4. For each additional cashier button, create another Odoo payment method, select Beam
+   Bolt+, and choose the already-paired owner under **ใช้การเชื่อมต่อ Beam จาก**. Do not
+   enter credentials or Pair again. Set its own payment type, such as `QR_PROMPT_PAY`.
 5. Keep expiry between 90 and 600 seconds. The default is 120 seconds.
-6. Save the payment method and attach it to the required POS shop.
+6. Save each payment method and attach the required buttons to the same POS shop.
 
 For card installments, also choose the installment period and issuing-bank group. These
 values follow Beam API v1 exactly.
 
 ## 3. Pair the device
+
+Pair only the connection owner. Shared Card, PromptPay, installment, and wallet payment
+methods all reuse that owner's Bolt Connection ID.
 
 1. Log in to the correct merchant on the Bolt device and enter **Pairing Mode**.
 2. Enter the Pairing code exactly as shown on the device or Beam Bolt Android app in
@@ -56,7 +62,8 @@ values follow Beam API v1 exactly.
 
 Do not switch Merchant ID, API key, Playground/Production, or terminal type while a
 connection exists. Odoo blocks that change so the device is not left paired to an orphaned
-connection. Disconnect first.
+connection. Odoo also blocks disconnecting the owner while another payment method still
+uses it. Remove **ใช้การเชื่อมต่อ Beam จาก** on every dependent method first.
 
 ## 4. Test a payment
 

@@ -573,6 +573,26 @@ that accepts or rejects an expired or invalid code.
 
 ---
 
+### Adding PromptPay after Card asks to Pair the same Beam Bolt again
+
+**Symptom:** one Odoo payment method has already paired the device for Card. Creating a
+second method for QR PromptPay shows another Pairing field, but the app cannot enter Pairing
+Mode because it is already connected.
+
+**Cause:** versions through `ko_pos_beam_bolt` 19.0.2.0.1 stored credentials and
+`boltConnectionId` directly on each `pos.payment.method`. Beam's model is the reverse: Pair
+once to create a device connection, then send each Bolt Intent with that same connection ID
+and a different `paymentMethod`.
+
+**Fix (`ko_pos_beam_bolt` 19.0.3.0.0):** the first payment method remains the connection
+owner. Additional Card, PromptPay, installment, or wallet methods select it in
+**ใช้การเชื่อมต่อ Beam จาก** and reuse its credentials, environment, Device ID, and Bolt
+Connection ID while keeping their own payment type and expiry. The addon blocks Pair or
+Disconnect on a dependent method, cross-company sharing, chained sharing, and disconnecting
+an owner that still has dependents. Never copy connection IDs into the database manually.
+
+---
+
 ### Deploy succeeds, but the log cannot prove which Beam Bolt version landed
 
 **Symptom:** Odoo reports that `ko_pos_beam_bolt` loaded, but the deploy log contains no

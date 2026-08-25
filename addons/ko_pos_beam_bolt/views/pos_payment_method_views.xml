@@ -6,28 +6,43 @@
         <field name="inherit_id" ref="point_of_sale.pos_payment_method_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='use_payment_terminal']" position="after">
-                <field name="beam_merchant_id" invisible="use_payment_terminal != 'beam_bolt'" required="use_payment_terminal == 'beam_bolt'"/>
-                <field name="beam_api_key" invisible="use_payment_terminal != 'beam_bolt'" required="use_payment_terminal == 'beam_bolt'" password="True"/>
-                <field name="beam_pairing_code" invisible="use_payment_terminal != 'beam_bolt' or beam_bolt_connection_id" placeholder="กรอกรหัสที่แสดงบน Beam Bolt"/>
-                <field name="beam_bolt_connection_id" invisible="use_payment_terminal != 'beam_bolt'"/>
-                <field name="beam_device_id" invisible="use_payment_terminal != 'beam_bolt'"/>
-                <field name="beam_connection_environment" invisible="use_payment_terminal != 'beam_bolt' or not beam_bolt_connection_id"/>
-                <field name="beam_connection_status" invisible="use_payment_terminal != 'beam_bolt'" widget="badge"
-                       decoration-success="beam_connection_status == 'connected'"
-                       decoration-danger="beam_connection_status == 'invalid'"/>
-                <field name="beam_last_checked_at" invisible="use_payment_terminal != 'beam_bolt' or not beam_last_checked_at"/>
+                <field name="beam_connection_source_id"
+                       invisible="use_payment_terminal != 'beam_bolt'"
+                       domain="[('id', '!=', id), ('company_id', '=', company_id), ('use_payment_terminal', '=', 'beam_bolt'), ('beam_connection_source_id', '=', False), ('beam_bolt_connection_id', '!=', False)]"
+                       options="{'no_create': True, 'no_open': True}"
+                       placeholder="เว้นว่างเพื่อ Pair เครื่องใหม่ หรือเลือกช่องทางที่ Pair ไว้แล้ว"/>
+                <field name="beam_merchant_id"
+                       invisible="use_payment_terminal != 'beam_bolt' or beam_connection_source_id"
+                       required="use_payment_terminal == 'beam_bolt' and not beam_connection_source_id"/>
+                <field name="beam_api_key"
+                       invisible="use_payment_terminal != 'beam_bolt' or beam_connection_source_id"
+                       required="use_payment_terminal == 'beam_bolt' and not beam_connection_source_id"
+                       password="True"/>
+                <field name="beam_pairing_code"
+                       invisible="use_payment_terminal != 'beam_bolt' or beam_connection_source_id or beam_effective_bolt_connection_id"
+                       placeholder="กรอกรหัสที่แสดงบน Beam Bolt"/>
+                <field name="beam_effective_bolt_connection_id" invisible="use_payment_terminal != 'beam_bolt'"/>
+                <field name="beam_effective_device_id" invisible="use_payment_terminal != 'beam_bolt'"/>
+                <field name="beam_effective_connection_environment"
+                       invisible="use_payment_terminal != 'beam_bolt' or not beam_effective_bolt_connection_id"/>
+                <field name="beam_effective_connection_status"
+                       invisible="use_payment_terminal != 'beam_bolt'" widget="badge"
+                       decoration-success="beam_effective_connection_status == 'connected'"
+                       decoration-danger="beam_effective_connection_status == 'invalid'"/>
+                <field name="beam_effective_last_checked_at"
+                       invisible="use_payment_terminal != 'beam_bolt' or not beam_effective_last_checked_at"/>
                 <field name="beam_payment_method_type" invisible="use_payment_terminal != 'beam_bolt'"/>
                 <field name="beam_installment_period" invisible="use_payment_terminal != 'beam_bolt' or beam_payment_method_type != 'CARD_INSTALLMENTS'" required="use_payment_terminal == 'beam_bolt' and beam_payment_method_type == 'CARD_INSTALLMENTS'"/>
                 <field name="beam_installment_issuer_group" invisible="use_payment_terminal != 'beam_bolt' or beam_payment_method_type != 'CARD_INSTALLMENTS'" required="use_payment_terminal == 'beam_bolt' and beam_payment_method_type == 'CARD_INSTALLMENTS'"/>
                 <field name="beam_expiry_sec" invisible="use_payment_terminal != 'beam_bolt'"/>
-                <field name="beam_test_mode" invisible="use_payment_terminal != 'beam_bolt'"/>
+                <field name="beam_test_mode" invisible="use_payment_terminal != 'beam_bolt' or beam_connection_source_id"/>
                 <div class="oe_button_box" name="beam_bolt_actions" invisible="use_payment_terminal != 'beam_bolt'">
                     <button name="action_beam_pair" type="object" string="เชื่อมต่อเครื่อง" class="btn-primary"
-                            invisible="beam_bolt_connection_id" groups="point_of_sale.group_pos_manager"/>
+                            invisible="beam_connection_source_id or beam_effective_bolt_connection_id" groups="point_of_sale.group_pos_manager"/>
                     <button name="action_beam_check_connection" type="object" string="ตรวจสอบการเชื่อมต่อ" class="btn-secondary"
-                            invisible="not beam_bolt_connection_id" groups="point_of_sale.group_pos_manager"/>
+                            invisible="not beam_effective_bolt_connection_id" groups="point_of_sale.group_pos_manager"/>
                     <button name="action_beam_disconnect" type="object" string="ยกเลิกการเชื่อมต่อ" class="btn-outline-danger"
-                            invisible="not beam_bolt_connection_id" groups="point_of_sale.group_pos_manager"
+                            invisible="beam_connection_source_id or not beam_effective_bolt_connection_id" groups="point_of_sale.group_pos_manager"
                             confirm="เครื่อง Beam Bolt จะออกจากระบบและต้องเข้าสู่ระบบใหม่ก่อน Pair ครั้งถัดไป ต้องการดำเนินการต่อหรือไม่?"/>
                 </div>
             </xpath>
