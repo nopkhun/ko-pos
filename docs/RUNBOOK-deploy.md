@@ -53,7 +53,8 @@ The Compose YAML to send is `deploy_real/vps-compose-git.yaml` inside
 `deploy-secrets.zip`. It is deliberately below Hostinger's 8,192-character `content`
 limit, embeds the read-only SSH deploy key, clones `main`, copies `addons/` into
 `/mnt/extra-addons`, and does no patching. It also echoes the deployed
-`ko_pos_kds` / `ko_pos_ui` manifest versions and `KDS_SECURITY_PRESENT=yes` so the log
+`ko_pos_beam_bolt` / `ko_pos_kds` / `ko_pos_ui` manifest versions and
+`KDS_SECURITY_PRESENT=yes` so the log
 proves which code actually landed. Never send `vps-compose-simplified.yaml`: its inline tar makes it about
 690 KB and Hostinger rejects the request before deployment. `vps-compose-thaiv2.yaml`
 and the other files are historical only.
@@ -106,6 +107,8 @@ Check, in order:
 
    Also confirm the version echo matches what you pushed, e.g.
    ```
+   DEPLOYED_ko_pos_beam_bolt:
+   'version': '19.0.2.0.0',
    DEPLOYED_ko_pos_kds:
    'version': '19.0.5.0.0',
    KDS_SECURITY_PRESENT=yes

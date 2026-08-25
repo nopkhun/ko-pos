@@ -1064,3 +1064,18 @@ Two related Beam rules belong in the operating procedure:
   switching environment, then log in and pair the device again.
 - A Bolt Intent sent while the device is not on **Ready to accept payments** is discarded.
   Wait at least five seconds after connect, cancel, or expiry before creating another one.
+
+---
+
+### Deploy succeeds, but the log cannot prove which Beam Bolt version landed
+
+**Symptom:** Odoo reports that `ko_pos_beam_bolt` loaded, but the deploy log contains no
+manifest version, so it cannot prove whether production cloned the intended commit.
+
+**Cause:** Odoo's normal module-loading line shows the module name and loading position,
+not its manifest version. The Compose init service originally echoed only KDS and UI.
+
+**Fix (2026-08-25):** `deploy_real/vps-compose-git.yaml` inside `deploy-secrets.zip`
+now prints `DEPLOYED_ko_pos_beam_bolt` and its manifest version immediately after cloning
+`main`. Require that signal on every Beam deployment; action success or a generic module
+load line is not version verification.
