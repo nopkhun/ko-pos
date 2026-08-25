@@ -1,4 +1,3 @@
-A:\u0001
-B:\\u0001
-C:\u0001
-D:end
+X:\u0001
+Y:        return parts.join("\u0001");
+Z:end
