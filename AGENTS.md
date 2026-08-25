@@ -694,6 +694,11 @@ Working and confirmed against the live system:
   files, both one-shot services exited 0, Postgres is healthy, Odoo is running on 8069,
   and authenticated browser QA opened the live company with no console warning/error.
   No Beam credential, device, Playground transaction, or production transaction was used.
+  Two deliberately disabled production records were prepared on 2026-08-25:
+  `Beam Bolt - Playground (ยังไม่เปิดใช้)` (payment method id 8) and
+  `Beam Bolt - Production (ยังไม่เปิดใช้)` (id 9), both using journal `ธนาคาร`.
+  Neither has Beam integration/credentials, a Bolt Connection, or any POS assignment, so
+  neither appears to cashiers or can initiate a payment.
 
 - **The owner ran the production trial on 2026-08-25 and reported every step passing.**
   This is the check §9 had carried since the very first deploy, and it is now done: a dish
@@ -727,9 +732,11 @@ Working and confirmed against the live system:
    available; do not complete payment or change kitchen state.
 5. **Real business data from the owner:** real PromptPay number (currently the placeholder
    `0812345678`), the real menu items & prices, and the kitchen printer's IP (Epson).
-6. **Beam Bolt+ go-live:** obtain Playground credentials, pair the physical terminal from
-   Odoo, attach the payment method, and run the end-to-end Playground checklist in
-   `docs/RUNBOOK-beam-bolt.md` before live use.
+6. **Beam Bolt+ go-live:** enter Playground credentials into prepared payment method id 8,
+   enable Beam Bolt+, pair the physical terminal, then attach it only to the agreed test POS
+   during a supervised test window and run `docs/RUNBOOK-beam-bolt.md`. Only after that
+   passes, configure and pair Production method id 9. Keep id 8 unassigned until that test
+   window and keep id 9 disabled/unassigned until Production is ready.
 7. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close. `docs/RUNBOOK-kds.md` is written to be read straight to staff.
 8. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.

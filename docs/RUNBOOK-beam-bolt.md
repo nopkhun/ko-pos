@@ -20,6 +20,12 @@ Odoo locks payment-method changes while a POS session is open. Configure or re-p
 terminal during an agreed maintenance window; never close a session with real sales just
 to unlock this form.
 
+Production already has two safe, unassigned shells: payment method id 8 is
+`Beam Bolt - Playground (ยังไม่เปิดใช้)` and id 9 is
+`Beam Bolt - Production (ยังไม่เปิดใช้)`. Both use journal `ธนาคาร` but have no Beam
+integration, credentials, connection, or POS assignment. Configure id 8 first; leave id 9
+disabled until Playground passes.
+
 ## 2. Configure the payment method
 
 In Odoo, open **Point of Sale → Configuration → Payment Methods** and create or edit a
