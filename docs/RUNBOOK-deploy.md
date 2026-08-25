@@ -108,7 +108,7 @@ Check, in order:
    Also confirm the version echo matches what you pushed, e.g.
    ```
    DEPLOYED_ko_pos_beam_bolt:
-   'version': '19.0.2.0.0',
+   'version': '19.0.2.0.1',
    DEPLOYED_ko_pos_kds:
    'version': '19.0.5.0.0',
    KDS_SECURITY_PRESENT=yes

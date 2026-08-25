@@ -43,7 +43,7 @@ jobs:
           manifest = ast.literal_eval(
               Path("addons/ko_pos_beam_bolt/__manifest__.py").read_text()
           )
-          assert manifest["version"] == "19.0.2.0.0"
+          assert manifest["version"] == "19.0.2.0.1"
           for xml_file in Path("addons/ko_pos_beam_bolt").rglob("*.xml"):
               ET.parse(xml_file)
           PY

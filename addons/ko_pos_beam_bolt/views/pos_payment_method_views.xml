@@ -8,7 +8,7 @@
             <xpath expr="//field[@name='use_payment_terminal']" position="after">
                 <field name="beam_merchant_id" invisible="use_payment_terminal != 'beam_bolt'" required="use_payment_terminal == 'beam_bolt'"/>
                 <field name="beam_api_key" invisible="use_payment_terminal != 'beam_bolt'" required="use_payment_terminal == 'beam_bolt'" password="True"/>
-                <field name="beam_pairing_code" invisible="use_payment_terminal != 'beam_bolt' or beam_bolt_connection_id" placeholder="123456"/>
+                <field name="beam_pairing_code" invisible="use_payment_terminal != 'beam_bolt' or beam_bolt_connection_id" placeholder="กรอกรหัสที่แสดงบน Beam Bolt"/>
                 <field name="beam_bolt_connection_id" invisible="use_payment_terminal != 'beam_bolt'"/>
                 <field name="beam_device_id" invisible="use_payment_terminal != 'beam_bolt'"/>
                 <field name="beam_connection_environment" invisible="use_payment_terminal != 'beam_bolt' or not beam_bolt_connection_id"/>

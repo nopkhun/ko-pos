@@ -47,7 +47,9 @@ values follow Beam API v1 exactly.
 ## 3. Pair the device
 
 1. Log in to the correct merchant on the Bolt device and enter **Pairing Mode**.
-2. Enter the six-digit code shown on the device in Odoo.
+2. Enter the Pairing code exactly as shown on the device or Beam Bolt Android app in
+   Odoo. Current Android app builds can show an eight-digit code. The Beam API schema
+   defines this value as a string and does not impose a six-digit limit.
 3. Press **เชื่อมต่อเครื่อง** before the code expires.
 4. Odoo stores both the returned Bolt Connection ID and Device ID. Press
    **ตรวจสอบการเชื่อมต่อ** and require the green connected status before checkout testing.

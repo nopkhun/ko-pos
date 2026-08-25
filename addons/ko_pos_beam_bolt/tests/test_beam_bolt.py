@@ -36,7 +36,7 @@ class TestBeamBolt(TransactionCase):
 
     @patch(REQUESTS_TARGET)
     def test_pair_check_and_disconnect(self, request):
-        self.method.beam_pairing_code = '123456'
+        self.method.beam_pairing_code = '12345678'
         request.return_value = self._response(201, {
             'id': 'boltc_test',
             'deviceId': 'device_test',
@@ -51,7 +51,7 @@ class TestBeamBolt(TransactionCase):
         self.assertEqual(self.method.beam_connection_status, 'connected')
         call = request.call_args
         self.assertEqual(call.args[:2], ('POST', 'https://playground.api.beamcheckout.com/api/v1/bolt-connections'))
-        self.assertEqual(call.kwargs['json'], {'pairingCode': '123456'})
+        self.assertEqual(call.kwargs['json'], {'pairingCode': '12345678'})
         self.assertTrue(call.kwargs['headers']['x-beam-idempotency-key'])
 
         request.return_value = self._response(200, {
@@ -68,10 +68,12 @@ class TestBeamBolt(TransactionCase):
         self.assertFalse(self.method.beam_bolt_connection_id)
         self.assertEqual(self.method.beam_connection_status, 'not_paired')
 
-    def test_pairing_code_must_be_six_digits(self):
-        self.method.beam_pairing_code = '12AB'
+    @patch(REQUESTS_TARGET)
+    def test_pairing_code_is_required(self, request):
+        self.method.beam_pairing_code = '   '
         with self.assertRaises(UserError):
             self.method.action_beam_pair()
+        request.assert_not_called()
 
     def test_cannot_switch_environment_while_paired(self):
         self.method.write({

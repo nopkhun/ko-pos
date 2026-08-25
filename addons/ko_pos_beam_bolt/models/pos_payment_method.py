@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import logging
-import re
 import uuid
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from urllib.parse import quote
@@ -15,7 +14,6 @@ _logger = logging.getLogger(__name__)
 BEAM_PROD_BASE = 'https://api.beamcheckout.com'
 BEAM_PLAYGROUND_BASE = 'https://playground.api.beamcheckout.com'
 REQUEST_TIMEOUT = 20
-PAIRING_CODE_RE = re.compile(r'^\d{6}$')
 
 PAYMENT_METHOD_DETAILS = {
     'CARD': 'card',
@@ -43,10 +41,10 @@ class PosPaymentMethod(models.Model):
         copy=False,
         help='API Key จาก Beam dashboard (เก็บเป็นความลับ)')
     beam_pairing_code = fields.Char(
-        string='รหัส Pairing 6 หลัก',
+        string='รหัส Pairing จาก Beam Bolt',
         groups='point_of_sale.group_pos_manager',
         copy=False,
-        help='รหัสชั่วคราว 6 หลักที่แสดงบนเครื่อง Beam Bolt ใน Pairing Mode')
+        help='รหัสชั่วคราวที่แสดงบนเครื่องหรือแอป Beam Bolt ใน Pairing Mode')
     beam_bolt_connection_id = fields.Char(
         string='Bolt Connection ID',
         copy=False,
@@ -229,8 +227,8 @@ class PosPaymentMethod(models.Model):
         if sudo_self.beam_bolt_connection_id:
             raise UserError(_('วิธีชำระเงินนี้เชื่อมต่อเครื่องอยู่แล้ว กรุณายกเลิกการเชื่อมต่อเดิมก่อน'))
         pairing_code = (sudo_self.beam_pairing_code or '').strip()
-        if not PAIRING_CODE_RE.fullmatch(pairing_code):
-            raise UserError(_('รหัส Pairing ต้องเป็นตัวเลข 6 หลักตามที่แสดงบนเครื่อง Beam Bolt'))
+        if not pairing_code:
+            raise UserError(_('กรุณากรอกรหัส Pairing ตามที่แสดงบนเครื่องหรือแอป Beam Bolt'))
         result = self._beam_call(
             'POST',
             '/api/v1/bolt-connections',
