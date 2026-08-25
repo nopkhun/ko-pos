@@ -948,3 +948,94 @@ reads those. The billed list also renders 40 rows at a time with a **โหล�
 button, instead of putting every finalised order of the day in the DOM.
 
 **Result:** 226 ms → **59 ms** per tap, and it no longer grows with the number of bills.
+
+---
+
+### Half a stylesheet quietly stops applying, and the page still looks *almost* right
+
+**Symptom.** After editing `kds_templates.xml` the board rendered, the fonts were right and
+most rules worked — but every touch target was the wrong size. `getComputedStyle` said
+`min-height: auto` where the source clearly said `min-height: var(--tap)`, and a `<button>`
+had Chrome's UA `padding: 1px 6px` despite a `* { padding: 0 }` reset.
+
+**Cause.** A block comment in the `<style>` was closed with `-->` instead of `*/`:
+
+```css
+/* ------------------------------------------------
+   Design notes ...
+   ------------------------------------------------ -->     <-- WRONG
+:root { --tap: 56px; ... }
+* { margin: 0; padding: 0; }
+```
+
+CSS has no `-->` terminator, so the comment ran on and swallowed `:root`, `*`, `html`,
+`body` and `button` until the **next** `*/` in the file — the header section comment. The
+page kept working because everything after that point still applied; the missing
+`:root` only showed up as `var(--tap)` resolving to nothing, which makes the whole
+declaration invalid at computed-value time and silently falls back to `auto`.
+
+**Catch it in one line** — the rule count is the tell:
+
+```js
+// in the browser, on the KDS page
+Array.from(document.querySelectorAll('style'))
+     .find(s => s.textContent.includes('--ko-teal-soft')).sheet.cssRules.length
+```
+
+If that number is lower than the number of rules you wrote, a comment is eating them.
+`grep -c '/\*'` vs `grep -c '\*/'` inside the `<style>` block must also match.
+
+Related: `.scss` files must never contain `*/` **inside** a block comment either — the
+bundle breaks the other way round. Use `//` in SCSS.
+
+---
+
+### A raw frontend page's own CSS class is overruled by Bootstrap, so an element never appears
+
+**Symptom.** The KDS toast (and its **เลิกทำ** undo button) existed in the DOM with the right
+text and a non-zero opacity, but Playwright reported it as hidden and nothing was visible on
+screen. `getComputedStyle(el).display` was `none` even though the page's own rule said
+`display: flex`.
+
+**Cause.** `/kds/pos/<id>` is a standalone page that pulls in `web.assets_frontend`, and that
+bundle contains **Bootstrap**. Bootstrap ships `.toast:not(.show) { display: none }`, which
+has specificity (0,2,0) and beats a plain `.toast { display: flex }` at (0,1,0) — the page's
+stylesheet coming later in the cascade does not help, because specificity is compared first.
+`.nav` collides the same way.
+
+**Rule.** On any page that calls `t-call-assets="web.assets_frontend"`, do not use a bare
+Bootstrap class name for your own component. `ko_pos_kds` prefixes the ones that clash:
+`.k-toast`, `.k-toasts`, `.k-nav`.
+
+**Find every collision on the page** — do not guess from a list of Bootstrap class names,
+because `:not()` and attribute forms will not show up in a text search. Ask the browser which
+foreign rules actually match your elements:
+
+```js
+const odoo = document.styleSheets[0];              // web.assets_frontend.min.css
+const rules = [];
+const walk = r => { if (r.cssRules && r.type !== 1) return Array.from(r.cssRules).forEach(walk);
+                    if (r.selectorText && r.style && r.style.cssText) rules.push(r); };
+Array.from(odoo.cssRules).forEach(walk);
+document.querySelectorAll('body *').forEach(el => rules.forEach(r => {
+  try { if (el.matches(r.selectorText)) console.log(r.selectorText, '->', r.style.cssText, el.className); }
+  catch (e) {}
+}));
+```
+
+Anything that comes back with a **class** selector (as opposed to `button`, `a`, `h2`) is a
+name to rename. `/root/kdstest/who2.js` in the sandbox is this check wrapped in Playwright.
+
+---
+
+### `pkill -f odoo-bin` / `pkill -f "http-port=8069"` kills the agent's own shell (exit 144)
+
+Already noted for `odoo-bin`, but it bites for **any** pattern that also appears in the
+command line the tool wraps around your command — including the port number. Kill Odoo by
+its TCP listener instead, never by a command-line pattern:
+
+```bash
+PIDS=$(ss -lptnH "sport = :8069" | grep -oP 'pid=\K[0-9]+' | sort -u)
+[ -n "$PIDS" ] && kill $PIDS
+```
+
