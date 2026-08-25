@@ -3,7 +3,7 @@
 Prerequisite: read `../AGENTS.md` §0 and §7 first.
 
 This runbook covers the five things the owner asked the kitchen display to do. Every
-statement here was checked against `ko_pos_kds` 19.0.6.0.0 / `ko_pos_ui` 19.0.5.0.0.
+statement here was checked against `ko_pos_kds` 19.0.8.0.0 / `ko_pos_ui` 19.0.6.2.0.
 
 ---
 
@@ -101,3 +101,65 @@ typeof posmodel.koSendToKds === 'function'   // false/undefined = stale tab
 
 The kitchen board carries its version in the script URL
 (`/ko_pos_kds/static/src/kds/kds.js?v=19.0.6.0.0`), so it updates on a normal reload.
+
+---
+
+## 7. Reading the board (19.0.8.0.0 layout)
+
+The board was rebuilt for a tablet standing about 50 cm away and for a phone. Everything
+below is deliberate; if a future change makes any of it smaller, it is a regression.
+
+**Three tabs across the top.** กำลังทำ (with the number of orders on the board), เสิร์ฟแล้ว,
+ยกเลิก. The สถานี and ร้าน chips stay available on all three — only the
+แบบออเดอร์ / แบบเมนู switch is specific to กำลังทำ.
+
+**กำลังทำ is split into two blocks.**
+
+| Block | What is in it |
+| --- | --- |
+| **พร้อมเสิร์ฟ · รอหน้าร้านยกออก** | every dish is done; the card collapses to one line of dish names so the pass can read it at a glance. It leaves the board when front of house presses เสิร์ฟ in บิล — the kitchen does not mark food served, see §4. |
+| **กำลังทำ** | everything still being cooked, oldest first |
+
+**A card's colour is its clock.** Teal until 55 % of the shop's SLA, amber after that, and a
+solid red header with `นาที · เกินเวลา` once it is over. The bar under the header fills as
+the minutes run. SLA is per shop: จุดขาย → ตั้งค่า → เวลาเป้าหมายจอครัว (นาที), default 15.
+
+**A dish row.** Big left area = the whole dish, tap it to flip กำลังทำ ⇄ เสร็จ. Narrow
+right column with ⚠ แจ้ง = report a problem (§5). They are deliberately separate targets
+with a divider; they used to share one 30 px row and staff hit the wrong one.
+
+- Done shows four ways at once — green tick, grey quantity, struck-through name and the word
+  **เสร็จ** — so it still reads correctly for colour-blind staff and under kitchen light.
+- **Special instructions ("ไม่ใส่ผัก", "แพ้ถั่วลิสง") are an amber block, not grey caption
+  text.** This is the line that costs a remake when it is missed.
+- A dish flagged ของหมด is struck through, shows ยกเลิก, and cannot be tapped.
+- The station name only appears when the board is showing **ทั้งหมด** — on a single-station
+  board it would repeat on every row, so the space goes to the dish name.
+
+**Every action can be taken back.**
+
+| Action | Undo |
+| --- | --- |
+| tapping one dish | tap again, or **เลิกทำ** in the black bar for 6 seconds |
+| **✓ เสร็จทั้งหมด** | **เลิกทำ** puts back exactly the dishes that were still cooking |
+| **▶ เริ่มทำ** | **เลิกทำ** |
+| **↺ ส่งกลับเข้าครัว** (remake) | no undo — so it asks for a second tap to confirm |
+
+A tap is ignored for 350 ms after the previous one, because finishing a dish can move its
+card into the พร้อมเสิร์ฟ block and a repeat tap would otherwise land on whatever slid up.
+
+**ก- / ก+ in the header** changes the text size for that screen only and is remembered on
+that device. Use it instead of pinch-zoom, which is switched off on purpose.
+
+**A red bar saying ไม่ได้เชื่อมต่อเซิร์ฟเวอร์** means two polls in a row failed. What is on
+the board is stale — do not trust it until the bar clears by itself. Before this existed a
+kitchen with dead wi-fi kept showing a frozen board that looked completely normal.
+
+**New dishes** chime three rising notes, flash the board yellow once, and vibrate on a phone.
+Browsers keep sound muted until the screen has been touched once per session; the board says
+so in the message when that is still the case.
+
+**The ขาย / บิล links move.** On a phone they are the bottom bar. On a tablet they are small
+links in the top-right corner — a full-width bar under a cook's palm is one stray touch away
+from replacing the kitchen board with the sell screen.
+

@@ -4,7 +4,12 @@
         <html>
             <head>
                 <meta charset="utf-8"/>
+                <!-- Pinch zoom stays off on purpose: this is a kiosk that greasy
+                     hands brush against all shift. WCAG 1.4.4 is met instead by the
+                     ก- / ก+ control in the header, which is easier for staff to
+                     find and, unlike a pinch, survives a reload. -->
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+                <meta name="theme-color" content="#0d7d88"/>
                 <title>จอครัว · KO KDS</title>
                 <!-- web.assets_frontend starts Odoo's asset watchdog. A raw standalone
                      page must seed the same session info as web.frontend_layout;
@@ -23,676 +28,998 @@
                         font-family: "Prompt";
                         src: url("/ko_pos_ui/static/src/fonts/Prompt-Regular.ttf") format("truetype");
                         font-weight: 400;
+                        font-display: swap;
                     }
                     @font-face {
                         font-family: "Prompt";
                         src: url("/ko_pos_ui/static/src/fonts/Prompt-Medium.ttf") format("truetype");
                         font-weight: 500;
+                        font-display: swap;
                     }
                     @font-face {
                         font-family: "Prompt";
                         src: url("/ko_pos_ui/static/src/fonts/Prompt-SemiBold.ttf") format("truetype");
                         font-weight: 600;
+                        font-display: swap;
                     }
                     @font-face {
                         font-family: "Prompt";
                         src: url("/ko_pos_ui/static/src/fonts/Prompt-Bold.ttf") format("truetype");
                         font-weight: 700;
+                        font-display: swap;
                     }
 
+                    /* ------------------------------------------------------------------
+                       Design notes for whoever edits this next
+                       ------------------------------------------------------------------
+                       The board is read at roughly 50 cm on a counter tablet, and at
+                       arm's length on a phone, by someone whose hands are wet, gloved,
+                       or holding a pan. Three rules follow from that and they are the
+                       reason the numbers below look large:
+
+                       1. Nothing that can be tapped is smaller than --tap (56 px).
+                          44 px is the bare-finger minimum; a gloved finger needs more.
+                       2. Every piece of state is carried by at least two channels —
+                          colour AND a word AND a shape. Colour alone fails for the
+                          ~8 % of men with a colour vision deficiency, and it fails for
+                          everyone under a steamy kitchen light.
+                       3. The special instruction ("ไม่ใส่ผัก") is the text that costs a
+                          remake when it is missed, so it is the loudest text on the
+                          card, not the faintest. It used to be 12 px grey.
+
+                       --s is the staff-adjustable text scale (ก- / ก+ in the header,
+                       persisted in localStorage). Express every font-size through it.
+                       ------------------------------------------------------------------ */
                     :root {
-                        --ko-primary: oklch(0.5 0.15 190);
-                        --ko-primary-dark: oklch(0.4 0.15 190);
-                        --ko-primary-soft: oklch(0.5 0.15 190 / 0.07);
-                        --ko-ink: #1c2426;
-                        --ko-muted: #8fa0a3;
-                        --ko-muted-2: #5b6d70;
-                        --ko-border: #e4ebeb;
-                        --ko-canvas: #f7fafa;
+                        --s: 1;
+
+                        --ko-teal: #0d7d88;
+                        --ko-teal-dark: #08616a;
+                        --ko-teal-soft: #e4f2f3;
+
+                        --ko-ok: #14794f;
+                        --ko-ok-soft: #e2f4ea;
+                        --ko-ok-line: #1f9c68;
+
+                        --ko-warn: #9a5600;
+                        --ko-warn-soft: #fff1d9;
+                        --ko-warn-line: #e08a00;
+
+                        --ko-danger: #b3122f;
+                        --ko-danger-soft: #ffe7eb;
+                        --ko-danger-line: #d92c4c;
+
+                        --ko-ink: #101a1c;
+                        --ko-ink-2: #3d4f52;
+                        --ko-ink-3: #5d7175;
+                        --ko-border: #cfdcdb;
+                        --ko-canvas: #eef3f3;
                         --ko-surface: #ffffff;
-                        --ko-warn: #f59f00;
-                        --ko-warn-text: #b06f00;
-                        --ko-warn-bg: #fff7e8;
-                        --ko-danger: #d9485f;
-                        --ko-danger-text: #b03a4e;
-                        --ko-danger-bg: #fdeef1;
+
+                        --tap: 56px;
+                        --radius: 14px;
                     }
 
                     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+                    html { -webkit-text-size-adjust: 100%; }
+
                     body {
                         font-family: "Prompt", -apple-system, "Noto Sans Thai", sans-serif;
                         color: var(--ko-ink);
                         background: var(--ko-canvas);
-                        height: 100vh;
+                        height: 100dvh;
                         display: flex;
                         flex-direction: column;
                         overflow: hidden;
+                        font-size: calc(16px * var(--s));
                     }
 
+                    button { font-family: inherit; border: 0; background: none; color: inherit; cursor: pointer; }
+                    button:focus-visible, a:focus-visible { outline: 3px solid var(--ko-teal); outline-offset: 2px; }
+
+                    /* ============================ header ============================ */
+
                     header {
-                        padding: 16px 20px 10px;
-                        border-bottom: 1px solid #e8efef;
-                        background: #fff;
+                        flex: none;
+                        background: var(--ko-surface);
+                        border-bottom: 1px solid var(--ko-border);
+                        box-shadow: 0 1px 0 rgba(16, 26, 28, 0.04);
+                    }
+
+                    .hd-top {
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        padding: 10px 14px 8px;
+                    }
+
+                    .hd-title {
+                        font-size: calc(19px * var(--s));
+                        font-weight: 700;
                         flex: none;
                     }
 
-                    .header-top {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: baseline;
-                    }
-
-                    .header-title {
-                        font-size: 21px;
-                        font-weight: 600;
-                    }
-
-                    .header-title span {
-                        font-weight: 400;
-                        color: var(--ko-muted);
-                        font-size: 13px;
-                    }
-
-                    .header-meta {
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        font-size: 12px;
-                        font-weight: 500;
-                        color: var(--ko-muted-2);
-                    }
-
-                    .clock {
-                        font-weight: 600;
-                        color: var(--ko-ink);
-                    }
-
-                    .kds-tabs {
-                        display: flex;
-                        gap: 8px;
-                        padding-top: 10px;
-                    }
-
-                    .kds-tab-btn {
-                        padding: 8px 14px;
-                        border-radius: 999px;
-                        font-size: 13px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        border: 0;
-                        color: var(--ko-muted-2);
-                        background: #eef3f3;
-                        transition: all 120ms ease;
-                    }
-
-                    .kds-tab-btn.active {
-                        color: #fff;
-                        background: var(--ko-primary);
-                    }
-
-                    .kds-subcontrols {
-                        display: flex;
-                        gap: 8px;
-                        padding-top: 8px;
-                        align-items: center;
-                        flex-wrap: wrap;
-                    }
-
-                    .kds-view-toggle {
-                        display: flex;
-                        background: #eef3f3;
-                        border-radius: 999px;
-                        padding: 3px;
-                    }
-
-                    .kds-view-btn {
-                        padding: 6px 13px;
-                        border-radius: 999px;
-                        font-size: 12.5px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        border: 0;
-                        color: var(--ko-muted);
-                        background: transparent;
-                    }
-
-                    .kds-view-btn.active {
-                        color: var(--ko-primary-dark);
-                        background: #fff;
-                    }
-
-                    .divider {
-                        width: 1px;
-                        height: 20px;
-                        background: #e4ebeb;
-                    }
-
-                    .kds-shop-name {
-                        font-size: 15px;
-                        font-weight: 600;
-                        color: var(--ko-primary-dark);
-                        background: var(--ko-primary-soft);
-                        border-radius: 999px;
-                        padding: 3px 12px;
-                        margin-left: 8px;
-                        white-space: nowrap;
-                    }
-
-                    .kds-scope-bar {
+                    .hd-scope {
                         display: flex;
                         align-items: center;
                         gap: 6px;
-                        padding: 8px 16px;
-                        border-top: 1px solid var(--ko-border);
-                        overflow-x: auto;
+                        flex: 1;
+                        min-width: 0;
+                        overflow: hidden;
+                    }
+
+                    .hd-chip {
+                        font-size: calc(14px * var(--s));
+                        font-weight: 600;
+                        color: var(--ko-teal-dark);
+                        background: var(--ko-teal-soft);
+                        border-radius: 999px;
+                        padding: 3px 11px;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                    }
+
+                    .hd-chip.muted { color: var(--ko-ink-3); background: #eef2f2; }
+
+                    .hd-right { display: flex; align-items: center; gap: 8px; flex: none; }
+
+                    /* Text size control. Kitchens differ by a metre or two and by how
+                       good the cook's eyes are; a fixed size cannot serve both. */
+                    .zoom { display: flex; background: #eef2f2; border-radius: 999px; padding: 2px; }
+
+                    .zoom button {
+                        width: 46px;
+                        height: 46px;
+                        border-radius: 999px;
+                        font-weight: 700;
+                        color: var(--ko-ink-2);
+                        line-height: 1;
+                    }
+
+                    .zoom button:active { background: #dfe7e7; }
+                    .zoom button[disabled] { opacity: 0.35; cursor: default; }
+                    .zoom .z-sm { font-size: 14px; }
+                    .zoom .z-lg { font-size: 21px; }
+
+                    .clock {
+                        font-size: calc(17px * var(--s));
+                        font-weight: 700;
+                        font-variant-numeric: tabular-nums;
                         white-space: nowrap;
                     }
 
-                    .kds-scope-label {
-                        font-size: 12px;
+                    /* --------- tabs: the three boards --------- */
+
+                    .tabs { display: flex; gap: 8px; padding: 0 14px 10px; }
+
+                    .tab {
+                        flex: 1;
+                        min-height: var(--tap);
+                        border-radius: 12px;
+                        font-size: calc(16px * var(--s));
                         font-weight: 600;
-                        color: var(--ko-muted);
-                        margin-right: 2px;
+                        color: var(--ko-ink-2);
+                        background: #eef2f2;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 7px;
+                        transition: background 120ms ease, color 120ms ease;
                     }
 
-                    .kds-scope-label:not(:first-child) { margin-left: 10px; }
+                    .tab:active { transform: scale(0.98); }
+                    .tab.on { color: #fff; background: var(--ko-teal); }
 
-                    .kds-scope-chip {
-                        padding: 5px 12px;
+                    .tab .n {
+                        font-weight: 700;
+                        font-variant-numeric: tabular-nums;
+                        background: rgba(16, 26, 28, 0.08);
                         border-radius: 999px;
-                        font-size: 12.5px;
+                        padding: 1px 9px;
+                        min-width: 30px;
+                    }
+
+                    .tab.on .n { background: rgba(255, 255, 255, 0.24); }
+
+                    /* --------- filters row --------- */
+
+                    .filters {
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        padding: 0 14px 10px;
+                        overflow-x: auto;
+                        scrollbar-width: none;
+                        white-space: nowrap;
+                    }
+
+                    .filters::-webkit-scrollbar { display: none; }
+
+                    .seg { display: flex; background: #eef2f2; border-radius: 12px; padding: 3px; flex: none; }
+
+                    .seg button {
+                        min-height: 46px;
+                        padding: 0 16px;
+                        border-radius: 10px;
+                        font-size: calc(15px * var(--s));
+                        font-weight: 600;
+                        color: var(--ko-ink-3);
+                    }
+
+                    .seg button.on {
+                        color: var(--ko-teal-dark);
+                        background: #fff;
+                        box-shadow: 0 1px 3px rgba(16, 26, 28, 0.12);
+                    }
+
+                    .f-label {
+                        font-size: calc(14px * var(--s));
+                        font-weight: 600;
+                        color: var(--ko-ink-3);
+                        flex: none;
+                        padding-left: 4px;
+                    }
+
+                    .f-chip {
+                        flex: none;
+                        display: inline-flex;
+                        align-items: center;
+                        min-height: 46px;
+                        padding: 0 16px;
+                        border-radius: 999px;
+                        font-size: calc(15px * var(--s));
                         font-weight: 600;
                         text-decoration: none;
-                        border: 1.5px solid var(--ko-border);
-                        color: var(--ko-muted-2);
+                        border: 2px solid var(--ko-border);
+                        color: var(--ko-ink-2);
                         background: #fff;
                     }
 
-                    .kds-scope-chip.active {
-                        border-color: var(--ko-primary);
-                        color: var(--ko-primary-dark);
-                        background: var(--ko-primary-soft);
+                    .f-chip.on {
+                        border-color: var(--ko-teal);
+                        color: #fff;
+                        background: var(--ko-teal);
                     }
+
+                    .f-sep { flex: none; width: 1px; height: 26px; background: var(--ko-border); margin: 0 4px; }
+
+                    /* Connection warning. Before this existed a kitchen with dead wi-fi
+                       kept showing a frozen board and nobody could tell. */
+                    .offline {
+                        display: none;
+                        align-items: center;
+                        gap: 8px;
+                        padding: 10px 14px;
+                        background: var(--ko-danger);
+                        color: #fff;
+                        font-size: calc(15px * var(--s));
+                        font-weight: 600;
+                    }
+
+                    body.is-offline .offline { display: flex; }
+
+                    /* ============================ board ============================ */
 
                     main {
                         flex: 1;
                         overflow-y: auto;
+                        -webkit-overflow-scrolling: touch;
                         min-height: 0;
-                        padding: 14px 16px 82px;
-                        display: grid;
-                        grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-                        gap: 12px;
-                        align-content: start;
+                        padding: 12px 14px calc(24px + env(safe-area-inset-bottom));
                         background: var(--ko-canvas);
                     }
 
-                    .card {
+                    .sec { margin-bottom: 18px; }
+                    .sec:last-child { margin-bottom: 0; }
+
+                    .sec-hd {
+                        position: sticky;
+                        top: -12px;
+                        z-index: 5;
+                        display: flex;
+                        align-items: center;
+                        gap: 9px;
+                        margin: 0 -14px 10px;
+                        padding: 8px 14px;
+                        font-size: calc(15px * var(--s));
+                        font-weight: 700;
+                        color: var(--ko-ink-2);
+                        background: var(--ko-canvas);
+                    }
+
+                    .sec-hd .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--ko-teal); flex: none; }
+                    .sec-ready .sec-hd { color: var(--ko-ok); }
+                    .sec-ready .sec-hd .dot { background: var(--ko-ok-line); }
+
+                    .sec-hd .n {
+                        font-variant-numeric: tabular-nums;
                         background: #fff;
-                        border-radius: 16px;
-                        border: 1px solid #e8efef;
+                        border: 1px solid var(--ko-border);
+                        border-radius: 999px;
+                        padding: 1px 10px;
+                    }
+
+                    .grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+                        gap: 12px;
+                        align-content: start;
+                    }
+
+                    .grid.compact { grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+
+                    .empty {
+                        grid-column: 1 / -1;
+                        padding: 56px 20px;
+                        text-align: center;
+                        color: var(--ko-ink-3);
+                        font-size: calc(17px * var(--s));
+                        font-weight: 500;
+                    }
+
+                    /* ============================ ticket card ============================ */
+
+                    .tk {
+                        background: var(--ko-surface);
+                        border-radius: var(--radius);
+                        border: 1px solid var(--ko-border);
                         overflow: hidden;
-                        border-top: 4px solid var(--ko-primary);
                         display: flex;
                         flex-direction: column;
+                        box-shadow: 0 1px 2px rgba(16, 26, 28, 0.05);
                     }
 
-                    .card.warn { border-top-color: var(--ko-warn); }
-                    .card.late { border-top-color: var(--ko-danger); }
-                    .card.cancelled { border-top-color: var(--ko-danger); opacity: 0.85; }
-
-                    .card-head {
-                        padding: 12px 14px 6px;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                    }
-
-                    .table-group {
+                    /* The whole head band carries urgency, not a 4 px hairline. At a
+                       glance from the pass you should be able to say "that one is late"
+                       without reading anything. */
+                    .tk-head {
                         display: flex;
                         align-items: center;
-                        gap: 8px;
+                        gap: 10px;
+                        padding: 11px 14px;
+                        background: var(--ko-teal-soft);
+                        border-bottom: 1px solid var(--ko-border);
+                        color: var(--ko-teal-dark);
                     }
 
-                    .table-no {
-                        font-size: 15.5px;
-                        font-weight: 600;
-                    }
+                    .tk.warn .tk-head { background: var(--ko-warn-soft); color: var(--ko-warn); }
+                    .tk.late .tk-head { background: var(--ko-danger); color: #fff; border-bottom-color: var(--ko-danger); }
+                    .tk.rdy .tk-head { background: var(--ko-ok-soft); color: var(--ko-ok); }
+                    .tk.dead .tk-head { background: #eef2f2; color: var(--ko-ink-3); }
 
-                    .badge-remake {
-                        font-size: 10.5px;
+                    .tk-id { flex: 1; min-width: 0; }
+
+                    .tk-where {
+                        display: block;
+                        font-size: calc(20px * var(--s));
                         font-weight: 700;
-                        color: #fff;
-                        background: var(--ko-danger);
-                        border-radius: 6px;
-                        padding: 2px 7px;
-                    }
-
-                    .elapsed-label {
-                        font-size: 12.5px;
-                        font-weight: 600;
-                        color: var(--ko-primary);
-                    }
-
-                    .card.warn .elapsed-label { color: var(--ko-warn-text); }
-                    .card.late .elapsed-label { color: var(--ko-danger-text); }
-                    .history-meta { color: var(--ko-muted); }
-                    .history-meta.late { color: var(--ko-danger-text); }
-
-                    .sla-bar-wrap {
-                        margin: 0 14px;
-                        height: 4px;
-                        border-radius: 99px;
-                        background: #eef3f3;
+                        line-height: 1.25;
                         overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
                     }
 
-                    .sla-bar {
-                        height: 100%;
-                        border-radius: 99px;
-                        background: var(--ko-primary);
-                        transition: width 1s linear;
+                    .tk-sub {
+                        display: block;
+                        font-size: calc(13px * var(--s));
+                        font-weight: 500;
+                        opacity: 0.85;
+                        font-variant-numeric: tabular-nums;
                     }
 
-                    .card.warn .sla-bar { background: var(--ko-warn); }
-                    .card.late .sla-bar { background: var(--ko-danger); }
+                    .tk-time { flex: none; text-align: right; line-height: 1; }
 
-                    .lines {
-                        padding: 6px 14px 10px;
-                        flex: 1;
-                    }
-
-                    .line-item {
-                        padding: 5px 0;
-                        border-bottom: 1px dashed #eef3f3;
-                        cursor: pointer;
-                    }
-
-                    .line-item:last-child {
-                        border-bottom: 0;
-                    }
-
-                    .line-top {
-                        display: flex;
-                        gap: 8px;
-                        font-size: 14.5px;
-                        align-items: center;
-                    }
-
-                    .line-qty {
+                    .tk-min {
+                        font-size: calc(26px * var(--s));
                         font-weight: 700;
-                        color: var(--ko-primary-dark);
-                        min-width: 24px;
+                        font-variant-numeric: tabular-nums;
+                        display: block;
                     }
 
-                    .line-name {
+                    .tk-min-u { font-size: calc(12px * var(--s)); font-weight: 600; opacity: 0.85; }
+
+                    .tk-flags { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 14px; margin-top: 9px; }
+
+                    .flag {
+                        font-size: calc(12.5px * var(--s));
+                        font-weight: 700;
+                        border-radius: 6px;
+                        padding: 3px 9px;
+                        letter-spacing: 0.2px;
+                    }
+
+                    .flag-remake { color: #fff; background: var(--ko-danger); }
+                    .flag-paid { color: var(--ko-ok); background: var(--ko-ok-soft); border: 1px solid var(--ko-ok-line); }
+                    .flag-away { color: var(--ko-teal-dark); background: var(--ko-teal-soft); border: 1px solid var(--ko-teal); }
+
+                    .tk-sla { height: 6px; background: #e7eeee; }
+                    .tk-sla i { display: block; height: 100%; background: var(--ko-teal); transition: width 1s linear; }
+                    .tk.warn .tk-sla i { background: var(--ko-warn-line); }
+                    .tk.late .tk-sla i { background: var(--ko-danger-line); }
+                    .tk.rdy .tk-sla i { background: var(--ko-ok-line); }
+
+                    .tk-lines { flex: 1; }
+
+                    /* ---------------- one dish ---------------- */
+
+                    .ln { display: flex; align-items: stretch; border-bottom: 1px solid #edf2f2; }
+                    .ln:last-child { border-bottom: 0; }
+
+                    /* Left: the big "I cooked this" target. Right: a separate, narrower
+                       "แจ้งปัญหา" target with its own divider. They used to sit in one
+                       30 px row and staff kept hitting the wrong one. */
+                    .ln-tap {
                         flex: 1;
-                    }
-
-                    .stn-label {
-                        font-size: 10.5px;
-                        font-weight: 600;
-                        flex: none;
-                    }
-
-                    /* Station colour now comes from the ko.kds.station record
-                       itself (inline style), so a shop can add ครัวขนม / บาร์น้ำ
-                       without anyone editing this stylesheet. */
-                    .stn-label.stn-none { color: var(--ko-muted); }
-
-                    .st-chip {
-                        font-size: 11px;
-                        font-weight: 600;
-                        padding: 3px 9px;
-                        border-radius: 999px;
-                        flex: none;
-                    }
-
-                    .st-cooking {
-                        color: var(--ko-warn-text);
-                        background: var(--ko-warn-bg);
-                    }
-
-                    .st-ready {
-                        color: var(--ko-primary-dark);
-                        background: var(--ko-primary-soft);
-                    }
-
-                    .st-cancelled {
-                        color: var(--ko-danger-text);
-                        background: var(--ko-danger-bg);
-                    }
-
-                    .line-mods {
-                        font-size: 12px;
-                        color: var(--ko-muted);
-                        padding-left: 32px;
-                    }
-
-                    .line-note {
-                        font-size: 12px;
-                        color: var(--ko-warn-text);
-                        padding-left: 32px;
-                        font-weight: 500;
-                    }
-
-                    /* ---- kitchen → front of house alerts ---- */
-                    .line-issue {
-                        margin: 4px 0 2px 32px;
-                        padding: 6px 10px;
-                        border-radius: 8px;
-                        font-size: 12px;
-                        font-weight: 600;
-                        color: var(--ko-danger-text);
-                        background: var(--ko-danger-bg);
-                        border: 1px solid var(--ko-danger);
-                    }
-
-                    .line-issue.acked {
-                        color: var(--ko-muted-2);
-                        background: #f2f5f5;
-                        border-color: var(--ko-border);
-                        font-weight: 500;
-                    }
-
-                    .line-issue-btn {
-                        flex: none;
-                        border: 1px solid var(--ko-danger);
-                        background: #fff;
-                        color: var(--ko-danger-text);
-                        border-radius: 999px;
-                        font-size: 11px;
-                        font-weight: 600;
-                        padding: 3px 9px;
-                        cursor: pointer;
-                        font-family: inherit;
-                    }
-
-                    .issue-backdrop {
-                        position: fixed;
-                        inset: 0;
-                        background: rgba(15, 25, 27, 0.45);
+                        min-width: 0;
+                        min-height: var(--tap);
                         display: flex;
-                        align-items: flex-end;
+                        flex-direction: column;
                         justify-content: center;
-                        z-index: 60;
+                        gap: 5px;
+                        padding: 10px 12px;
+                        text-align: left;
+                        transition: background 90ms ease;
                     }
 
-                    .issue-sheet {
-                        width: 100%;
-                        max-width: 520px;
+                    .ln-tap:active { background: var(--ko-teal-soft); }
+                    .ln.is-done .ln-tap:active { background: #eef2f2; }
+                    .ln.is-dead .ln-tap { cursor: default; }
+
+                    .ln-row { display: flex; align-items: center; gap: 10px; }
+
+                    /* Shape channel: an empty box that becomes a filled tick. */
+                    .ck {
+                        flex: none;
+                        width: 30px;
+                        height: 30px;
+                        border-radius: 8px;
+                        border: 2.5px solid var(--ko-border);
                         background: #fff;
-                        border-radius: 18px 18px 0 0;
-                        padding: 18px 18px 24px;
-                        box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
-                    }
-
-                    .issue-sheet h3 {
-                        font-size: 17px;
-                        font-weight: 600;
-                        margin-bottom: 4px;
-                    }
-
-                    .issue-sheet .issue-sub {
-                        font-size: 12.5px;
-                        color: var(--ko-muted-2);
-                        margin-bottom: 14px;
-                    }
-
-                    .issue-opts {
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 8px;
-                        margin-bottom: 12px;
-                    }
-
-                    .issue-opt {
-                        padding: 12px 10px;
-                        border-radius: 12px;
-                        border: 1.5px solid var(--ko-border);
-                        background: #fff;
-                        font-size: 14px;
-                        font-weight: 600;
-                        font-family: inherit;
-                        color: var(--ko-ink);
-                        cursor: pointer;
-                    }
-
-                    .issue-opt.active {
-                        border-color: var(--ko-danger);
-                        color: var(--ko-danger-text);
-                        background: var(--ko-danger-bg);
-                    }
-
-                    .issue-note-input {
-                        width: 100%;
-                        padding: 11px 12px;
-                        border-radius: 10px;
-                        border: 1.5px solid var(--ko-border);
-                        font-size: 14px;
-                        font-family: inherit;
-                        margin-bottom: 12px;
-                    }
-
-                    .issue-actions {
                         display: flex;
-                        gap: 8px;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 19px;
+                        font-weight: 700;
+                        color: transparent;
+                        line-height: 1;
+                        transition: all 120ms ease;
                     }
 
-                    .issue-actions button {
+                    .ln.is-done .ck { border-color: var(--ko-ok-line); background: var(--ko-ok-line); color: #fff; }
+                    .ln.is-dead .ck { border-color: var(--ko-danger-line); background: var(--ko-danger-soft); color: var(--ko-danger); }
+
+                    .qty {
+                        flex: none;
+                        min-width: 42px;
+                        height: 34px;
+                        padding: 0 7px;
+                        border-radius: 9px;
+                        background: var(--ko-ink);
+                        color: #fff;
+                        font-size: calc(18px * var(--s));
+                        font-weight: 700;
+                        font-variant-numeric: tabular-nums;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+
+                    .ln.is-done .qty { background: #b8c6c6; }
+                    .ln.is-dead .qty { background: var(--ko-danger); }
+
+                    /* The dish name owns the whole width of the row. Station and
+                       status used to sit beside it and squeezed Thai names into
+                       two ragged lines ("ข้าวผัด / ปู"); they now live on .ln-meta
+                       underneath, where they cost nothing. */
+                    .nm {
                         flex: 1;
-                        padding: 13px;
+                        min-width: 0;
+                        font-size: calc(20px * var(--s));
+                        font-weight: 600;
+                        line-height: 1.3;
+                        overflow-wrap: anywhere;
+                    }
+
+                    .ln-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-left: 40px; }
+
+                    .ln.is-done .nm { color: var(--ko-ink-3); text-decoration: line-through; text-decoration-thickness: 2px; }
+                    .ln.is-dead .nm { color: var(--ko-ink-3); text-decoration: line-through; text-decoration-thickness: 2px; }
+
+                    /* Word channel, so state never rests on colour alone. */
+                    .st {
+                        flex: none;
+                        font-size: calc(13px * var(--s));
+                        font-weight: 700;
+                        border-radius: 999px;
+                        padding: 3px 10px;
+                    }
+
+                    .st-done { color: var(--ko-ok); background: var(--ko-ok-soft); }
+                    .st-dead { color: var(--ko-danger); background: var(--ko-danger-soft); }
+
+                    /* Station name only earns its space on the "ทั้งหมด" board — when one
+                       station is selected every line would say the same thing. */
+                    .stn {
+                        flex: none;
+                        font-size: calc(13px * var(--s));
+                        font-weight: 700;
+                        padding: 3px 9px;
+                        border-radius: 7px;
+                        background: #f2f6f6;
+                    }
+
+                    .stn.none {
+                        color: var(--ko-warn);
+                        background: var(--ko-warn-soft);
+                        border: 1px dashed var(--ko-warn-line);
+                    }
+
+                    /* The line that causes remakes when it is missed. Loud on purpose. */
+                    .ln-note {
+                        display: flex;
+                        gap: 7px;
+                        margin-left: 40px;
+                        padding: 7px 11px;
+                        border-radius: 9px;
+                        border-left: 4px solid var(--ko-warn-line);
+                        background: var(--ko-warn-soft);
+                        color: var(--ko-warn);
+                        font-size: calc(16px * var(--s));
+                        font-weight: 600;
+                        line-height: 1.35;
+                        text-align: left;
+                    }
+
+                    .ln-note b { font-weight: 700; }
+
+                    .tk-note {
+                        display: flex;
+                        gap: 7px;
+                        margin: 10px 14px 0;
+                        padding: 9px 12px;
+                        border-radius: 9px;
+                        border-left: 4px solid var(--ko-warn-line);
+                        background: var(--ko-warn-soft);
+                        color: var(--ko-warn);
+                        font-size: calc(16px * var(--s));
+                        font-weight: 600;
+                        line-height: 1.35;
+                    }
+
+                    .ln-flag {
+                        flex: none;
+                        width: 64px;
+                        border-left: 1px solid #edf2f2;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 2px;
+                        font-size: calc(11.5px * var(--s));
+                        font-weight: 700;
+                        color: var(--ko-danger);
+                        line-height: 1.15;
+                    }
+
+                    .ln-flag .ic { font-size: 20px; line-height: 1; }
+                    .ln-flag:active { background: var(--ko-danger-soft); }
+
+                    /* ---------------- issue reported by the kitchen ---------------- */
+
+                    .ln-issue {
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        margin: 0 12px 10px 40px;
+                        padding: 9px 12px;
+                        border-radius: 9px;
+                        border: 2px solid var(--ko-danger-line);
+                        background: var(--ko-danger-soft);
+                        color: var(--ko-danger);
+                        font-size: calc(15px * var(--s));
+                        font-weight: 600;
+                        line-height: 1.35;
+                    }
+
+                    .ln-issue.acked {
+                        border-color: var(--ko-border);
+                        background: #f2f6f6;
+                        color: var(--ko-ink-2);
+                    }
+
+                    .ln-issue .txt { flex: 1; min-width: 0; }
+                    .ln-issue .sub { display: block; font-weight: 500; font-size: calc(13px * var(--s)); opacity: 0.9; }
+
+                    .ln-issue button {
+                        flex: none;
+                        min-height: 44px;
+                        padding: 0 14px;
+                        border-radius: 9px;
+                        border: 2px solid currentColor;
+                        font-size: calc(13.5px * var(--s));
+                        font-weight: 700;
+                    }
+
+                    /* ---------------- card action ---------------- */
+
+                    .tk-act {
+                        margin: 12px;
+                        min-height: 60px;
                         border-radius: 12px;
-                        border: 0;
-                        font-size: 15px;
-                        font-weight: 600;
-                        font-family: inherit;
-                        cursor: pointer;
+                        font-size: calc(18px * var(--s));
+                        font-weight: 700;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        transition: transform 90ms ease;
                     }
 
-                    .issue-cancel { background: #eef3f3; color: var(--ko-muted-2); }
-                    .issue-send { background: var(--ko-danger); color: #fff; }
-                    .issue-send[disabled] { opacity: 0.45; cursor: not-allowed; }
+                    .tk-act:active { transform: scale(0.98); }
+                    .act-start { color: #fff; background: var(--ko-warn-line); }
+                    .act-ready { color: #fff; background: var(--ko-ok); }
+                    .act-remake { color: var(--ko-danger); background: var(--ko-danger-soft); border: 2px solid var(--ko-danger-line); }
 
-                    .card-action-btn {
-                        margin: 0 14px 14px;
-                        padding: 11px;
-                        border-radius: 10px;
-                        text-align: center;
-                        font-size: 14px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        border: 0;
-                        font-family: inherit;
-                    }
-
-                    .btn-start {
-                        color: var(--ko-warn-text);
-                        background: var(--ko-warn-bg);
-                    }
-
-                    .btn-all-ready {
-                        color: var(--ko-primary-dark);
-                        background: var(--ko-primary-soft);
-                    }
-
-                    .btn-waiting {
-                        color: var(--ko-muted);
-                        background: #f2f5f5;
+                    .act-wait {
+                        color: var(--ko-ok);
+                        background: var(--ko-ok-soft);
+                        border: 2px dashed var(--ko-ok-line);
                         cursor: default;
                     }
 
-                    .btn-remake {
-                        color: var(--ko-danger-text);
-                        background: var(--ko-danger-bg);
+                    /* A second tap confirms anything that cannot be undone. */
+                    .tk-act.armed {
+                        color: #fff;
+                        background: var(--ko-danger);
+                        border-color: var(--ko-danger);
+                        animation: nudge 600ms ease infinite alternate;
                     }
 
-                    .empty-board {
-                        grid-column: 1 / -1;
-                        padding: 48px 20px;
-                        text-align: center;
-                        color: var(--ko-muted);
-                        font-size: 15px;
+                    @keyframes nudge { from { opacity: 1; } to { opacity: 0.78; } }
+
+                    /* ---------------- ready strip ---------------- */
+
+                    .rdy-dishes {
+                        padding: 10px 14px 12px;
+                        font-size: calc(16px * var(--s));
+                        font-weight: 600;
+                        color: var(--ko-ink-2);
+                        line-height: 1.45;
                     }
 
-                    .toast-container {
+                    .rdy-dishes span { white-space: nowrap; }
+
+                    /* ---------------- menu view ---------------- */
+
+                    .mv-total {
+                        flex: none;
+                        font-size: calc(30px * var(--s));
+                        font-weight: 700;
+                        font-variant-numeric: tabular-nums;
+                    }
+
+                    /* ============================ toast ============================ */
+
+                    .k-toasts {
                         position: fixed;
                         left: 0;
                         right: 0;
-                        bottom: 24px;
+                        bottom: calc(20px + env(safe-area-inset-bottom));
                         display: flex;
                         justify-content: center;
+                        padding: 0 14px;
                         z-index: 100;
                         pointer-events: none;
                     }
 
-                    .toast-pill {
+                    .k-toast {
+                        pointer-events: auto;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        max-width: 560px;
                         background: var(--ko-ink);
                         color: #fff;
-                        font-size: 13.5px;
-                        font-weight: 500;
-                        padding: 11px 20px;
+                        font-size: calc(16px * var(--s));
+                        font-weight: 600;
+                        padding: 12px 12px 12px 20px;
                         border-radius: 999px;
-                        animation: pop 200ms ease;
+                        box-shadow: 0 8px 28px rgba(16, 26, 28, 0.3);
+                        animation: pop 180ms ease;
                     }
 
-                    .kds-bottom-nav {
+                    @keyframes pop { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+                    .k-toast .undo {
+                        flex: none;
+                        min-height: 44px;
+                        padding: 0 18px;
+                        border-radius: 999px;
+                        background: rgba(255, 255, 255, 0.18);
+                        color: #fff;
+                        font-size: calc(15px * var(--s));
+                        font-weight: 700;
+                    }
+
+                    .k-toast .undo:active { background: rgba(255, 255, 255, 0.32); }
+
+                    /* New dish arriving flashes the whole board once — a chime alone
+                       loses to an extraction hood. */
+                    body.flash main { animation: flash 900ms ease; }
+                    @keyframes flash {
+                        0%, 100% { background: var(--ko-canvas); }
+                        30% { background: #fff3cd; }
+                    }
+
+                    /* ============================ issue sheet ============================ */
+
+                    .sheet-bg {
+                        position: fixed;
+                        inset: 0;
+                        background: rgba(15, 25, 27, 0.5);
+                        display: none;
+                        align-items: flex-end;
+                        justify-content: center;
+                        z-index: 200;
+                    }
+
+                    .sheet-bg.open { display: flex; }
+
+                    .sheet {
+                        width: 100%;
+                        max-width: 560px;
+                        background: #fff;
+                        border-radius: 20px 20px 0 0;
+                        padding: 20px 18px calc(22px + env(safe-area-inset-bottom));
+                        box-shadow: 0 -10px 34px rgba(0, 0, 0, 0.22);
+                        max-height: 92dvh;
+                        overflow-y: auto;
+                        animation: slideup 200ms ease;
+                    }
+
+                    @keyframes slideup { from { transform: translateY(28px); } to { transform: none; } }
+
+                    .sheet h3 { font-size: calc(20px * var(--s)); font-weight: 700; margin-bottom: 4px; }
+                    .sheet .who { font-size: calc(16px * var(--s)); font-weight: 600; color: var(--ko-teal-dark); margin-bottom: 16px; }
+
+                    .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+
+                    .opt {
+                        min-height: 72px;
+                        border-radius: 12px;
+                        border: 2px solid var(--ko-border);
+                        background: #fff;
+                        font-size: calc(17px * var(--s));
+                        font-weight: 600;
+                        color: var(--ko-ink);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                    }
+
+                    .opt.on { border-color: var(--ko-danger); color: var(--ko-danger); background: var(--ko-danger-soft); }
+                    .opt .ic { font-size: 21px; }
+
+                    .note-in {
+                        width: 100%;
+                        min-height: var(--tap);
+                        padding: 14px;
+                        border-radius: 12px;
+                        border: 2px solid var(--ko-border);
+                        font-size: calc(17px * var(--s));
+                        font-family: inherit;
+                        color: var(--ko-ink);
+                        margin-bottom: 14px;
+                    }
+
+                    .note-in:focus { outline: none; border-color: var(--ko-teal); }
+
+                    .sheet-act { display: flex; gap: 10px; }
+
+                    .sheet-act button {
+                        flex: 1;
+                        min-height: 62px;
+                        border-radius: 12px;
+                        font-size: calc(18px * var(--s));
+                        font-weight: 700;
+                    }
+
+                    .b-cancel { background: #eef2f2; color: var(--ko-ink-2); }
+                    .b-send { background: var(--ko-danger); color: #fff; }
+                    .b-send[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+                    /* ============================ bottom nav ============================ */
+
+                    /* On a counter tablet this bar is a foot-gun: one stray touch and the
+                       kitchen board becomes the sell screen. It is therefore only shown
+                       on phone widths, where staff genuinely switch between the three.
+                       Wider screens get the same links as small text in the header. */
+                    .k-nav {
                         position: fixed;
                         left: 0;
                         right: 0;
                         bottom: 0;
                         z-index: 50;
-                        display: flex;
+                        display: none;
                         padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
                         background: #fff;
-                        border-top: 1px solid #edf1f1;
+                        border-top: 1px solid var(--ko-border);
                     }
 
-                    .kds-bottom-nav a {
+                    .k-nav a {
                         flex: 1;
-                        padding: 7px 4px;
-                        color: var(--ko-muted);
-                        text-align: center;
+                        min-height: 52px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        color: var(--ko-ink-3);
                         text-decoration: none;
                         border-radius: 12px;
-                    }
-
-                    .kds-bottom-nav a.active {
-                        color: var(--ko-primary-dark);
-                        background: var(--ko-primary-soft);
+                        font-size: 15px;
                         font-weight: 600;
                     }
 
-                    .kds-bottom-nav small { display: block; font-size: 10px; font-weight: 400; }
+                    .k-nav a.on { color: var(--ko-teal-dark); background: var(--ko-teal-soft); }
+                    .k-nav a small { font-size: 10px; font-weight: 400; }
+
+                    .hd-links { display: flex; gap: 4px; flex: none; }
+
+                    .hd-links a {
+                        min-height: 44px;
+                        padding: 0 14px;
+                        display: flex;
+                        align-items: center;
+                        border-radius: 9px;
+                        font-size: calc(14px * var(--s));
+                        font-weight: 600;
+                        color: var(--ko-ink-3);
+                        text-decoration: none;
+                        background: #eef2f2;
+                    }
+
+                    @media (max-width: 640px) {
+                        .k-nav { display: flex; }
+                        main { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+                        .k-toasts { bottom: calc(96px + env(safe-area-inset-bottom)); }
+                        .hd-links { display: none; }
+                        .hd-top { padding: 8px 12px 6px; gap: 8px; }
+                        .hd-title { font-size: calc(16px * var(--s)); }
+                        .tabs, .filters { padding-left: 12px; padding-right: 12px; }
+                        main { padding-left: 12px; padding-right: 12px; }
+                        .sec-hd { margin-left: -12px; margin-right: -12px; }
+                        .tk-act { margin: 10px; }
+                        .clock { display: none; }
+                    }
+
+                    @media (prefers-reduced-motion: reduce) {
+                        * { animation: none !important; transition: none !important; }
+                    }
                 </style>
             </head>
             <body>
                 <div id="kds-bus-bridge" hidden="hidden" t-att-data-channel="'ko_pos_kds_%s' % (pos_config.id if pos_config else 0)"/>
+
                 <header>
-                    <div class="header-top">
-                        <div class="header-title">
-                            จอครัว <span t-if="pos_config" class="kds-shop-name" t-esc="pos_config.display_name"/>
-                            <span t-if="station" class="kds-shop-name" t-esc="station.name"/>
-                            <span t-if="not station">· ทุกสถานี</span>
-                            <span t-if="not pos_config">· Kitchen display</span>
+                    <div class="hd-top">
+                        <div class="hd-title">จอครัว</div>
+                        <div class="hd-scope">
+                            <span t-if="pos_config" class="hd-chip" t-esc="pos_config.display_name"/>
+                            <span t-if="station" class="hd-chip" t-esc="station.name"/>
+                            <span t-if="not station" class="hd-chip muted">ทุกสถานี</span>
                         </div>
-                        <div class="header-meta">
-                            <span id="sla-label">SLA กำลังโหลด…</span>
+                        <div class="hd-right">
+                            <div class="zoom" role="group" aria-label="ขนาดตัวอักษร">
+                                <button type="button" class="z-sm" id="zoom-out" aria-label="ตัวอักษรเล็กลง">ก</button>
+                                <button type="button" class="z-lg" id="zoom-in" aria-label="ตัวอักษรใหญ่ขึ้น">ก</button>
+                            </div>
                             <span class="clock" id="clock">--:--</span>
+                            <div t-if="pos_config" class="hd-links">
+                                <a t-att-href="'/pos/ui/%s' % pos_config.id">ขาย</a>
+                                <a t-att-href="'/pos/ui/%s/ticket' % pos_config.id">บิล</a>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="kds-tabs">
-                        <button class="kds-tab-btn active" id="tab-active" onclick="kdsSetTab('active')">
-                            กำลังทำ (<span id="active-count">0</span>)
+                    <div class="tabs" role="tablist">
+                        <button type="button" class="tab on" id="tab-active" role="tab" aria-selected="true" onclick="kdsSetTab('active')">
+                            กำลังทำ <span class="n" id="n-active">0</span>
                         </button>
-                        <button class="kds-tab-btn" id="tab-served" onclick="kdsSetTab('served')">
-                            เสิร์ฟแล้ว
+                        <button type="button" class="tab" id="tab-served" role="tab" aria-selected="false" onclick="kdsSetTab('served')">
+                            เสิร์ฟแล้ว <span class="n" id="n-served">0</span>
                         </button>
-                        <button class="kds-tab-btn" id="tab-cancelled" onclick="kdsSetTab('cancelled')">
-                            ยกเลิก
+                        <button type="button" class="tab" id="tab-cancelled" role="tab" aria-selected="false" onclick="kdsSetTab('cancelled')">
+                            ยกเลิก <span class="n" id="n-cancelled">0</span>
                         </button>
                     </div>
 
-                    <div class="kds-subcontrols" id="subcontrols">
-                        <div class="kds-view-toggle">
-                            <button class="kds-view-btn active" id="view-order" onclick="kdsSetView('order')">แบบออเดอร์</button>
-                            <button class="kds-view-btn" id="view-menu" onclick="kdsSetView('menu')">แบบเมนู</button>
+                    <div class="filters" id="filters">
+                        <div class="seg" id="view-seg" role="group" aria-label="มุมมอง">
+                            <button type="button" class="on" id="view-order" onclick="kdsSetView('order')">แบบออเดอร์</button>
+                            <button type="button" id="view-menu" onclick="kdsSetView('menu')">แบบเมนู</button>
                         </div>
-                    </div>
 
-                    <!--
-                      One station control only. Until 19.0.6.0.0 this page carried
-                      two: hard-coded ครัวร้อน/ครัวเย็น/เครื่องดื่ม chips that filtered
-                      in the browser, plus these links that filter on the server by
-                      ko.kds.station. They disagreed with each other. The chips are gone.
-                    -->
-                    <div t-if="stations or len(all_configs) &gt; 1" class="kds-scope-bar">
+                        <!--
+                          One station control only. Until 19.0.6.0.0 this page carried
+                          two: hard-coded ครัวร้อน/ครัวเย็น/เครื่องดื่ม chips that filtered
+                          in the browser, plus these links that filter on the server by
+                          ko.kds.station. They disagreed with each other. The chips are gone.
+                        -->
                         <t t-if="stations">
-                            <span class="kds-scope-label">สถานี:</span>
-                            <a class="kds-scope-chip" t-att-class="'kds-scope-chip active' if not station else 'kds-scope-chip'"
+                            <span class="f-sep"/>
+                            <span class="f-label">สถานี</span>
+                            <a class="f-chip" t-att-class="'f-chip on' if not station else 'f-chip'"
                                t-att-href="'/kds/pos/%s' % pos_config.id">ทั้งหมด</a>
                             <t t-foreach="stations" t-as="stn">
-                                <a class="kds-scope-chip"
-                                   t-att-class="'kds-scope-chip active' if station and stn.id == station.id else 'kds-scope-chip'"
+                                <a class="f-chip"
+                                   t-att-class="'f-chip on' if station and stn.id == station.id else 'f-chip'"
                                    t-att-href="'/kds/pos/%s?station_id=%s' % (pos_config.id, stn.id)"
                                    t-esc="stn.name"/>
                             </t>
                         </t>
                         <t t-if="len(all_configs) &gt; 1">
-                            <span class="kds-scope-label">ร้าน:</span>
+                            <span class="f-sep"/>
+                            <span class="f-label">ร้าน</span>
                             <t t-foreach="all_configs" t-as="cfg">
-                                <a class="kds-scope-chip"
-                                   t-att-class="'kds-scope-chip active' if cfg.id == pos_config.id else 'kds-scope-chip'"
+                                <a class="f-chip"
+                                   t-att-class="'f-chip on' if cfg.id == pos_config.id else 'f-chip'"
                                    t-att-href="'/kds/pos/%s' % cfg.id"
                                    t-esc="cfg.display_name"/>
                             </t>
                         </t>
                     </div>
+
+                    <div class="offline" id="offline" role="status">
+                        <span>⚠</span>
+                        <span>ไม่ได้เชื่อมต่อเซิร์ฟเวอร์ — รายการบนจออาจไม่ใช่ของล่าสุด</span>
+                    </div>
                 </header>
 
-                <main id="board">
-                    <div class="empty-board">กำลังโหลดรายการครัว…</div>
+                <main id="board" aria-live="polite">
+                    <div class="empty">กำลังโหลดรายการครัว…</div>
                 </main>
 
-                <div class="toast-container" id="toast-wrap" style="display:none;">
-                    <div class="toast-pill" id="toast-msg"></div>
-                </div>
+                <div class="k-toasts" id="toasts"></div>
 
                 <!-- แจ้งปัญหากลับหน้าร้าน: ของหมด / ล่าช้า / ขอเปลี่ยน / อื่น ๆ -->
-                <div class="issue-backdrop" id="issue-backdrop" style="display:none;">
-                    <div class="issue-sheet" id="issue-sheet">
+                <div class="sheet-bg" id="issue-bg" role="dialog" aria-modal="true" aria-label="แจ้งปัญหาให้หน้าร้าน">
+                    <div class="sheet">
                         <h3>แจ้งปัญหาให้หน้าร้าน</h3>
-                        <div class="issue-sub" id="issue-target">—</div>
-                        <div class="issue-opts">
-                            <button type="button" class="issue-opt" data-issue="out_of_stock">ของหมด</button>
-                            <button type="button" class="issue-opt" data-issue="delay">ล่าช้า</button>
-                            <button type="button" class="issue-opt" data-issue="substitute">ขอเปลี่ยนรายการ</button>
-                            <button type="button" class="issue-opt" data-issue="other">อื่น ๆ</button>
+                        <div class="who" id="issue-target">—</div>
+                        <div class="opts">
+                            <button type="button" class="opt" data-issue="out_of_stock"><span class="ic">🚫</span>ของหมด</button>
+                            <button type="button" class="opt" data-issue="delay"><span class="ic">⏱</span>ล่าช้า</button>
+                            <button type="button" class="opt" data-issue="substitute"><span class="ic">🔁</span>ขอเปลี่ยนรายการ</button>
+                            <button type="button" class="opt" data-issue="other"><span class="ic">💬</span>อื่น ๆ</button>
                         </div>
-                        <input type="text" class="issue-note-input" id="issue-note"
+                        <input type="text" class="note-in" id="issue-note"
                                maxlength="250" placeholder="รายละเอียดเพิ่มเติม (ไม่บังคับ) เช่น เหลือ 1 ที่, รออีก 10 นาที"/>
-                        <div class="issue-actions">
-                            <button type="button" class="issue-cancel" id="issue-cancel">ยกเลิก</button>
-                            <button type="button" class="issue-send" id="issue-send" disabled="disabled">ส่งให้หน้าร้าน</button>
+                        <div class="sheet-act">
+                            <button type="button" class="b-cancel" id="issue-cancel">ยกเลิก</button>
+                            <button type="button" class="b-send" id="issue-send" disabled="disabled">ส่งให้หน้าร้าน</button>
                         </div>
                     </div>
                 </div>
 
-                <nav t-if="pos_config" class="kds-bottom-nav" aria-label="เมนูหลัก">
+                <nav t-if="pos_config" class="k-nav" aria-label="เมนูหลัก">
                     <a t-att-href="'/pos/ui/%s' % pos_config.id">ขาย<small>Sell</small></a>
                     <a t-att-href="'/pos/ui/%s/ticket' % pos_config.id">บิล<small>Orders</small></a>
-                    <a t-att-href="'/kds/pos/%s' % pos_config.id" class="active">ครัว<small>Kitchen</small></a>
+                    <a t-att-href="'/kds/pos/%s' % pos_config.id" class="on">ครัว<small>Kitchen</small></a>
                 </nav>
 
                 <script>
                     window.KDS_CONFIG_ID = <t t-esc="pos_config.id if pos_config else 0"/>;
                     window.KDS_STATION_ID = <t t-esc="station.id if station else 0"/>;
+                    window.KDS_HAS_STATION_FILTER = <t t-esc="'true' if station else 'false'"/>;
                     window.KDS_CSRF = "<t t-esc="csrf_token"/>";
                 </script>
                 <!-- This script is served directly rather than through an Odoo asset
                      bundle. Keep a version query so browsers cannot reuse an older KDS
                      runtime after an addon upgrade. -->
-                <script src="/ko_pos_kds/static/src/kds/kds.js?v=19.0.6.0.0"/>
+                <script src="/ko_pos_kds/static/src/kds/kds.js?v=19.0.8.0.0"/>
             </body>
         </html>
     </template>
@@ -705,13 +1032,13 @@
                 <title>เลือกร้าน · KO KDS</title>
                 <style>
                     :root {
-                        --ko-primary: oklch(0.5 0.15 190);
-                        --ko-primary-dark: oklch(0.4 0.15 190);
-                        --ko-primary-soft: oklch(0.5 0.15 190 / 0.07);
-                        --ko-ink: #1c2426;
-                        --ko-muted: #8fa0a3;
-                        --ko-border: #e4ebeb;
-                        --ko-canvas: #f7fafa;
+                        --ko-teal: #0d7d88;
+                        --ko-teal-dark: #08616a;
+                        --ko-teal-soft: #e4f2f3;
+                        --ko-ink: #101a1c;
+                        --ko-ink-3: #5d7175;
+                        --ko-border: #cfdcdb;
+                        --ko-canvas: #eef3f3;
                     }
                     * { box-sizing: border-box; }
                     body {
@@ -722,34 +1049,33 @@
                         min-height: 100vh;
                         padding: 32px 20px;
                     }
-                    .wrap { max-width: 760px; margin: 0 auto; }
-                    h1 { font-size: 24px; margin: 0 0 4px; }
-                    .sub { color: var(--ko-muted); font-size: 14px; margin: 0 0 24px; }
-                    .grid {
-                        display: grid;
-                        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-                        gap: 12px;
-                    }
+                    .wrap { max-width: 800px; margin: 0 auto; }
+                    h1 { font-size: 27px; margin: 0 0 6px; }
+                    .sub { color: var(--ko-ink-3); font-size: 16px; margin: 0 0 26px; line-height: 1.5; }
+                    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 14px; }
                     .shop {
                         display: block;
+                        min-height: 120px;
                         text-decoration: none;
                         color: inherit;
                         background: #fff;
-                        border: 1.5px solid var(--ko-border);
-                        border-radius: 14px;
-                        padding: 18px 18px 16px;
+                        border: 2px solid var(--ko-border);
+                        border-radius: 16px;
+                        padding: 20px;
                     }
-                    .shop:hover { border-color: var(--ko-primary); background: var(--ko-primary-soft); }
-                    .shop-name { font-size: 18px; font-weight: 600; }
-                    .shop-company { font-size: 13px; color: var(--ko-muted); margin-top: 2px; }
-                    .shop-go { font-size: 13px; font-weight: 600; color: var(--ko-primary-dark); margin-top: 12px; }
+                    .shop:hover, .shop:active { border-color: var(--ko-teal); background: var(--ko-teal-soft); }
+                    .shop-name { font-size: 21px; font-weight: 600; }
+                    .shop-company { font-size: 15px; color: var(--ko-ink-3); margin-top: 3px; }
+                    .shop-go { font-size: 16px; font-weight: 600; color: var(--ko-teal-dark); margin-top: 16px; }
                     .empty {
                         background: #fff;
-                        border: 1.5px dashed var(--ko-border);
-                        border-radius: 14px;
-                        padding: 28px;
+                        border: 2px dashed var(--ko-border);
+                        border-radius: 16px;
+                        padding: 32px;
                         text-align: center;
-                        color: var(--ko-muted);
+                        color: var(--ko-ink-3);
+                        font-size: 16px;
+                        line-height: 1.5;
                     }
                 </style>
             </head>
