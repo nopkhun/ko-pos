@@ -1039,3 +1039,28 @@ PIDS=$(ss -lptnH "sport = :8069" | grep -oP 'pid=\K[0-9]+' | sort -u)
 [ -n "$PIDS" ] && kill $PIDS
 ```
 
+---
+
+### Beam Bolt accepts a payment, but POS cancellation returns 405 or can create a duplicate
+
+**Symptom:** cancelling a Bolt Intent returns HTTP 405, or a network timeout followed by
+Retry creates a second payment request for the same bill.
+
+**Cause:** Beam API v1 cancels Bolt Intents with
+`PATCH /api/v1/bolt-intents/{boltIntentId}/cancel`, not `POST`. A create request that
+times out is also ambiguous: Beam may have created the intent even though Odoo received no
+response. Retrying with a new idempotency key is a duplicate-payment risk.
+
+**Fix (`ko_pos_beam_bolt` 19.0.2.0.0):** every Beam `POST` and `PATCH` sends
+`x-beam-idempotency-key`. Until Beam returns the intent ID, POS persists that key as
+`beam-idem:<key>` in the payment line's standard transaction field. Retry repeats the same
+request; Cancel first repeats it with the same key to recover the authoritative intent ID,
+then sends the correct `PATCH`. Do not clear this marker or create another payment method
+while the result is uncertain.
+
+Two related Beam rules belong in the operating procedure:
+
+- Playground and Production have separate credentials and connections. Disconnect before
+  switching environment, then log in and pair the device again.
+- A Bolt Intent sent while the device is not on **Ready to accept payments** is discarded.
+  Wait at least five seconds after connect, cancel, or expiry before creating another one.

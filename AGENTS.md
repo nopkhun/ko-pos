@@ -677,6 +677,20 @@ Working and confirmed against the live system:
 
 ---
 
+- **Beam Bolt Pairing Mode is implemented locally in `ko_pos_beam_bolt` 19.0.2.0.0
+  (not yet deployed or configured).** The payment-method form can create, inspect, and
+  delete a Bolt Connection from the device's six-digit pairing code and stores both the
+  Connection ID and Device ID. Bolt Intent requests match Beam API v1.22.0, including all
+  ten supported payment methods, the 90–600 second expiry limit, method-specific child
+  objects, `PATCH` cancellation, and `x-beam-idempotency-key` on every POST/PATCH. POS
+  persists an uncertain create key and reuses it on Retry/Cancel so a timeout does not
+  silently create a second charge. Python/JS/XML static checks and mocked backend/POS
+  success, decline, cancel, rate-limit, and timeout-retry flows pass. The full disposable
+  Odoo 19 module test is delegated to the new GitHub Actions workflow; no Beam credential,
+  device, Playground transaction, or production transaction has been used.
+
+---
+
 ## 9. Outstanding work
 
 1. **Operate the POS and kitchen display once with a real order.** Everything below the
@@ -699,8 +713,9 @@ Working and confirmed against the live system:
    available; do not complete payment or change kitchen state.
 6. **Real business data from the owner:** real PromptPay number (currently the placeholder
    `0812345678`), the real menu items & prices, and the kitchen printer's IP (Epson).
-7. **Beam Bolt+:** register a merchant account, obtain the API key, pair the terminal,
-   attach it to the payment method, and test against the Beam playground before live use.
+7. **Beam Bolt+ go-live:** let the new Odoo 19 CI job pass, deploy the module, then obtain
+   Playground credentials, pair the physical terminal from Odoo, attach the payment method,
+   and run the end-to-end Playground checklist in `docs/RUNBOOK-beam-bolt.md` before live use.
 8. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close. `docs/RUNBOOK-kds.md` is written to be read straight to staff.
 9. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.

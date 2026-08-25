@@ -1,0 +1,67 @@
+name: Test Beam Bolt
+
+on:
+  push:
+    paths:
+      - "addons/ko_pos_beam_bolt/**"
+      - ".github/workflows/test-beam-bolt.yml"
+  pull_request:
+    paths:
+      - "addons/ko_pos_beam_bolt/**"
+      - ".github/workflows/test-beam-bolt.yml"
+
+jobs:
+  module-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U odoo -d postgres"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate source files
+        run: |
+          node --check addons/ko_pos_beam_bolt/static/src/app/payment_beam_bolt.js
+          python3 -m compileall -q addons/ko_pos_beam_bolt
+          python3 - <<'PY'
+          import ast
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          manifest = ast.literal_eval(
+              Path("addons/ko_pos_beam_bolt/__manifest__.py").read_text()
+          )
+          assert manifest["version"] == "19.0.2.0.0"
+          for xml_file in Path("addons/ko_pos_beam_bolt").rglob("*.xml"):
+              ET.parse(xml_file)
+          PY
+
+      - name: Run Odoo 19 module tests
+        run: |
+          docker run --rm --network host \
+            -e HOST=127.0.0.1 \
+            -e PORT=5432 \
+            -e USER=odoo \
+            -e PASSWORD=odoo_test_password \
+            -v "${{ github.workspace }}/addons:/mnt/extra-addons:ro" \
+            odoo:19 \
+            -d beam_bolt_ci \
+            --addons-path=/usr/lib/python3/dist-packages/odoo/addons,/mnt/extra-addons \
+            -i ko_pos_beam_bolt \
+            --test-enable \
+            --test-tags=/ko_pos_beam_bolt \
+            --stop-after-init \
+            --without-demo=all \
+            --log-level=test
