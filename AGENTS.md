@@ -253,7 +253,7 @@ means containers started. Verify the translation count line from §5 and check t
 
 ---
 
-## 8. Current state (verified 2026-08-24)
+## 8. Current state (verified 2026-08-25)
 
 Working and confirmed against the live system:
 
@@ -597,6 +597,75 @@ Working and confirmed against the live system:
   - **Not verified live:** nothing was keyed or timed on production; the register is
     PIN-locked and an agent must not enter a staff PIN.
 
+- **Kitchen board rebuilt for the room it runs in (2026-08-25, `ko_pos_kds` 19.0.8.0.0).**
+  The owner asked for a board the kitchen can read and hit without looking twice. Measured
+  against the old build, the things that were actually wrong:
+
+  | | before | after |
+  | --- | --- | --- |
+  | แจ้งปัญหา button | 22 px tall, in the same 30 px row as the "done" tap | 64 px column, own divider |
+  | dish row tap target | ~30 px | 56 px floor, 113–143 px in practice |
+  | dish name | 14.5 px | 20 px, full row width |
+  | special instruction (ไม่ใส่ผัก) | 12 px grey caption, contrast ≈ 2.5:1 | 16 px semibold amber block, ≈ 4.9:1 |
+  | tabs / chips | 27–33 px | 56 px / 46 px |
+  | done state | a pale chip, colour only | tick + grey qty + strikethrough + the word เสร็จ |
+  | lateness | 12.5 px label + 4 px bar | whole header band teal → amber → solid red, `นาที · เกินเวลา` |
+
+  Beyond sizing, five behaviours changed:
+
+  1. **Taps paint before the round trip.** The board polls every 2 s; a tap that waited for
+     the server invited a second tap, and the second tap toggles the dish back off. Every
+     tap now applies locally and the poll cannot undo it until the server agrees. A tap is
+     also ignored for 350 ms afterwards, because finishing a dish can move its card into the
+     พร้อมเสิร์ฟ block and the finger is then over whatever slid up.
+  2. **No blind re-render.** The old build rewrote `board.innerHTML` every 2 s — scroll
+     position lost, and a node could be swapped out from under a finger mid-tap. A rebuild
+     now happens only when a content signature moves; minutes, the SLA bar and the
+     warn/late colour are updated in place once a second.
+  3. **Every action can be taken back.** เลิกทำ on the toast for a dish, for เสร็จทั้งหมด
+     (it puts back exactly the lines that were still cooking) and for เริ่มทำ. ส่งกลับเข้าครัว
+     has no server undo, so it asks for a second tap instead.
+  4. **A dead connection is visible.** Two failed polls raise a red banner. Before this a
+     kitchen with dead wi-fi kept showing a frozen board that looked completely normal.
+  5. **Ready orders leave the cooking area.** `state=ready` tickets collapse into a compact
+     พร้อมเสิร์ฟ strip at the top instead of sitting among the cooking cards with a dead
+     button. Who marks food served did **not** change — that is still front of house in บิล
+     (`RUNBOOK-kds.md` §4).
+
+  Also: a staff-adjustable text size (ก- / ก+, persisted per device), a chime that is three
+  notes with a harmonic plus a board flash and a phone vibration, the station chip hidden on
+  a single-station board so Thai dish names stop wrapping, and the ขาย/บิล bar demoted to
+  small header links above 640 px so a palm on a counter tablet cannot replace the kitchen
+  board with the sell screen.
+
+  - **Two traps found while doing it, both now in `docs/GOTCHAS.md`.** A block comment in
+    the `<style>` closed with `-->` instead of `*/` and silently ate `:root`, `*`, `html`,
+    `body` and `button` — the page still looked almost right, but `var(--tap)` resolved to
+    nothing so every touch target fell back to `auto`. And Bootstrap ships inside
+    `web.assets_frontend`: `.toast:not(.show){display:none}` (0,2,0) beat our `.toast`
+    (0,1,0), so the toast and its undo button were in the DOM and invisible. Our classes are
+    now `.k-toast`, `.k-toasts`, `.k-nav`, and GOTCHAS carries the browser snippet that
+    lists every foreign rule matching a KDS element.
+  - **Proved on a disposable Odoo 19 copy, not on paper.** 33 module tests pass. A Playwright
+    suite of 26 behaviour checks passes at 1180×820 and 390×844 with zero console errors —
+    optimistic paint under 400 ms while the POST is still in flight, undo for single/bulk/
+    menu-batch, the 350 ms tap lock, the DOM node surviving three idle polls with scroll
+    intact, the ticker moving without a rebuild, the offline banner appearing and clearing,
+    a ของหมด dish being untappable, text size surviving a reload, and remake needing two
+    taps. An automated sweep confirms **no** tappable element under 44 px on either width.
+  - **Deployed by action `111168568` (2026-08-25 07:01 UTC).** addons-init logged
+    `DEPLOYED_ko_pos_kds: '19.0.8.0.0'`, `DEPLOYED_ko_pos_ui: "19.0.6.2.0"` and a new
+    `KDS_BOARD_REWORK_PRESENT=yes` check alongside the existing five; 88 modules, Thai
+    overrides exactly 57 files, no error, Odoo serving.
+  - **Checked live at `kodoo.viakuma.com/kds`:** both shop boards render the new layout with
+    zero console errors, the page serves `kds.js?v=19.0.8.0.0`, `--tap` resolves to 56 px
+    (proof the stylesheet parsed whole), 151 rules load, and no Odoo class rule matches a
+    KDS element any more.
+  - **Not verified live:** both production boards were empty at the time, so no real ticket
+    card, note block, issue banner or undo was exercised against production data — all of
+    that was proved on the sandbox copy. Nothing was keyed, sent, marked ready or served on
+    production on purpose.
+
 ---
 
 ## 9. Outstanding work
@@ -610,9 +679,8 @@ Working and confirmed against the live system:
 2. **ร้านหวานอยู่ (POS 3) has only the ขนม station.** Anything it sells outside ของหวาน will
    show as ไม่ได้กำหนดสถานี (visible everywhere, but unrouted). Add the stations that shop
    actually has, or widen ขนม, in ตั้งค่า → สถานีครัว.
-3. **Stale ticket K0004 / queue 1011** (`ข้าวผัดกุ้ง`, 78 minutes over SLA) is still on the
-   ร้านชอบแกง board. It is leftover test data; deleting it is the owner's call — say so and it
-   goes, like K0003 did.
+3. ~~**Stale ticket K0004 / queue 1011.**~~ Gone: on 2026-08-25 both `/kds/pos/2` and
+   `/kds/pos/3` showed กำลังทำ 0 / เสิร์ฟแล้ว 0 / ยกเลิก 0. Nothing to clean up.
 4. **Finish data-backed §1 QA:** once real menu data has an English
    `public_description` and a configurable item, verify English search and Odoo's
    configurator path live.
@@ -628,6 +696,14 @@ Working and confirmed against the live system:
    session close. `docs/RUNBOOK-kds.md` is written to be read straight to staff.
 9. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
 
+> ✅ Completed 2026-08-25: rebuilt the kitchen board for a 50 cm counter tablet and a
+> phone — nothing tappable under 44 px, 20 px dish names, the special instruction promoted
+> from a 12 px grey caption to an amber block, state carried by colour *and* a word *and* a
+> shape, optimistic taps with a real undo, no blind re-render every 2 s, an offline banner,
+> and a staff-adjustable text size (`ko_pos_kds` 19.0.8.0.0). Details in §8; the two traps
+> it uncovered are in `docs/GOTCHAS.md`, and how staff read the board is
+> `docs/RUNBOOK-kds.md` §7.
+>
 > ✅ Completed 2026-08-24: made the orders tab open instantly — the fetch moved out of the
 > rendering barrier, `getServerOrders` no longer blocks any screen, the kitchen-status query
 > only covers orders that can still change, and the bill sheet stopped rebuilding the whole
