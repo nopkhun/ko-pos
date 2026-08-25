@@ -677,7 +677,7 @@ Working and confirmed against the live system:
 
 ---
 
-- **Beam Bolt Pairing Mode is implemented locally in `ko_pos_beam_bolt` 19.0.2.0.0
+- **Beam Bolt Pairing Mode is implemented and pushed in `ko_pos_beam_bolt` 19.0.2.0.0
   (not yet deployed or configured).** The payment-method form can create, inspect, and
   delete a Bolt Connection from the device's six-digit pairing code and stores both the
   Connection ID and Device ID. Bolt Intent requests match Beam API v1.22.0, including all
@@ -685,9 +685,10 @@ Working and confirmed against the live system:
   objects, `PATCH` cancellation, and `x-beam-idempotency-key` on every POST/PATCH. POS
   persists an uncertain create key and reuses it on Retry/Cancel so a timeout does not
   silently create a second charge. Python/JS/XML static checks and mocked backend/POS
-  success, decline, cancel, rate-limit, and timeout-retry flows pass. The full disposable
-  Odoo 19 module test is delegated to the new GitHub Actions workflow; no Beam credential,
-  device, Playground transaction, or production transaction has been used.
+  success, decline, cancel, rate-limit, and timeout-retry flows pass. GitHub Actions run
+  `32824868873` also passed the real Odoo 19 + PostgreSQL 17 module install/test with
+  `0 failed, 0 error(s) of 8 tests` at commit `03059f7`; no Beam credential, device,
+  Playground transaction, production transaction, or production deploy has been used.
 
 - **The owner ran the production trial on 2026-08-25 and reported every step passing.**
   This is the check §9 had carried since the very first deploy, and it is now done: a dish
@@ -721,9 +722,9 @@ Working and confirmed against the live system:
    available; do not complete payment or change kitchen state.
 5. **Real business data from the owner:** real PromptPay number (currently the placeholder
    `0812345678`), the real menu items & prices, and the kitchen printer's IP (Epson).
-6. **Beam Bolt+ go-live:** let the new Odoo 19 CI job pass, deploy the module, then obtain
-   Playground credentials, pair the physical terminal from Odoo, attach the payment method,
-   and run the end-to-end Playground checklist in `docs/RUNBOOK-beam-bolt.md` before live use.
+6. **Beam Bolt+ go-live:** deploy commit `03059f7`, then obtain Playground credentials,
+   pair the physical terminal from Odoo, attach the payment method, and run the end-to-end
+   Playground checklist in `docs/RUNBOOK-beam-bolt.md` before live use.
 7. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close. `docs/RUNBOOK-kds.md` is written to be read straight to staff.
 8. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
