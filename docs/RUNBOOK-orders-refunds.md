@@ -2,9 +2,14 @@
 
 Prerequisite: read `../AGENTS.md` §0 and §7 first.
 
-Everything here was checked against `ko_pos_ui` 19.0.6.1.0 / `ko_pos_kds` 19.0.7.0.0 on a
+Everything here was checked against `ko_pos_ui` 19.0.6.2.0 / `ko_pos_kds` 19.0.7.1.0 on a
 disposable Odoo 19 database. The screen is the **บิล** tab in the bottom nav, or
 `/pos/ui/<config_id>/ticket`.
+
+The tab opens straight away and loads the newest bills behind the screen — the header shows
+**กำลังอัปเดต…** while it does. Tap **↻ รีเฟรช** any time you want to be certain you are
+looking at what another till just did. The บิลแล้ว list shows the most recent 40 bills;
+**โหลดบิลเก่ากว่านี้** at the bottom adds more.
 
 ---
 
@@ -125,6 +130,7 @@ for a bill keyed against the wrong table or the wrong customer, not to swap one 
 | Symptom | Look at |
 | --- | --- |
 | tapping an order card does nothing | the till is on an old bundle — hard refresh once (`docs/GOTCHAS.md`, "A deployed POS CSS/JS change is invisible…") |
+| a bill another till just took is not in the list | tap **↻ รีเฟรช** — the tab holds its last load for a few seconds so it can open instantly |
 | the payment screen looks like plain Odoo | same: old bundle. The KO screen must appear at every width |
 | a bill says คืนเงินครบแล้ว but no money was returned | pre-19.0.6.0.0 behaviour; see `docs/GOTCHAS.md` |
 | refunded dish still on the kitchen board | check the refund was actually **validated**, not just started |

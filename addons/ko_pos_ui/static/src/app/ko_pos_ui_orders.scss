@@ -222,3 +222,45 @@
     opacity: 0.5;
     cursor: default;
 }
+
+/* --------------------------------------------------------------------------
+   Background refresh, and paging the billed list
+   -------------------------------------------------------------------------- */
+.pos .ko-ticket-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pos .ko-ticket-refreshing {
+    margin-left: auto;
+    padding: 5px 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ko-primary-dark);
+    background: var(--ko-primary-soft);
+    border: 0;
+    border-radius: 999px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.pos .ko-ticket-refreshing.busy {
+    color: var(--ko-muted);
+    background: var(--ko-line);
+    cursor: default;
+}
+
+.pos .ko-billed-more {
+    display: block;
+    width: calc(100% - 40px);
+    margin: 12px 20px 20px;
+    padding: 12px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ko-primary-dark);
+    background: #fff;
+    border: 1.5px solid var(--ko-border);
+    border-radius: 12px;
+    cursor: pointer;
+}
