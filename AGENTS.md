@@ -699,6 +699,8 @@ Working and confirmed against the live system:
   `Beam Bolt - Production (ยังไม่เปิดใช้)` (id 9), both using journal `ธนาคาร`.
   Neither has Beam integration/credentials, a Bolt Connection, or any POS assignment, so
   neither appears to cashiers or can initiate a payment.
+  Live form inspection also confirmed Odoo's two-step selector: choose `เครื่องรูดบัตร`
+  under `การผสานรวม` first, then choose `Beam Bolt+` in the revealed `ผสานรวมกับ` field.
 
 - **The owner ran the production trial on 2026-08-25 and reported every step passing.**
   This is the check §9 had carried since the very first deploy, and it is now done: a dish

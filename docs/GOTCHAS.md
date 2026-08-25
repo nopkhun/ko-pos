@@ -1079,3 +1079,17 @@ not its manifest version. The Compose init service originally echoed only KDS an
 now prints `DEPLOYED_ko_pos_beam_bolt` and its manifest version immediately after cloning
 `main`. Require that signal on every Beam deployment; action success or a generic module
 load line is not version verification.
+
+---
+
+### Beam Bolt+ is missing from the first `การผสานรวม` dropdown
+
+**Symptom:** the Odoo payment-method form offers only `ไม่ต้องระบุ`, `เครื่องรูดบัตร`,
+and `แอปธนาคาร (QR)` under `การผสานรวม`, so Beam appears not to be installed.
+
+**Cause:** Odoo 19 uses two dependent selections. The first field chooses the integration
+class, not the terminal provider. Provider choices stay hidden until terminal mode is active.
+
+**Fix:** choose `เครื่องรูดบัตร` in `การผสานรวม`; Odoo then reveals `ผสานรวมกับ`, whose
+options include `Beam Bolt+`. This exact two-step flow was verified live on payment method
+id 8 on 2026-08-25; the inspection was discarded without saving.

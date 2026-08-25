@@ -31,7 +31,9 @@ disabled until Playground passes.
 In Odoo, open **Point of Sale → Configuration → Payment Methods** and create or edit a
 bank payment method:
 
-1. Set **Integration** to **Terminal** and **Integrate with** to **Beam Bolt+**.
+1. In the Thai UI, set **การผสานรวม** to **เครื่องรูดบัตร** first. This reveals a
+   second field named **ผสานรวมกับ**; select **Beam Bolt+** there. Beam does not appear
+   in the first dropdown.
 2. Enter the Beam Merchant ID and API key.
 3. Turn on **Beam Playground (test)** while testing.
 4. Choose the payment method that this Odoo payment method should request on the device.
