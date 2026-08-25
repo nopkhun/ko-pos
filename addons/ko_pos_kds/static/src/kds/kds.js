@@ -849,10 +849,10 @@
                 );
             });
         });
-        // \\u0001 as the separator, not "": without it "1" + "23" and "12" + "3"
+        //  as the separator, not "": without it "1" + "23" and "12" + "3"
         // produce the same string and a real change can go unnoticed. Written as an
         // escape on purpose — a raw control byte here is invisible in every editor.
-        return parts.join("\\u0001");
+        return parts.join("");
     }
 
     function render(force) {
