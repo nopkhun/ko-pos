@@ -1,3 +1,3 @@
-P:\u0001
-Q:        return parts.join("\u0001");
-R:end
+M:\u0001
+N:        return parts.join("\u0001");
+O:end
