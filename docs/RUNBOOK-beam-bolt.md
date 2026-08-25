@@ -80,7 +80,22 @@ Open the POS, add a small test order, select the Beam payment method, and confir
    result.
 
 Beam recommends waiting at least five seconds after connect, cancel, or expiry before
-creating another Bolt Intent. The POS enforces this delay on retry.
+creating another Bolt Intent. From `ko_pos_beam_bolt` 19.0.3.1.0 onward the POS enforces
+this delay across every payment method that shares the device, including Card → PromptPay.
+
+### Cancel or change the payment method at checkout
+
+While Bolt is waiting, the KO payment page must show the current terminal status and a red
+**ยกเลิกรายการ · Cancel** button. Press that button in Odoo and wait until the message says
+**รายการเดิมถูกยกเลิกแล้ว สามารถเลือกช่องทางใหม่ได้** before selecting Card, PromptPay,
+cash, or another method. Odoo deliberately blocks switching while a terminal request may
+still charge the customer.
+
+If the customer already cancelled in the Beam Bolt app, press the same Odoo Cancel button.
+Odoo re-reads the Bolt Intent; a final `BI_CANCELED`, `BI_EXPIRED`, or failed Charge releases
+Odoo's standard terminal lock. A successful or still-uncertain Beam result stays blocked so
+staff cannot accidentally collect the bill twice. The five-second device cooldown is then
+applied automatically before the next Bolt Intent.
 
 ## 5. Network failures and duplicate-payment safety
 
