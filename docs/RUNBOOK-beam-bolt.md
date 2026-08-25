@@ -63,7 +63,8 @@ methods all reuse that owner's Bolt Connection ID.
 Do not switch Merchant ID, API key, Playground/Production, or terminal type while a
 connection exists. Odoo blocks that change so the device is not left paired to an orphaned
 connection. Odoo also blocks disconnecting the owner while another payment method still
-uses it. Remove **ใช้การเชื่อมต่อ Beam จาก** on every dependent method first.
+uses it. Move each dependent to another paired source, or change it away from Beam Bolt+,
+before disconnecting the owner.
 
 ## 4. Test a payment
 
@@ -95,10 +96,13 @@ can still succeed; refund that late Charge manually if it no longer belongs to t
 ## 6. Move from Playground to Production
 
 1. Finish all Playground scenarios and reconcile their Charge IDs.
-2. Disconnect the Playground Bolt Connection. The device logs out by Beam design.
-3. Turn off Playground, enter the Production Merchant ID/API key, and save.
-4. Log the device into the Production merchant, pair it again, and verify the new Device ID.
-5. Run one small real transaction, confirm it in Production Lighthouse, then refund it and
+2. Move every dependent payment method to another paired source, or change it away from
+   Beam Bolt+. Merely clearing `ใช้การเชื่อมต่อ Beam จาก` makes that method a new connection
+   owner and therefore requires its own credentials and Pairing.
+3. Disconnect the Playground Bolt Connection. The device logs out by Beam design.
+4. Turn off Playground, enter the Production Merchant ID/API key, and save.
+5. Log the device into the Production merchant, pair it again, and verify the new Device ID.
+6. Run one small real transaction, confirm it in Production Lighthouse, then refund it and
    reconcile Odoo before accepting normal traffic.
 
 Never paste Merchant API keys into Git, chat, screenshots, browser code, or logs.
