@@ -588,6 +588,12 @@ Working and confirmed against the live system:
     **226 → 59 ms**; ขาย unchanged at ~60–100 ms. All existing tests still pass: 31/31
     orders/refunds, 6/6 takeaway and table-hijack, 4/4 payment screen at 1400 px and 420 px,
     23/23 module tests, 0 console errors.
+  - **Deployed by action `111118705` (2026-08-25 02:58 UTC).** The addons-init log reads
+    `DEPLOYED_ko_pos_kds: '19.0.7.1.0'`, `DEPLOYED_ko_pos_ui: "19.0.6.2.0"`,
+    `NONBLOCKING_STORE_PRESENT=yes`, `KDS_SCOPED_STATUS_PRESENT=yes`, alongside the existing
+    `KDS_SECURITY_PRESENT`, `ORDERS_SCSS_PRESENT` and `REFUND_CANCEL_PRESENT` checks; 88
+    modules, Thai overrides exactly 57 files, no error, Odoo serving. **Every till that
+    already had the POS open needs one hard refresh** — a stale bundle keeps the old timing.
   - **Not verified live:** nothing was keyed or timed on production; the register is
     PIN-locked and an agent must not enter a staff PIN.
 
