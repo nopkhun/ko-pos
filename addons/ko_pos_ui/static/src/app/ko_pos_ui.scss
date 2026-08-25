@@ -1054,6 +1054,59 @@
     color: var(--ko-muted);
 }
 
+.pos .ko-terminal-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 13px 14px;
+    border: 1px solid #d8e1e3;
+    border-radius: 14px;
+    background: #f6f9f9;
+    color: var(--ko-ink);
+}
+
+.pos .ko-terminal-status.is-busy {
+    border-color: #f0c977;
+    background: #fff9e9;
+}
+
+.pos .ko-terminal-status.is-success {
+    border-color: #a9d8bd;
+    background: var(--ko-primary-soft);
+}
+
+.pos .ko-terminal-status.is-retry {
+    border-color: #c7d1d3;
+    background: #f5f7f7;
+}
+
+.pos .ko-terminal-status-copy {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.pos .ko-terminal-cancel-btn {
+    flex: 0 0 auto;
+    min-height: 42px;
+    padding: 8px 14px;
+    border: 1px solid #d34b4b;
+    border-radius: 999px;
+    background: #fff;
+    color: #b52f2f;
+    font-size: 13.5px;
+    font-weight: 600;
+}
+
+.pos .ko-terminal-cancel-btn:disabled {
+    opacity: 0.55;
+}
+
 .pos .ko-pay-footer {
     padding: 12px 20px 18px;
     border-top: 1px solid #edf1f1;

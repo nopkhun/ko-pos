@@ -80,7 +80,10 @@ patch(PaymentScreen.prototype, {
         }
 
         const blockingLine = this.paymentLines.find(
-            (line) => line.isElectronic?.() && !["pending", "retry"].includes(line.getPaymentStatus())
+            (line) =>
+                line.payment_method_id?.payment_terminal &&
+                line.isElectronic?.() &&
+                !["pending", "retry"].includes(line.getPaymentStatus())
         );
         if (blockingLine) {
             showKoToast("กรุณารอหรือยกเลิกรายการที่เครื่องรับชำระก่อน");
@@ -134,6 +137,59 @@ patch(PaymentScreen.prototype, {
 
     get koIsCard() {
         return this.koSelectedMethodType === "card";
+    },
+
+    get koTerminalLine() {
+        const isTerminalLine = (line) =>
+            Boolean(line?.payment_method_id?.payment_terminal && line.isElectronic?.());
+        const selected = this.selectedPaymentLine;
+        if (isTerminalLine(selected)) {
+            return selected;
+        }
+        return this.paymentLines.find(isTerminalLine) || null;
+    },
+
+    get koTerminalStatus() {
+        return this.koTerminalLine?.getPaymentStatus?.() || "";
+    },
+
+    get koTerminalStatusText() {
+        const labels = {
+            pending: "พร้อมส่งรายการไปเครื่องรับชำระ",
+            waiting: "กำลังส่งรายการไปเครื่องรับชำระ…",
+            waitingCard: "รอลูกค้าชำระที่เครื่อง Beam Bolt…",
+            waitingCancel: "กำลังยกเลิกรายการกับ Beam…",
+            waitingCapture: "กำลังยืนยันผลการชำระเงิน…",
+            timeout: "หมดเวลารอเครื่อง กรุณายกเลิกรายการ",
+            retry: "รายการเดิมถูกยกเลิกแล้ว สามารถเลือกช่องทางใหม่ได้",
+            done: "รับชำระเงินสำเร็จแล้ว",
+            reversed: "ย้อนรายการชำระเงินแล้ว",
+        };
+        return labels[this.koTerminalStatus] || "กำลังตรวจสอบสถานะการชำระเงิน…";
+    },
+
+    get koCanCancelTerminal() {
+        return ["waiting", "waitingCard", "waitingCapture", "timeout"].includes(
+            this.koTerminalStatus
+        );
+    },
+
+    async koCancelTerminalPayment() {
+        const line = this.koTerminalLine;
+        if (!line || !this.koCanCancelTerminal || this.koState.requesting) {
+            return;
+        }
+        this.koState.requesting = true;
+        try {
+            await this.sendPaymentCancel(line);
+            if (line.getPaymentStatus() === "retry") {
+                showKoToast("ยกเลิกรายการแล้ว สามารถเลือกช่องทางชำระเงินใหม่ได้");
+            } else {
+                showKoToast("ยังยกเลิกรายการไม่ได้ ระบบจะตรวจสอบสถานะต่อ");
+            }
+        } finally {
+            this.koState.requesting = false;
+        }
     },
 
     get koReceivedAmount() {
@@ -246,6 +302,10 @@ patch(PaymentScreen.prototype, {
     },
 
     koBackToSell() {
+        if (this.koCanCancelTerminal || this.koTerminalStatus === "waitingCancel") {
+            showKoToast("กรุณายกเลิกรายการที่เครื่องรับชำระก่อนกลับหน้าขาย");
+            return;
+        }
         this.pos.navigate("ProductScreen", { orderUuid: this.currentOrder.uuid });
     },
 });

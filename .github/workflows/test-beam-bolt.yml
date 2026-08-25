@@ -4,10 +4,18 @@ on:
   push:
     paths:
       - "addons/ko_pos_beam_bolt/**"
+      - "addons/ko_pos_ui/static/src/app/ko_payment_screen.js"
+      - "addons/ko_pos_ui/static/src/app/ko_pos_ui.xml"
+      - "addons/ko_pos_ui/static/src/app/ko_pos_ui.scss"
+      - "addons/ko_pos_ui/__manifest__.py"
       - ".github/workflows/test-beam-bolt.yml"
   pull_request:
     paths:
       - "addons/ko_pos_beam_bolt/**"
+      - "addons/ko_pos_ui/static/src/app/ko_payment_screen.js"
+      - "addons/ko_pos_ui/static/src/app/ko_pos_ui.xml"
+      - "addons/ko_pos_ui/static/src/app/ko_pos_ui.scss"
+      - "addons/ko_pos_ui/__manifest__.py"
       - ".github/workflows/test-beam-bolt.yml"
 
 jobs:
@@ -34,6 +42,8 @@ jobs:
       - name: Validate source files
         run: |
           node --check addons/ko_pos_beam_bolt/static/src/app/payment_beam_bolt.js
+          node --check addons/ko_pos_ui/static/src/app/ko_payment_screen.js
+          node --experimental-vm-modules addons/ko_pos_beam_bolt/tests/test_payment_terminal_lifecycle.mjs
           python3 -m compileall -q addons/ko_pos_beam_bolt
           python3 - <<'PY'
           import ast
@@ -43,9 +53,14 @@ jobs:
           manifest = ast.literal_eval(
               Path("addons/ko_pos_beam_bolt/__manifest__.py").read_text()
           )
-          assert manifest["version"] == "19.0.3.0.0"
+          assert manifest["version"] == "19.0.3.1.0"
+          ui_manifest = ast.literal_eval(
+              Path("addons/ko_pos_ui/__manifest__.py").read_text()
+          )
+          assert ui_manifest["version"] == "19.0.6.3.0"
           for xml_file in Path("addons/ko_pos_beam_bolt").rglob("*.xml"):
               ET.parse(xml_file)
+          ET.parse("addons/ko_pos_ui/static/src/app/ko_pos_ui.xml")
           PY
 
       - name: Run Odoo 19 module tests
@@ -59,7 +74,7 @@ jobs:
             odoo:19 \
             -d beam_bolt_ci \
             --addons-path=/usr/lib/python3/dist-packages/odoo/addons,/mnt/extra-addons \
-            -i ko_pos_beam_bolt \
+            -i ko_pos_beam_bolt,ko_pos_ui \
             --test-enable \
             --test-tags=/ko_pos_beam_bolt \
             --stop-after-init \

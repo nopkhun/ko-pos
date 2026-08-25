@@ -427,6 +427,28 @@
                         <div class="ko-card-prompt-th">แตะหรือเสียบบัตรที่เครื่อง</div>
                         <div class="ko-card-prompt-en">Tap or insert card on the terminal</div>
                     </div>
+
+                    <!-- Keep Odoo's payment-terminal lifecycle visible in the KO layout. -->
+                    <div t-if="koTerminalLine"
+                         class="ko-terminal-status"
+                         t-att-class="{
+                            'is-busy': ['waiting', 'waitingCard', 'waitingCancel', 'waitingCapture'].includes(koTerminalStatus),
+                            'is-success': koTerminalStatus === 'done',
+                            'is-retry': koTerminalStatus === 'retry'
+                         }">
+                        <div class="ko-terminal-status-copy">
+                            <i t-if="['waiting', 'waitingCard', 'waitingCancel', 'waitingCapture'].includes(koTerminalStatus)"
+                               class="fa fa-circle-o-notch fa-spin"
+                               aria-hidden="true"/>
+                            <span t-esc="koTerminalStatusText"/>
+                        </div>
+                        <button t-if="koCanCancelTerminal"
+                                class="ko-terminal-cancel-btn"
+                                t-att-disabled="koState.requesting"
+                                t-on-click="koCancelTerminalPayment">
+                            ยกเลิกรายการ · Cancel
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Footer Action -->

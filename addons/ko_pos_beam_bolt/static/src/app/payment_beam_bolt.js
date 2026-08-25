@@ -27,6 +27,31 @@ function idempotencyFromLine(line) {
     return value.startsWith("beam-idem:") ? value.slice("beam-idem:".length) : null;
 }
 
+function beamOutcome(response) {
+    return {
+        result: (response?.result || "").toUpperCase(),
+        status: (response?.status || "").toUpperCase(),
+    };
+}
+
+function isBeamSuccess(response) {
+    const { result, status } = beamOutcome(response);
+    return result === "CH_SUCCEEDED" || status === "PAID";
+}
+
+function isBeamCanceled(response) {
+    const { result, status } = beamOutcome(response);
+    return (
+        ["BI_EXPIRED", "BI_CANCELED"].includes(result) ||
+        ["EXPIRED", "CANCELED", "VOIDED", "REFUNDED"].includes(status)
+    );
+}
+
+function isBeamFailed(response) {
+    const { result } = beamOutcome(response);
+    return Boolean(result && result.startsWith("CH_") && result !== "CH_SUCCEEDED");
+}
+
 export class PaymentBeamBolt extends PaymentInterface {
     setup() {
         super.setup(...arguments);
@@ -67,7 +92,13 @@ export class PaymentBeamBolt extends PaymentInterface {
             return await this._pollUntilResolved(line, existingIntentId);
         }
 
-        const retryAfter = line.uiState.beam_retry_after || 0;
+        // Beam requires one physical device to rest for five seconds after any
+        // cancel/expiry. Keep the deadline on the POS as well as the line so it
+        // is shared by Card, PromptPay and every other method using that device.
+        const retryAfter = Math.max(
+            line.uiState.beam_retry_after || 0,
+            this.pos.beamBoltReadyAfter || 0
+        );
         if (retryAfter > Date.now()) {
             await new Promise((resolve) => setTimeout(resolve, retryAfter - Date.now()));
         }
@@ -137,15 +168,30 @@ export class PaymentBeamBolt extends PaymentInterface {
         }
 
         if (intentId) {
-            const result = await this._callBeam("beam_cancel_bolt_intent", {
+            const cancelResult = await this._callBeam("beam_cancel_bolt_intent", {
                 bolt_intent_id: intentId,
                 idempotency_key: makeIdempotencyKey(),
             });
-            if (result?.error && result.status_code !== 404) {
-                this._showError(
-                    _t("ยกเลิกรายการบน Beam ไม่สำเร็จ กรุณาอย่ารับชำระรายการใหม่จนกว่าจะยกเลิกได้")
-                );
-                return false;
+            if (cancelResult?.error && cancelResult.status_code !== 404) {
+                // The customer may already have cancelled on the Bolt app. In
+                // that case Beam can reject a second cancel even though the
+                // intent is final. Reconcile before deciding whether Odoo may
+                // release its global payment-terminal lock.
+                const current = await this._callBeam("beam_get_bolt_intent", {
+                    bolt_intent_id: intentId,
+                });
+                if (!current?.error && (isBeamCanceled(current) || isBeamFailed(current))) {
+                    // Beam reports a final outcome, so Odoo may release the
+                    // terminal lock. Operations still reconcile late charges
+                    // according to Beam's documented cancellation caveat.
+                } else {
+                    this._showError(
+                        isBeamSuccess(current)
+                            ? _t("Beam ยืนยันว่ารายการนี้ชำระสำเร็จแล้ว ระบบกำลังบันทึกผล กรุณาอย่าเลือกช่องทางใหม่")
+                            : _t("ยกเลิกรายการบน Beam ไม่สำเร็จ ระบบจะตรวจสอบสถานะต่อ กรุณาอย่ารับชำระซ้ำ")
+                    );
+                    return false;
+                }
             }
         }
 
@@ -154,7 +200,7 @@ export class PaymentBeamBolt extends PaymentInterface {
         line.transaction_id = "";
         delete line.uiState.beam_bolt_intent_id;
         delete line.uiState.beam_bolt_idempotency_key;
-        line.uiState.beam_retry_after = Date.now() + DEVICE_READY_DELAY_MS;
+        this._markDeviceCoolingDown(line);
         return true;
     }
 
@@ -193,6 +239,15 @@ export class PaymentBeamBolt extends PaymentInterface {
             });
     }
 
+    _markDeviceCoolingDown(line) {
+        const readyAfter = Date.now() + DEVICE_READY_DELAY_MS;
+        this.pos.beamBoltReadyAfter = readyAfter;
+        if (line) {
+            line.uiState = line.uiState || {};
+            line.uiState.beam_retry_after = readyAfter;
+        }
+    }
+
     _pollUntilResolved(line, intentId) {
         this._finishPolling(false);
         this.cancelled = false;
@@ -206,7 +261,7 @@ export class PaymentBeamBolt extends PaymentInterface {
 
             const poll = async () => {
                 clearTimeout(this.pollingTimeout);
-                if (this.cancelled || line.payment_status === "retry") {
+                if (this.cancelled || line.getPaymentStatus?.() === "retry") {
                     return this._finishPolling(false);
                 }
                 const response = await this._callBeam("beam_get_bolt_intent", {
@@ -229,9 +284,8 @@ export class PaymentBeamBolt extends PaymentInterface {
                 }
 
                 consecutiveErrors = 0;
-                const result = (response?.result || "").toUpperCase();
-                const status = (response?.status || "").toUpperCase();
-                if (result === "CH_SUCCEEDED" || status === "PAID") {
+                const { result, status } = beamOutcome(response);
+                if (isBeamSuccess(response)) {
                     const chargeId = response.latestChargeId || intentId;
                     line.transaction_id = chargeId;
                     line.card_type = this.payment_method_id.name || "Beam Bolt+";
@@ -241,10 +295,7 @@ export class PaymentBeamBolt extends PaymentInterface {
                     return this._finishPolling(true);
                 }
 
-                if (
-                    ["BI_EXPIRED", "BI_CANCELED"].includes(result) ||
-                    ["EXPIRED", "CANCELED", "VOIDED", "REFUNDED"].includes(status)
-                ) {
+                if (isBeamCanceled(response)) {
                     const expired = result === "BI_EXPIRED" || status === "EXPIRED";
                     this._showError(
                         expired
@@ -252,13 +303,13 @@ export class PaymentBeamBolt extends PaymentInterface {
                             : _t("รายการบน Beam ถูกยกเลิกหรือปิดแล้ว")
                     );
                     line.transaction_id = "";
-                    line.uiState.beam_retry_after = Date.now() + DEVICE_READY_DELAY_MS;
+                    this._markDeviceCoolingDown(line);
                     delete line.uiState.beam_bolt_intent_id;
                     delete line.uiState.beam_bolt_idempotency_key;
                     return this._finishPolling(false);
                 }
 
-                if (result && result.startsWith("CH_")) {
+                if (isBeamFailed(response)) {
                     const messages = {
                         CH_PROCESSING_FAILED: _t("การประมวลผลชำระเงินล้มเหลว"),
                         CH_INSUFFICIENT_FUNDS: _t("ยอดเงินในบัตรหรือบัญชีไม่พอ"),
@@ -266,7 +317,6 @@ export class PaymentBeamBolt extends PaymentInterface {
                     };
                     this._showError(messages[result] || _t("ชำระเงินไม่สำเร็จ (%s)", result));
                     line.transaction_id = "";
-                    line.uiState.beam_retry_after = Date.now() + DEVICE_READY_DELAY_MS;
                     delete line.uiState.beam_bolt_intent_id;
                     delete line.uiState.beam_bolt_idempotency_key;
                     return this._finishPolling(false);
