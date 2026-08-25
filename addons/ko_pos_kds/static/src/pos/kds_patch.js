@@ -183,6 +183,7 @@ patch(PosStore.prototype, {
         }
         try {
             await this.data.call("ko.kds.ticket", "create_from_pos", [payload]);
+            this.koMarkKitchenDirty(order);
             await this.koRefreshKdsStatus();
             return true;
         } catch (error) {
@@ -223,6 +224,7 @@ patch(PosStore.prototype, {
                 lines,
                 this.config.id,
             ]);
+            this.koMarkKitchenDirty(order);
             await this.koRefreshKdsStatus();
             return true;
         } catch (error) {
@@ -269,6 +271,7 @@ patch(PosStore.prototype, {
             } catch (error) {
                 console.warn("KDS: failed cancelling refunded dishes", error);
             }
+            this.koMarkKitchenDirty(this.models["pos.order"].getBy("uuid", orderUuid));
         }
         await this.koRefreshKdsStatus();
         return true;
@@ -286,8 +289,46 @@ patch(PosStore.prototype, {
     // Kitchen state coming back to front of house
     // ------------------------------------------------------------------
 
+    /**
+     * Orders the kitchen could still have something to say about.
+     *
+     * Asking about *every* order in memory meant the payload grew all day — by
+     * the sixtieth bill the orders tab was posting sixty uuids on every open and
+     * on every bus notification, to be told sixty times that a bill served two
+     * hours ago is still served. An order drops out once we have checked it and
+     * it has nothing live left; anything that touches the kitchen afterwards
+     * marks it dirty again.
+     */
+    koKdsWatchedOrders() {
+        return this.models["pos.order"].getAll().filter((order) => {
+            if (order.isRefund || order.isEmpty()) {
+                return false;
+            }
+            if (!order.finalized) {
+                return true;
+            }
+            if (!order.koKitchenChecked) {
+                return true;
+            }
+            return order
+                .getOrderlines()
+                .some(
+                    (line) =>
+                        line.koKitchenState &&
+                        !["served", "cancelled"].includes(line.koKitchenState)
+                );
+        });
+    },
+
+    /** This order's kitchen state is out of date — look at it again. */
+    koMarkKitchenDirty(order) {
+        if (order) {
+            order.koKitchenChecked = false;
+        }
+    },
+
     async koRefreshKdsStatus() {
-        const orders = this.models["pos.order"].getAll();
+        const orders = this.koKdsWatchedOrders();
         if (!orders.length) {
             return;
         }
@@ -299,6 +340,10 @@ patch(PosStore.prototype, {
             );
             const alerts = [];
             for (const order of orders) {
+                // Answered for. Whether or not the kitchen knows this order, we
+                // now have its state and need not ask again until something
+                // touches it (koMarkKitchenDirty).
+                order.koKitchenChecked = true;
                 const orderStatus = status[order.uuid];
                 if (!orderStatus) {
                     for (const line of order.getOrderlines()) {
