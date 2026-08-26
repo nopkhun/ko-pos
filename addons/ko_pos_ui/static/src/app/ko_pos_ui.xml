@@ -348,7 +348,10 @@
                 <div class="ko-pay-header">
                     <button class="ko-pay-back-btn" t-on-click="koBackToSell" aria-label="กลับ">←</button>
                     <div class="ko-pay-header-title">
-                        <div class="ko-pay-main-title">ชำระเงิน · Payment</div>
+                        <div class="ko-pay-main-title">
+                            <t t-if="isRefundOrder">คืนเงิน · Refund</t>
+                            <t t-else="">ชำระเงิน · Payment</t>
+                        </div>
                         <div class="ko-pay-meta-title">
                             <t t-if="currentOrder.table_id">โต๊ะ <t t-esc="currentOrder.table_id.table_number"/> · </t>
                             <t t-esc="currentOrder.getOrderlines().length"/> รายการ
@@ -359,7 +362,10 @@
                 <!-- Scrollable Body -->
                 <div class="ko-pay-body">
                     <div class="ko-pay-amount-due-box">
-                        <div class="ko-pay-due-label">ยอดที่ต้องชำระ · Amount due</div>
+                        <div class="ko-pay-due-label">
+                            <t t-if="isRefundOrder">ยอดที่ต้องคืนลูกค้า · Refund amount</t>
+                            <t t-else="">ยอดที่ต้องชำระ · Amount due</t>
+                        </div>
                         <div class="ko-pay-due-amount" t-esc="koAmountDue"/>
                     </div>
 
@@ -367,16 +373,58 @@
                     <div class="ko-pay-methods-row">
                         <t t-foreach="koMethods" t-as="m" t-key="m.key">
                             <div class="ko-pay-method-tile"
-                                 t-att-class="{'selected': koSelectedMethodType === m.type}"
-                                 t-on-click="() =&gt; this.koSelectMethod(m.type)">
+                                 t-att-class="{
+                                    'selected': selectedPaymentLine?.payment_method_id?.id === m.method.id,
+                                    'disabled': m.disabled
+                                 }"
+                                 t-on-click="() =&gt; this.koSelectMethod(m.key)">
                                 <div class="ko-method-th" t-esc="m.name"/>
                                 <div class="ko-method-en" t-esc="m.en"/>
                             </div>
                         </t>
                     </div>
 
+                    <!-- Refund guidance: money must move before Odoo finalises the negative order. -->
+                    <div t-if="isRefundOrder"
+                         class="ko-refund-payment-guide"
+                         t-att-class="'route-' + koRefundRoute">
+                        <div class="ko-refund-guide-heading">
+                            <span class="ko-refund-guide-icon">
+                                <t t-if="koRefundRoute === 'beam_void'">↩</t>
+                                <t t-elif="koRefundRoute === 'cash'">฿</t>
+                                <t t-elif="koRefundRoute === 'blocked'">!</t>
+                                <t t-else="">i</t>
+                            </span>
+                            <div>
+                                <strong t-esc="koRefundHelpTitle"/>
+                                <small>ช่องทางเดิม: <t t-esc="koRefundOriginalMethodName"/></small>
+                            </div>
+                        </div>
+                        <p t-esc="koRefundHelpBody"/>
+
+                        <t t-if="koRefundRoute === 'cash'">
+                            <label class="ko-refund-confirm-row">
+                                <input type="checkbox" t-model="koState.refundConfirmed"/>
+                                <span>ส่งมอบเงินสดให้ลูกค้าครบแล้ว</span>
+                            </label>
+                        </t>
+                        <t t-elif="koRefundReferenceRequired">
+                            <label class="ko-refund-reference-field">
+                                <span>Refund ID / เลขอ้างอิงการคืนเงินจริง</span>
+                                <input type="text"
+                                       t-model="koState.manualReference"
+                                       placeholder="เช่น re_xxx หรือเลขที่รายการโอน"
+                                       autocomplete="off"/>
+                            </label>
+                            <label class="ko-refund-confirm-row">
+                                <input type="checkbox" t-model="koState.refundConfirmed"/>
+                                <span>ตรวจสอบแล้วว่าเงินจริงถูกคืนให้ลูกค้าแล้ว</span>
+                            </label>
+                        </t>
+                    </div>
+
                     <!-- Cash Section -->
-                    <div t-if="koIsCash" class="ko-pay-cash-section">
+                    <div t-if="koIsCash and !isRefundOrder" class="ko-pay-cash-section">
                         <div class="ko-cash-received-row">
                             <span>รับเงิน · Received</span>
                             <span class="ko-received-amount" t-esc="koFormattedReceived"/>
@@ -411,7 +459,7 @@
                     </div>
 
                     <!-- PromptPay Section -->
-                    <div t-if="koIsPromptPay" class="ko-pay-promptpay-section">
+                    <div t-if="koIsPromptPay and !isRefundOrder" class="ko-pay-promptpay-section">
                         <div class="ko-qr-container">
                             <div class="ko-qr-placeholder">
                                 <i class="fa fa-qrcode" style="font-size: 80px; color: var(--ko-primary);"/>
@@ -422,7 +470,7 @@
                     </div>
 
                     <!-- Card Section -->
-                    <div t-if="koIsCard" class="ko-pay-card-section">
+                    <div t-if="koIsCard and !isRefundOrder" class="ko-pay-card-section">
                         <div class="ko-card-icon">💳</div>
                         <div class="ko-card-prompt-th">แตะหรือเสียบบัตรที่เครื่อง</div>
                         <div class="ko-card-prompt-en">Tap or insert card on the terminal</div>
@@ -457,7 +505,7 @@
                             t-att-class="{'disabled': !koCanValidate}"
                             t-att-disabled="!koCanValidate"
                             t-on-click="koValidatePayment">
-                        ยืนยันชำระเงิน · Validate
+                        <t t-esc="koValidateLabel"/>
                     </button>
                 </div>
               </div>
@@ -658,6 +706,10 @@
                         <div class="ko-bill-sheet-body">
                             <div t-if="ticket.canRefund" class="ko-refund-hint">
                                 เลือกจำนวนที่จะคืนในแต่ละรายการ หรือกด “เลือกทั้งบิล”
+                            </div>
+                            <div t-if="ticket.canRefund" class="ko-refund-policy-hint">
+                                <i class="fa fa-info-circle" aria-hidden="true"/>
+                                <span t-esc="ticket.refundPolicy"/>
                             </div>
                             <div class="ko-bill-items-list">
                                 <t t-foreach="ticket.lines" t-as="l" t-key="l.uuid">

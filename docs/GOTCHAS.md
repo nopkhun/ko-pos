@@ -1177,6 +1177,41 @@ collection while Beam still has a charge in flight.
 
 ---
 
+### A Beam refund reaches the payment screen, but Validate stays disabled forever
+
+**Symptom:** staff select lines from a paid Beam bill and reach the negative payment screen.
+Selecting Card immediately sends a negative terminal request, Beam rejects it, the payment
+line becomes `retry`, and the green Validate button never enables. Selecting Cash can appear
+to unblock the screen but books the refund into the wrong journal.
+
+**Cause:** the KO payment selector called `sendPaymentRequest` for every terminal/QR method,
+including refund orders. Odoo 19 intentionally excludes refunds from its automatic terminal
+request path: a negative payment is a reversal of the original tender, not a new Bolt Intent.
+The KO `koCanValidate` then required every electronic line to be `done`, creating a permanent
+dead end after Beam correctly refused the negative amount.
+
+**Fix (`ko_pos_beam_bolt` 19.0.4.0.0 / `ko_pos_ui` 19.0.7.0.0):** selecting a refund tender
+never sends a Bolt Intent. POS identifies the original positive payment and locks the refund
+to that method. A single same-day Beam `CARD` payment can call the Refund API only before
+19:30 Asia/Bangkok; the server rechecks the original `pos.payment`, `ch_` Charge ID, company,
+amount, date, tender type, and cutoff before sending. POS polls the same Refund ID and only
+validates Odoo/KDS after `SUCCEEDED`. At/after 19:30, for old/mixed/missing-ID/non-CARD bills,
+it sends no Beam API request and requires a Lighthouse/manual reference plus confirmation.
+Cash similarly requires confirmation that cash was handed back.
+
+Do not loosen this by marking every negative electronic line `done`, by calling a Bolt Intent
+with a negative amount, or by defaulting the refund to Cash. Also do not delete a refund whose
+payment line starts `re_`, `beam-refund-idem:`, `beam-lighthouse:`, `manual-refund:`, or
+`cash-refund-confirmed:`: money may already have moved. Resume the same draft instead. If a
+create call times out across 19:30, only a recovery carrying the original idempotency key may
+cross the cutoff, so it reconciles an ambiguous request rather than creating another one.
+
+Beam decides whether a successful Refund resource becomes a `VOID` or `REFUND` transaction;
+the Refund object does not say. Read `/transactions/{refundId}` and never guess `VOID` when
+the transaction is not yet available.
+
+---
+
 ### Hostinger deploy returns “Too Many Attempts” before an action exists
 
 **Symptom:** `VPS_createNewProjectV1` immediately returns `Too Many Attempts` and no action

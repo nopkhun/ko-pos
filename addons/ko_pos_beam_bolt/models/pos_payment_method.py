@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import logging
 import uuid
+from datetime import datetime, time, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -14,6 +16,8 @@ _logger = logging.getLogger(__name__)
 BEAM_PROD_BASE = 'https://api.beamcheckout.com'
 BEAM_PLAYGROUND_BASE = 'https://playground.api.beamcheckout.com'
 REQUEST_TIMEOUT = 20
+BEAM_VOID_TIMEZONE = ZoneInfo('Asia/Bangkok')
+BEAM_VOID_CUTOFF = time(19, 30)
 
 BEAM_ENVIRONMENTS = [
     ('playground', 'Playground'),
@@ -140,6 +144,12 @@ class PosPaymentMethod(models.Model):
 
     def _get_payment_terminal_selection(self):
         return super()._get_payment_terminal_selection() + [('beam_bolt', 'Beam Bolt+')]
+
+    @api.model
+    def _load_pos_data_fields(self, config):
+        """Expose the Beam tender type so the refund screen can explain its route."""
+        return list(dict.fromkeys(
+            super()._load_pos_data_fields(config) + ['beam_payment_method_type']))
 
     @api.depends(
         'beam_connection_source_id',
@@ -543,3 +553,153 @@ class PosPaymentMethod(models.Model):
             '/api/v1/bolt-intents/%s/cancel' % quote(str(intent_id), safe=''),
             idempotency_key=data.get('idempotency_key') or str(uuid.uuid4()),
         )
+
+    # ------------------------------------------------------------------
+    # Same-day card voids from POS
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _beam_bangkok_now():
+        return datetime.now(BEAM_VOID_TIMEZONE)
+
+    @staticmethod
+    def _beam_as_bangkok(value):
+        value = fields.Datetime.to_datetime(value)
+        if not value:
+            return False
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(BEAM_VOID_TIMEZONE)
+
+    def _beam_pos_void_payment(self, data):
+        """Return the verified original POS payment or an error payload.
+
+        The store's settlement rule is deliberately enforced on the server:
+        only a same-day CARD payment, made before 19:30 Asia/Bangkok, can be
+        reversed from the till, and the reversal itself must also be requested
+        before 19:30. Everything else belongs in Beam Lighthouse.
+        """
+        self.ensure_one()
+        payment_method = self.sudo()
+        if payment_method.use_payment_terminal != 'beam_bolt':
+            return False, {'error': _('วิธีชำระเงินนี้ไม่ได้ตั้งค่าเป็น Beam Bolt+')}
+        if payment_method.beam_payment_method_type != 'CARD':
+            return False, {
+                'error': _('ช่องทางนี้ไม่รองรับ Void จาก POS กรุณาดำเนินการใน Beam Lighthouse'),
+                'external_required': True,
+                'error_code': 'LIGHTHOUSE_REQUIRED',
+            }
+
+        try:
+            payment_id = int(data.get('original_payment_id'))
+        except (TypeError, ValueError):
+            payment_id = 0
+        payment = self.env['pos.payment'].sudo().browse(payment_id).exists()
+        if not payment or payment.payment_method_id != payment_method:
+            return False, {
+                'error': _('ไม่พบรายการบัตรต้นฉบับ กรุณาตรวจสอบและดำเนินการใน Beam Lighthouse'),
+                'external_required': True,
+                'error_code': 'ORIGINAL_PAYMENT_NOT_FOUND',
+            }
+        if payment.company_id not in self.env.companies:
+            return False, {'error': _('ไม่มีสิทธิ์คืนรายการของบริษัทนี้')}
+
+        charge_id = str(data.get('charge_id') or '').strip()
+        if not charge_id.startswith('ch_') or payment.transaction_id != charge_id:
+            return False, {
+                'error': _('บิลนี้ไม่มี Beam Charge ID ที่ใช้ Void อัตโนมัติ กรุณาดำเนินการใน Beam Lighthouse'),
+                'external_required': True,
+                'error_code': 'CHARGE_ID_REQUIRED',
+            }
+
+        now = self._beam_bangkok_now()
+        paid_at = self._beam_as_bangkok(payment.payment_date)
+        same_day_before_cutoff_payment = bool(
+            paid_at
+            and paid_at.date() == now.date()
+            and paid_at.time().replace(tzinfo=None) < BEAM_VOID_CUTOFF
+        )
+        recovering_ambiguous_request = bool(data.get('recovery'))
+        if (
+            not same_day_before_cutoff_payment
+            or (
+                now.time().replace(tzinfo=None) >= BEAM_VOID_CUTOFF
+                and not recovering_ambiguous_request
+            )
+        ):
+            return False, {
+                'error': _(
+                    'เลยช่วง Void ก่อน 19:30 น. แล้ว กรุณาคืนรายการบัตรใน Beam Lighthouse '
+                    'และกลับมาบันทึกเลขอ้างอิงใน POS'),
+                'external_required': True,
+                'error_code': 'VOID_WINDOW_CLOSED',
+            }
+
+        try:
+            amount_satang = int(
+                (Decimal(str(data.get('amount_thb'))) * 100).quantize(
+                    Decimal('1'), rounding=ROUND_HALF_UP))
+        except (InvalidOperation, TypeError, ValueError):
+            amount_satang = 0
+        original_satang = int(
+            (Decimal(str(payment.amount)) * 100).quantize(
+                Decimal('1'), rounding=ROUND_HALF_UP))
+        if amount_satang <= 0 or amount_satang > original_satang:
+            return False, {'error': _('ยอด Void ไม่ถูกต้องหรือเกินยอดบัตรต้นฉบับ')}
+        return payment, {
+            'charge_id': charge_id,
+            'amount_satang': amount_satang,
+            'paid_at': paid_at,
+        }
+
+    def beam_create_pos_void(self, data):
+        """Create a Beam Refund resource inside the store's same-day void window."""
+        self.ensure_one()
+        payment, verified = self._beam_pos_void_payment(data or {})
+        if not payment:
+            return verified
+        idempotency_key = str((data or {}).get('idempotency_key') or '').strip()
+        if not idempotency_key:
+            return {'error': _('ไม่พบรหัสป้องกันการส่ง Void ซ้ำ')}
+        reason = str((data or {}).get('reason') or 'KO POS same-day void')[:500]
+        result = self._beam_call(
+            'POST',
+            '/api/v1/refunds',
+            {
+                'chargeId': verified['charge_id'],
+                'reason': reason,
+                'amount': verified['amount_satang'],
+            },
+            idempotency_key=idempotency_key,
+        )
+        _logger.info(
+            'Beam POS void order=%s payment=%s charge=%s refund=%s status=%s request_id=%s',
+            payment.pos_order_id.pos_reference or payment.pos_order_id.name,
+            payment.id,
+            verified['charge_id'],
+            result.get('refundId') or result.get('id'),
+            result.get('status') or result.get('status_code'),
+            result.get('request_id'),
+        )
+        return result
+
+    def beam_get_refund(self, data):
+        """Read a refund and, when available, its reconciliation transaction type."""
+        self.ensure_one()
+        if self.sudo().use_payment_terminal != 'beam_bolt':
+            return {'error': _('วิธีชำระเงินนี้ไม่ได้ตั้งค่าเป็น Beam Bolt+')}
+        refund_id = str((data or {}).get('refund_id') or '').strip()
+        if not refund_id.startswith('re_'):
+            return {'error': _('ไม่พบ Beam Refund ID')}
+        result = self._beam_call(
+            'GET', '/api/v1/refunds/%s' % quote(refund_id, safe=''))
+        if result.get('error') or str(result.get('status') or '').upper() != 'SUCCEEDED':
+            return result
+
+        # Beam decides whether the successful reversal is booked as VOID or
+        # REFUND. The Refund resource does not expose that distinction, so read
+        # the immutable transaction opportunistically for receipts/reconciliation.
+        transaction = self._beam_call(
+            'GET', '/api/v1/transactions/%s' % quote(refund_id, safe=''))
+        if not transaction.get('error'):
+            result['transactionType'] = transaction.get('transactionType')
+        return result

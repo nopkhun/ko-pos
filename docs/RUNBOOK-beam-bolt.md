@@ -8,6 +8,8 @@ Official references:
 
 - <https://docs.beamcheckout.com/bolt-connections/bolt-connection-api>
 - <https://docs.beamcheckout.com/bolt-intents/bolt-intent-api>
+- <https://docs.beamcheckout.com/refunds/refunds-api>
+- <https://docs.beamcheckout.com/transactions/transactions-api>
 - <https://docs.beamcheckout.com/playground>
 
 ## 1. Prerequisites
@@ -123,9 +125,54 @@ can still succeed; refund that late Charge manually if it no longer belongs to t
 
 Never paste Merchant API keys into Git, chat, screenshots, browser code, or logs.
 
-## 7. Current limitation
+## 7. Void and refund policy
 
-The POS terminal interface does not yet submit refunds to Beam automatically. Complete the
-Odoo refund flow for restaurant/accounting records, then refund the matching Charge ID in
-Beam Lighthouse and reconcile both sides. Add automated Beam Refunds API support only with
-an end-to-end refund and late-charge reconciliation design.
+`ko_pos_beam_bolt` 19.0.4.0.0 / `ko_pos_ui` 19.0.7.0.0 separate cancellation, same-day
+card Void, and later Refund. They are not interchangeable:
+
+- An unpaid order is cancelled without moving money.
+- An active Bolt Intent is cancelled with the Bolt Intent API; this is not a refund.
+- A paid Beam `CARD` bill with exactly one positive payment can be submitted from POS only
+  when both the original payment and the request are on the same Bangkok calendar day and
+  before **19:30 Asia/Bangkok**. The server enforces the cutoff. POS sends
+  `POST /api/v1/refunds`, keeps one idempotency key, polls the Refund to `SUCCEEDED`, and
+  only then validates the negative Odoo order and updates KDS.
+- At or after 19:30, on a previous date, without a stored `ch_` Charge ID, with multiple
+  payment lines, or for Beam types other than plain `CARD`, POS sends no Beam request.
+  For a later Card refund, a manager completes it in Beam Lighthouse, returns to the POS
+  refund screen, enters the Refund ID, ticks that the money actually returned, and then
+  records Odoo. PromptPay and other non-refundable Beam types follow the store's external
+  return procedure and use that transfer/reference instead. Never choose Cash just to
+  enable the button.
+- Cash requires the cashier to hand back the displayed amount and tick the confirmation
+  before Odoo can validate. A non-Beam external method likewise requires a reference and
+  confirmation.
+
+Beam creates a Refund resource for every reversal and later records the successful money
+transaction as either `VOID` or `REFUND`. The Refund object itself does not make that
+distinction. POS reads `/transactions/{refundId}` when available and stores the authoritative
+type on the payment receipt; if that lookup is not ready yet it records `REVERSAL`, not a
+guessed `VOID`.
+
+### What staff see
+
+1. The bill sheet states the original payment method and whether the next step is POS Void,
+   cash hand-back, Lighthouse, or manager review.
+2. The refund payment screen locks every payment method except the original one.
+3. Before the cutoff, the button says **ส่ง Void ผ่าน Beam ฿…**. Keep the screen open while
+   it says Beam is processing; do not press twice.
+4. A Lighthouse/manual route keeps the final button disabled until a reference of at least
+   four characters is entered and **เงินจริงถูกคืนให้ลูกค้าแล้ว** is ticked.
+5. If Beam has returned a Refund ID, a request is ambiguous, or staff already confirmed a
+   manual/cash hand-back, the unfinished refund cannot be discarded or silently replaced.
+   Open **ออเดอร์ค้าง → ทำรายการคืนเงินต่อ** and finish the same record.
+
+If a request started before 19:30 times out across the cutoff, retrying the same screen uses
+the original idempotency key only to recover that request; it must not create a new Refund.
+If Beam remains `PENDING`, leave the refund open and reconcile the same Refund ID in
+Lighthouse. Never start a second refund for the charge.
+
+Automatic POS Void is deliberately limited to a single original `CARD` payment. Mixed
+tenders, manager PIN approval, webhook-driven reconciliation, attachments, and a central
+pending-refund dashboard remain follow-up work; do not emulate them by splitting one refund
+onto an unrelated payment method.

@@ -1,7 +1,7 @@
 {
     "name": "KO POS Restaurant UI",
     "summary": "Touch-first restaurant POS interface for Thai staff",
-    "version": "19.0.6.3.0",
+    "version": "19.0.7.0.0",
     "category": "Point of Sale",
     "author": "KO POS",
     "license": "LGPL-3",

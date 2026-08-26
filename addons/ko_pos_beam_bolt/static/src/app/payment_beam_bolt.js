@@ -6,6 +6,7 @@ import { register_payment_method } from "@point_of_sale/app/services/pos_store";
 const POLL_INTERVAL_MS = 2500;
 const MAX_POLL_INTERVAL_MS = 15000;
 const DEVICE_READY_DELAY_MS = 5000;
+const MAX_REFUND_POLLS = 60;
 
 function makeIdempotencyKey() {
     if (globalThis.crypto?.randomUUID) {
@@ -25,6 +26,17 @@ function isBoltIntentId(value) {
 function idempotencyFromLine(line) {
     const value = line?.transaction_id || "";
     return value.startsWith("beam-idem:") ? value.slice("beam-idem:".length) : null;
+}
+
+function refundIdempotencyFromLine(line) {
+    const value = line?.transaction_id || "";
+    return value.startsWith("beam-refund-idem:")
+        ? value.slice("beam-refund-idem:".length)
+        : null;
+}
+
+function isRefundId(value) {
+    return typeof value === "string" && value.startsWith("re_");
 }
 
 function beamOutcome(response) {
@@ -77,10 +89,7 @@ export class PaymentBeamBolt extends PaymentInterface {
             return false;
         }
         if (line.amount <= 0) {
-            this._showError(
-                _t("Beam Bolt+ ยังไม่รองรับการคืนเงินจาก POS — กรุณาคืนเงินผ่าน Beam Lighthouse")
-            );
-            return false;
+            return await this._sendPosVoid(order, line);
         }
 
         line.uiState = line.uiState || {};
@@ -136,6 +145,133 @@ export class PaymentBeamBolt extends PaymentInterface {
         line.transaction_id = intentId;
 
         return await this._pollUntilResolved(line, intentId);
+    }
+
+    _refundSourcePayments(order) {
+        const sourceOrders = new Map();
+        for (const line of order?.getOrderlines?.() || []) {
+            const sourceOrder = line.refunded_orderline_id?.order_id;
+            if (sourceOrder) {
+                sourceOrders.set(sourceOrder.uuid || sourceOrder.id, sourceOrder);
+            }
+        }
+        const payments = [];
+        const seen = new Set();
+        for (const sourceOrder of sourceOrders.values()) {
+            for (const payment of sourceOrder.payment_ids || []) {
+                if (payment.amount <= 0 || payment.is_change) {
+                    continue;
+                }
+                const key = payment.uuid || payment.id;
+                if (!seen.has(key)) {
+                    payments.push(payment);
+                    seen.add(key);
+                }
+            }
+        }
+        return payments;
+    }
+
+    async _sendPosVoid(order, line) {
+        const sourcePayments = this._refundSourcePayments(order);
+        if (sourcePayments.length !== 1) {
+            this._showError(
+                _t("บิลนี้ชำระหลายช่องทางหรือไม่พบรายการต้นฉบับ กรุณาให้ผู้จัดการดำเนินการใน Beam Lighthouse")
+            );
+            line.uiState = line.uiState || {};
+            line.uiState.beam_refund_external_required = true;
+            return false;
+        }
+        const source = sourcePayments[0];
+        if (source.payment_method_id?.id !== this.payment_method_id.id) {
+            this._showError(_t("กรุณาเลือกช่องทางเดียวกับบัตรที่ใช้ชำระบิลต้นฉบับ"));
+            return false;
+        }
+
+        line.uiState = line.uiState || {};
+        delete line.uiState.beam_refund_failed;
+        let refundId = isRefundId(line.transaction_id) ? line.transaction_id : null;
+        if (!refundId) {
+            const recoveryKey = refundIdempotencyFromLine(line);
+            const idempotencyKey =
+                line.uiState.beam_refund_idempotency_key ||
+                recoveryKey ||
+                makeIdempotencyKey();
+            line.uiState.beam_refund_idempotency_key = idempotencyKey;
+            line.transaction_id = `beam-refund-idem:${idempotencyKey}`;
+            const created = await this._callBeam("beam_create_pos_void", {
+                original_payment_id: source.id,
+                charge_id: source.transaction_id,
+                amount_thb: Math.abs(line.amount),
+                reason: `KO POS void ${order.pos_reference || order.name || order.uuid || ""}`.trim(),
+                idempotency_key: idempotencyKey,
+                recovery: Boolean(recoveryKey),
+            });
+            if (!created || created.error) {
+                if (created?.external_required) {
+                    line.uiState.beam_refund_external_required = true;
+                    line.transaction_id = "";
+                    delete line.uiState.beam_refund_idempotency_key;
+                }
+                this._showError(created?.error || _t("ส่งคำขอ Void ไป Beam ไม่สำเร็จ"));
+                return false;
+            }
+            refundId = created.refundId || created.id;
+            if (!refundId) {
+                this._showError(
+                    _t("Beam ไม่ส่ง Refund ID กลับมา กรุณาอย่าส่งซ้ำและตรวจสอบ Lighthouse")
+                );
+                return false;
+            }
+            line.transaction_id = refundId;
+        }
+
+        const result = await this._pollRefund(line, refundId);
+        if (!result) {
+            return false;
+        }
+        const transactionType = String(result.transactionType || "REVERSAL").toUpperCase();
+        line.card_type = `${this.payment_method_id.name || "Beam"} ${transactionType}`;
+        line.payment_ref_no = refundId;
+        line.setReceiptInfo?.(_t("Beam %s: %s", transactionType, refundId));
+        line.uiState.beam_refund_result = transactionType;
+        delete line.uiState.beam_refund_idempotency_key;
+        return true;
+    }
+
+    async _pollRefund(line, refundId) {
+        let consecutiveErrors = 0;
+        for (let attempt = 0; attempt < MAX_REFUND_POLLS; attempt += 1) {
+            const response = await this._callBeam("beam_get_refund", { refund_id: refundId });
+            if (response?.error) {
+                consecutiveErrors += 1;
+                if (!response.retryable || consecutiveErrors >= 3) {
+                    this._showError(
+                        _t("ยังตรวจสอบผล Void จาก Beam ไม่ได้ กรุณาอย่าส่งรายการซ้ำและตรวจสอบ Lighthouse")
+                    );
+                    return false;
+                }
+            } else {
+                consecutiveErrors = 0;
+                const status = String(response?.status || "").toUpperCase();
+                if (status === "SUCCEEDED") {
+                    return response;
+                }
+                if (status === "FAILED") {
+                    line.uiState.beam_refund_failed = true;
+                    line.payment_ref_no = refundId;
+                    line.transaction_id = "";
+                    delete line.uiState.beam_refund_idempotency_key;
+                    this._showError(_t("Beam ปฏิเสธการ Void กรุณาตรวจสอบใน Lighthouse"));
+                    return false;
+                }
+            }
+            await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+        }
+        this._showError(
+            _t("Beam ยังประมวลผล Void อยู่ กรุณาเก็บหน้าจอนี้ไว้และกดยืนยันอีกครั้งเพื่อตรวจสอบสถานะเดิม")
+        );
+        return false;
     }
 
     async sendPaymentCancel(order, uuid) {

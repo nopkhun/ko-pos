@@ -269,6 +269,36 @@ patch(TicketScreen.prototype, {
     /** Everything the บิลแล้ว list and the bill sheet need for ONE order. */
     _koBillTicket(order) {
         const orderLines = order.getOrderlines();
+        const sourcePayments = (order.payment_ids || []).filter(
+            (payment) => payment.amount > 0 && !payment.is_change
+        );
+        const sourceMethods = [...new Map(
+            sourcePayments.map((payment) => [
+                payment.payment_method_id?.id,
+                payment.payment_method_id,
+            ])
+        ).values()].filter(Boolean);
+        let refundPolicy = "คืนผ่านช่องทางเดิมและตรวจสอบว่าเงินจริงถูกคืนก่อนบันทึก";
+        if (sourcePayments.length !== 1) {
+            refundPolicy = "บิลนี้ชำระหลายช่องทาง — ให้ผู้จัดการตรวจสอบและคืนจากหลังบ้าน";
+        } else {
+            const sourceMethod = sourcePayments[0].payment_method_id;
+            const sourceName = (sourceMethod?.name || "").toLowerCase();
+            if (sourceMethod?.type === "cash" || sourceMethod?.is_cash_count) {
+                refundPolicy = "คืนเงินสดให้ลูกค้าก่อน แล้วจึงยืนยันใน POS";
+            } else if (
+                sourceMethod?.use_payment_terminal === "beam_bolt" &&
+                sourceMethod?.beam_payment_method_type === "CARD"
+            ) {
+                refundPolicy = "บัตร Beam: ก่อน 19:30 น. ระบบทำ Void; หลังเวลาให้ทำใน Lighthouse";
+            } else if (
+                sourceMethod?.use_payment_terminal === "beam_bolt" ||
+                sourceName.includes("พร้อมเพย์") ||
+                sourceName.includes("promptpay")
+            ) {
+                refundPolicy = "ช่องทางนี้ต้องคืนผ่าน Lighthouse/ช่องทางภายนอกก่อนบันทึก POS";
+            }
+        }
         const lines = orderLines.map((line) => {
             const qty = Math.abs(line.qty);
             const refunded = settledRefundedQty(line);
@@ -298,7 +328,8 @@ patch(TicketScreen.prototype, {
             tableName: order.table_id ? `โต๊ะ ${order.table_id.table_number}` : "สั่งกลับบ้าน",
             timeStr: date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
             count: orderLines.length,
-            paymentName: order.payment_ids[0]?.payment_method_id?.name || "-",
+            paymentName: sourceMethods.map((method) => method.name).join(" + ") || "-",
+            refundPolicy,
             totalFormatted: formatCurrency(order.priceIncl || 0, this.pos.currency.id),
             isVoid: fullyRefunded || order.isRefund,
             canRefund: !order.isRefund && !fullyRefunded,
@@ -584,14 +615,20 @@ patch(TicketScreen.prototype, {
         }
         this.state.koBusy = true;
         try {
-            await this._koDeleteOrder(order);
-            showKoToast(order.isRefund ? "ทิ้งรายการคืนเงินแล้ว" : "ยกเลิกออเดอร์แล้ว");
+            const deleted = await this._koDeleteOrder(order);
+            if (deleted) {
+                showKoToast(order.isRefund ? "ทิ้งรายการคืนเงินแล้ว" : "ยกเลิกออเดอร์แล้ว");
+            }
         } finally {
             this.state.koBusy = false;
         }
     },
 
     async _koDeleteOrder(order) {
+        if (order.isRefund && this._koRefundHasMoneyReference(order)) {
+            showKoToast("รายการนี้ส่งคืนเงินจริงแล้วหรือกำลังรอ Beam ห้ามทิ้ง กรุณากดทำรายการต่อ");
+            return false;
+        }
         // Tell the kitchen directly as well as through Odoo's cancel path: KDS
         // tickets are created straight from the browser, so an order can have a
         // live ticket while `order.isSynced` is still false — and in that case
@@ -609,9 +646,11 @@ patch(TicketScreen.prototype, {
         }
         try {
             await this.pos.deleteOrders([order], [], order.isRefund);
+            return true;
         } catch (error) {
             console.error("KO POS order delete failed", error);
             showKoToast("ยกเลิกออเดอร์ไม่สำเร็จ");
+            return false;
         }
     },
 
@@ -811,6 +850,20 @@ patch(TicketScreen.prototype, {
      * abandoned draft itself keeps counting towards `refundedQty`, which is what
      * made a bill read "คืนเงินครบแล้ว" with the money still in the drawer.
      */
+    _koRefundHasMoneyReference(order) {
+        const protectedPrefixes = [
+            "re_",
+            "beam-refund-idem:",
+            "beam-lighthouse:",
+            "manual-refund:",
+            "cash-refund-confirmed:",
+        ];
+        return (order.payment_ids || []).some((payment) => {
+            const reference = String(payment.transaction_id || "");
+            return protectedPrefixes.some((prefix) => reference.startsWith(prefix));
+        });
+    },
+
     async _koDropPendingRefunds(sourceOrder) {
         const stale = this.pos.models["pos.order"].filter(
             (order) =>
@@ -820,6 +873,13 @@ patch(TicketScreen.prototype, {
                     .getOrderlines()
                     .some((line) => line.refunded_orderline_id?.order_id?.uuid === sourceOrder.uuid)
         );
+        const protectedRefund = stale.find((order) => this._koRefundHasMoneyReference(order));
+        if (protectedRefund) {
+            this.pos.setOrder(protectedRefund);
+            this.pos.navigate("PaymentScreen", { orderUuid: protectedRefund.uuid });
+            showKoToast("มีรายการคืนเงินจริงที่ยังบันทึกไม่เสร็จ ระบบเปิดรายการเดิมให้ทำต่อ");
+            return false;
+        }
         for (const order of stale) {
             try {
                 await this.pos.deleteOrders([order], [], true);
@@ -835,6 +895,7 @@ patch(TicketScreen.prototype, {
         if (this.pos.koRefundIntent?.sourceOrderUuid === sourceOrder.uuid) {
             this.pos.koRefundIntent = null;
         }
+        return true;
     },
 
     /**
@@ -848,7 +909,9 @@ patch(TicketScreen.prototype, {
         const order = ticket.order;
         this.state.koBusy = true;
         try {
-            await this._koDropPendingRefunds(order);
+            if (!(await this._koDropPendingRefunds(order))) {
+                return;
+            }
 
             // Re-stage from scratch. Leaving stale details behind is what made
             // repeat refunds silently refund the wrong quantity.

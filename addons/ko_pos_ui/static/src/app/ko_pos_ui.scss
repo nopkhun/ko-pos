@@ -914,6 +914,12 @@
     background: var(--ko-primary-soft);
 }
 
+.pos .ko-pay-method-tile.disabled {
+    opacity: 0.45;
+    background: #f3f5f5;
+    cursor: not-allowed;
+}
+
 .pos .ko-pay-method-tile .ko-method-th {
     font-size: 14.5px;
     font-weight: 600;
@@ -1036,6 +1042,113 @@
 .pos .ko-pay-card-section {
     text-align: center;
     padding: 24px 0;
+}
+
+.pos .ko-refund-payment-guide {
+    margin: 0 auto;
+    max-width: 620px;
+    padding: 16px;
+    border: 1px solid #e6c672;
+    border-radius: 14px;
+    background: #fff9e8;
+    color: var(--ko-ink);
+}
+
+.pos .ko-refund-payment-guide.route-beam_void {
+    border-color: #8fc7a5;
+    background: #edf9f2;
+}
+
+.pos .ko-refund-payment-guide.route-blocked {
+    border-color: #e0a3a3;
+    background: #fff0f0;
+}
+
+.pos .ko-refund-guide-heading {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+}
+
+.pos .ko-refund-guide-heading > div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.pos .ko-refund-guide-heading strong {
+    font-size: 16px;
+    line-height: 1.35;
+}
+
+.pos .ko-refund-guide-heading small {
+    color: var(--ko-muted-2);
+    font-size: 12px;
+}
+
+.pos .ko-refund-guide-icon {
+    display: grid;
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.78);
+    font-size: 21px;
+    font-weight: 700;
+}
+
+.pos .ko-refund-payment-guide p {
+    margin: 12px 0 0;
+    color: var(--ko-muted-2);
+    font-size: 13.5px;
+    line-height: 1.55;
+}
+
+.pos .ko-refund-confirm-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pos .ko-refund-confirm-row input {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    accent-color: var(--ko-primary);
+}
+
+.pos .ko-refund-reference-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 14px;
+    color: var(--ko-muted-2);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.pos .ko-refund-reference-field input {
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 12px;
+    border: 1px solid var(--ko-border);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--ko-ink);
+    font-size: 15px;
+}
+
+.pos .ko-refund-reference-field input:focus {
+    border-color: var(--ko-primary);
+    outline: 2px solid color-mix(in srgb, var(--ko-primary) 18%, transparent);
 }
 
 .pos .ko-card-icon {

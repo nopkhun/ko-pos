@@ -151,6 +151,56 @@ const beam = await loadModule(beamPath, {
     assert.ok(createCalledAt - startedAt >= 15, "shared device cooldown was not respected");
 }
 
+{
+    const line = makeLine("pending");
+    line.amount = -40.25;
+    line.transaction_id = "";
+    line.uiState = {};
+    line.payment_ref_no = "";
+    let receipt = "";
+    line.setReceiptInfo = (value) => {
+        receipt = value;
+    };
+    const sourcePayment = {
+        id: 91,
+        uuid: "source-payment",
+        amount: 100,
+        transaction_id: "ch_source",
+        payment_method_id: { id: 5 },
+    };
+    const sourceOrder = { uuid: "source-order", payment_ids: [sourcePayment] };
+    const order = {
+        uuid: "refund-order",
+        name: "Refund 1",
+        payment_ids: [line],
+        getOrderlines: () => [{ refunded_orderline_id: { order_id: sourceOrder } }],
+        getSelectedPaymentline: () => line,
+    };
+    const pos = {
+        env: { services: { dialog: { add() {} } } },
+        getOrder: () => order,
+        getPendingPaymentLine: () => line,
+    };
+    const terminal = new beam.PaymentBeamBolt(pos, { id: 5, name: "Beam Card" });
+    const calls = [];
+    terminal._callBeam = async (method, data) => {
+        calls.push([method, data]);
+        if (method === "beam_create_pos_void") {
+            return { refundId: "re_void" };
+        }
+        return { refundId: "re_void", status: "SUCCEEDED", transactionType: "VOID" };
+    };
+
+    assert.equal(await terminal.sendPaymentRequest(line.uuid), true);
+    assert.deepEqual(calls.map(([method]) => method), ["beam_create_pos_void", "beam_get_refund"]);
+    assert.equal(calls[0][1].original_payment_id, 91);
+    assert.equal(calls[0][1].charge_id, "ch_source");
+    assert.equal(calls[0][1].amount_thb, 40.25);
+    assert.equal(line.transaction_id, "re_void");
+    assert.equal(line.payment_ref_no, "re_void");
+    assert.match(receipt, /Beam VOID: re_void/);
+}
+
 const toasts = [];
 class PaymentScreen {}
 const uiPath = fileURLToPath(
@@ -207,6 +257,62 @@ await loadModule(uiPath, {
 
     screen.koBackToSell();
     assert.equal(navigations, 1, "back must work after cancellation reaches retry");
+}
+
+{
+    const sourceMethod = {
+        id: 5,
+        name: "บัตรเครดิต",
+        use_payment_terminal: "beam_bolt",
+        payment_method_type: "terminal",
+        beam_payment_method_type: "CARD",
+        payment_terminal: { fastPayments: false },
+    };
+    const sourcePayment = {
+        id: 101,
+        uuid: "source-payment-ui",
+        amount: 100,
+        transaction_id: "ch_source_ui",
+        payment_date: new Date(),
+        payment_method_id: sourceMethod,
+    };
+    const sourceOrder = { uuid: "source-ui", payment_ids: [sourcePayment] };
+    const refundLine = makeLine(undefined);
+    refundLine.amount = -100;
+    refundLine.payment_method_id = sourceMethod;
+    refundLine.payment_status = null;
+    const screen = Object.create(PaymentScreen.prototype);
+    let requests = 0;
+    Object.assign(screen, {
+        isRefundOrder: true,
+        koState: {
+            requesting: false,
+            selectedMethodType: "card",
+            cashInput: "",
+            refundConfirmed: false,
+            manualReference: "",
+        },
+        payment_methods_from_config: [sourceMethod],
+        paymentLines: [],
+        selectedPaymentLine: null,
+        currentOrder: {
+            isRefund: true,
+            getOrderlines: () => [{ refunded_orderline_id: { order_id: sourceOrder } }],
+        },
+        deletePaymentLine() {},
+        async addNewPaymentLine() {
+            this.paymentLines.push(refundLine);
+            this.selectedPaymentLine = refundLine;
+            return true;
+        },
+        async sendPaymentRequest() {
+            requests += 1;
+        },
+    });
+
+    await screen.koSelectMethod("card-5");
+    assert.equal(requests, 0, "selecting a refund method must not create a negative Bolt Intent");
+    assert.equal(screen.selectedPaymentLine, refundLine);
 }
 
 console.log("Payment terminal lifecycle tests passed");

@@ -127,6 +127,20 @@
     color: var(--ko-muted);
 }
 
+.pos .ko-refund-policy-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin: 8px 0 12px;
+    padding: 10px 12px;
+    border: 1px solid #ead08b;
+    border-radius: 10px;
+    background: #fff9e9;
+    color: #725619;
+    font-size: 12.5px;
+    line-height: 1.45;
+}
+
 .pos .ko-bill-item-right {
     display: flex;
     flex-direction: column;

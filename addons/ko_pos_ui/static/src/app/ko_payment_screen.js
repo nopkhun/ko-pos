@@ -20,6 +20,54 @@ function methodType(method) {
     return "other";
 }
 
+function asDate(value) {
+    if (value?.toJSDate) {
+        return value.toJSDate();
+    }
+    if (value instanceof Date) {
+        return value;
+    }
+    if (!value) {
+        return null;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function bangkokParts(value) {
+    const date = asDate(value);
+    if (!date) {
+        return null;
+    }
+    return Object.fromEntries(
+        new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Bangkok",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23",
+        })
+            .formatToParts(date)
+            .filter((part) => part.type !== "literal")
+            .map((part) => [part.type, Number(part.value)])
+    );
+}
+
+function isBangkokVoidWindow(paymentDate, now = new Date()) {
+    const paid = bangkokParts(paymentDate);
+    const current = bangkokParts(now);
+    if (!paid || !current) {
+        return false;
+    }
+    const sameDay =
+        paid.year === current.year && paid.month === current.month && paid.day === current.day;
+    const paidMinutes = paid.hour * 60 + paid.minute;
+    const currentMinutes = current.hour * 60 + current.minute;
+    return sameDay && paidMinutes < 19 * 60 + 30 && currentMinutes < 19 * 60 + 30;
+}
+
 patch(PaymentScreen.prototype, {
     setup() {
         super.setup(...arguments);
@@ -29,6 +77,9 @@ patch(PaymentScreen.prototype, {
                 ? methodType(this.selectedPaymentLine.payment_method_id)
                 : "cash",
             requesting: false,
+            refundConfirmed: false,
+            manualReference: "",
+            refundStatus: "",
         });
         onMounted(() => this._koEnsureDefaultMethod());
     },
@@ -37,8 +88,13 @@ patch(PaymentScreen.prototype, {
         if (this.paymentLines.length || !this.koMethods.length) {
             return;
         }
-        const defaultMethod = this.koMethods.find((item) => item.type === "cash") || this.koMethods[0];
-        await this.koSelectMethod(defaultMethod.type);
+        const sourceMethodId = this.koRefundSourcePayments[0]?.payment_method_id?.id;
+        const defaultMethod =
+            (this.isRefundOrder &&
+                this.koMethods.find((item) => item.method.id === sourceMethodId)) ||
+            this.koMethods.find((item) => item.type === "cash") ||
+            this.koMethods[0];
+        await this.koSelectMethod(defaultMethod.key);
     },
 
     get koMethods() {
@@ -56,8 +112,138 @@ patch(PaymentScreen.prototype, {
                 name: labels[type][0],
                 en: labels[type][1],
                 method,
+                disabled: this.isRefundOrder && !this.koCanUseRefundMethod(method),
             };
         });
+    },
+
+    get koRefundSourcePayments() {
+        if (!this.isRefundOrder) {
+            return [];
+        }
+        const sourceOrders = new Map();
+        for (const line of this.currentOrder?.getOrderlines?.() || []) {
+            const sourceOrder = line.refunded_orderline_id?.order_id;
+            if (sourceOrder) {
+                sourceOrders.set(sourceOrder.uuid || sourceOrder.id, sourceOrder);
+            }
+        }
+        const payments = [];
+        const seen = new Set();
+        for (const sourceOrder of sourceOrders.values()) {
+            for (const payment of sourceOrder.payment_ids || []) {
+                if (payment.amount <= 0 || payment.is_change) {
+                    continue;
+                }
+                const key = payment.uuid || payment.id;
+                if (!seen.has(key)) {
+                    payments.push(payment);
+                    seen.add(key);
+                }
+            }
+        }
+        return payments;
+    },
+
+    get koRefundSourcePayment() {
+        return this.koRefundSourcePayments.length === 1 ? this.koRefundSourcePayments[0] : null;
+    },
+
+    get koRefundRoute() {
+        if (!this.isRefundOrder) {
+            return "sale";
+        }
+        const source = this.koRefundSourcePayment;
+        if (!source) {
+            return "blocked";
+        }
+        const method = source.payment_method_id;
+        const type = methodType(method);
+        if (type === "cash") {
+            return "cash";
+        }
+        if (method?.use_payment_terminal === "beam_bolt") {
+            if (this.selectedPaymentLine?.uiState?.beam_refund_external_required) {
+                return "lighthouse";
+            }
+            const refundTransaction = String(this.selectedPaymentLine?.transaction_id || "");
+            if (
+                refundTransaction.startsWith("re_") ||
+                refundTransaction.startsWith("beam-refund-idem:")
+            ) {
+                // A request already started before the cutoff must be reconciled,
+                // never replaced by a second manual refund after 19:30.
+                return "beam_void";
+            }
+            const beamType = method.beam_payment_method_type || "";
+            if (
+                beamType === "CARD" &&
+                String(source.transaction_id || "").startsWith("ch_") &&
+                isBangkokVoidWindow(source.payment_date)
+            ) {
+                return "beam_void";
+            }
+            return ["CARD", "CARD_INSTALLMENTS", "ALIPAY", "WECHAT_PAY"].includes(
+                beamType
+            )
+                ? "lighthouse"
+                : "manual";
+        }
+        return "manual";
+    },
+
+    get koRefundOriginalMethodName() {
+        return this.koRefundSourcePayment?.payment_method_id?.name || "ไม่พบช่องทางต้นฉบับ";
+    },
+
+    get koRefundReferenceRequired() {
+        return ["lighthouse", "manual"].includes(this.koRefundRoute);
+    },
+
+    get koRefundHelpTitle() {
+        const labels = {
+            beam_void: "Void บัตรผ่าน Beam ก่อน 19:30 น.",
+            lighthouse: "ต้องดำเนินการใน Beam Lighthouse",
+            cash: "คืนเงินสดให้ลูกค้า",
+            manual: "คืนผ่านช่องทางภายนอก",
+            blocked: "บิลนี้ต้องให้ผู้จัดการตรวจสอบ",
+        };
+        return labels[this.koRefundRoute] || "ตรวจสอบการคืนเงิน";
+    },
+
+    get koRefundHelpBody() {
+        const labels = {
+            beam_void:
+                "เมื่อกดปุ่มด้านล่าง ระบบจะส่งคำขอ Void ไป Beam และรอผลสำเร็จก่อนบันทึก Odoo ห้ามกดซ้ำหรือปิดหน้าจอระหว่างรอ",
+            lighthouse:
+                "POS จะไม่ส่ง Refund ไป Beam หลัง 19:30 น. หรือกับช่องทางที่ไม่เข้าเงื่อนไข กรุณาให้ผู้จัดการคืนใน Lighthouse ก่อน แล้วกรอก Refund ID เพื่อบันทึก Odoo",
+            cash:
+                "ส่งมอบเงินสดตามยอดด้านบนให้ลูกค้าก่อน แล้วติ๊กยืนยัน ระบบจึงจะบันทึกรายการคืนเงิน",
+            manual:
+                "คืนเงินจริงด้วยช่องทางเดิมก่อน แล้วกรอกเลขอ้างอิงเพื่อบันทึกใน Odoo",
+            blocked:
+                "พบการชำระหลายช่องทางหรือไม่พบ payment ต้นฉบับ ห้ามเลือกเงินสดเพื่อข้ามขั้นตอน ให้ผู้จัดการคืนและกระทบยอดจากหลังบ้าน",
+        };
+        return labels[this.koRefundRoute] || "";
+    },
+
+    get koValidateLabel() {
+        if (!this.isRefundOrder) {
+            return "ยืนยันชำระเงิน · Validate";
+        }
+        const labels = {
+            beam_void: `ส่ง Void ผ่าน Beam ${this.koAmountDue}`,
+            lighthouse: `บันทึกการคืนจาก Lighthouse ${this.koAmountDue}`,
+            cash: `ยืนยันว่าคืนเงินสด ${this.koAmountDue} แล้ว`,
+            manual: `บันทึกการคืนเงิน ${this.koAmountDue}`,
+            blocked: "ไม่สามารถคืนจาก POS ได้",
+        };
+        return labels[this.koRefundRoute] || "ยืนยันคืนเงิน";
+    },
+
+    koCanUseRefundMethod(method) {
+        const source = this.koRefundSourcePayment;
+        return Boolean(source && source.payment_method_id?.id === method?.id);
     },
 
     get koSelectedMethodType() {
@@ -72,10 +258,17 @@ patch(PaymentScreen.prototype, {
         return formatCurrency(Math.abs(this.currentOrder?.priceIncl || 0), this.pos.currency.id);
     },
 
-    async koSelectMethod(type) {
-        const target = this.koMethods.find((item) => item.type === type)?.method;
+    async koSelectMethod(selector) {
+        const methodItem = this.koMethods.find(
+            (item) => item.key === selector || item.type === selector
+        );
+        const target = methodItem?.method;
         if (!target || this.koState.requesting) {
             showKoToast("ยังไม่ได้ตั้งค่าช่องทางชำระเงินนี้");
+            return;
+        }
+        if (this.isRefundOrder && !this.koCanUseRefundMethod(target)) {
+            showKoToast(`ต้องคืนผ่านช่องทางเดิม: ${this.koRefundOriginalMethodName}`);
             return;
         }
 
@@ -98,7 +291,7 @@ patch(PaymentScreen.prototype, {
             return;
         }
 
-        this.koState.selectedMethodType = type;
+        this.koState.selectedMethodType = methodItem.type;
         this.koState.cashInput = "";
         const added = await this.addNewPaymentLine(target);
         if (!added) {
@@ -109,14 +302,17 @@ patch(PaymentScreen.prototype, {
         if (!line) {
             return;
         }
-        if (type === "cash") {
+        if (methodItem.type === "cash") {
             this.koState.cashInput = String(Math.abs(line.getAmount?.() || 0));
             return;
         }
 
         const needsRequest =
+            !this.isRefundOrder &&
             target.payment_method_type === "qr_code" ||
-            (target.use_payment_terminal && !target.payment_terminal?.fastPayments);
+            (!this.isRefundOrder &&
+                target.use_payment_terminal &&
+                !target.payment_terminal?.fastPayments);
         if (needsRequest) {
             this.koState.requesting = true;
             try {
@@ -154,6 +350,20 @@ patch(PaymentScreen.prototype, {
     },
 
     get koTerminalStatusText() {
+        if (this.isRefundOrder) {
+            if (this.koState.refundStatus === "sending") {
+                return "กำลังส่งคำขอ Void ไป Beam…";
+            }
+            if (this.koState.refundStatus === "pending") {
+                return "Beam รับคำขอแล้ว กำลังรอผล Void…";
+            }
+            if (this.koTerminalStatus === "done") {
+                return "Beam ยืนยันการย้อนรายการสำเร็จแล้ว";
+            }
+            if (this.koTerminalStatus === "retry") {
+                return "ยังไม่สำเร็จ กรุณาตรวจสอบข้อความด้านบนก่อนลองใหม่";
+            }
+        }
         const labels = {
             pending: "พร้อมส่งรายการไปเครื่องรับชำระ",
             waiting: "กำลังส่งรายการไปเครื่องรับชำระ…",
@@ -169,6 +379,9 @@ patch(PaymentScreen.prototype, {
     },
 
     get koCanCancelTerminal() {
+        if (this.isRefundOrder) {
+            return false;
+        }
         return ["waiting", "waitingCard", "waitingCapture", "timeout"].includes(
             this.koTerminalStatus
         );
@@ -217,6 +430,24 @@ patch(PaymentScreen.prototype, {
             return false;
         }
         const line = this.selectedPaymentLine;
+        if (this.isRefundOrder) {
+            if (!line || !this.koCanUseRefundMethod(line.payment_method_id)) {
+                return false;
+            }
+            if (!this.currentOrder.isPaid() || this.koRefundRoute === "blocked") {
+                return false;
+            }
+            if (this.koRefundRoute === "beam_void") {
+                return true;
+            }
+            if (this.koRefundRoute === "cash") {
+                return this.koState.refundConfirmed;
+            }
+            return (
+                this.koState.refundConfirmed &&
+                this.koState.manualReference.trim().length >= 4
+            );
+        }
         if (line?.isElectronic?.()) {
             return line.getPaymentStatus() === "done" && this.currentOrder.isPaid();
         }
@@ -266,11 +497,53 @@ patch(PaymentScreen.prototype, {
         }
         const order = this.currentOrder;
         const refundIntent = this._koRefundIntentFor(order);
+        const line = this.selectedPaymentLine;
+        if (this.isRefundOrder && this.koRefundRoute === "beam_void") {
+            this.koState.requesting = true;
+            this.koState.refundStatus = "sending";
+            try {
+                await this.sendPaymentRequest(line);
+            } finally {
+                this.koState.requesting = false;
+            }
+            if (line.getPaymentStatus?.() !== "done") {
+                if (line.uiState?.beam_refund_external_required) {
+                    this.koState.refundStatus = "";
+                    showKoToast("รายการนี้ต้องคืนผ่าน Beam Lighthouse");
+                } else if (line.uiState?.beam_refund_failed) {
+                    this.koState.refundStatus = "";
+                } else {
+                    this.koState.refundStatus = "pending";
+                }
+                return;
+            }
+            this.koState.refundStatus = "done";
+        } else if (this.isRefundOrder) {
+            // Manual/Lighthouse routes record money that staff have already
+            // returned. They must never trigger a negative Bolt Intent.
+            line.setPaymentStatus?.(null);
+            if (this.koRefundRoute === "cash") {
+                line.transaction_id = `cash-refund-confirmed:${order.uuid}`;
+                line.setReceiptInfo?.("ยืนยันคืนเงินสดให้ลูกค้าแล้ว");
+            } else {
+                const reference = this.koState.manualReference.trim();
+                line.transaction_id =
+                    this.koRefundRoute === "lighthouse"
+                        ? `beam-lighthouse:${reference}`
+                        : `manual-refund:${reference}`;
+                line.payment_ref_no = reference;
+                line.setReceiptInfo?.(`เลขอ้างอิงคืนเงิน: ${reference}`);
+            }
+        }
         try {
             await this.validateOrder(false);
         } catch (error) {
             console.error("KO POS payment validation failed", error);
-            showKoToast("ชำระเงินไม่สำเร็จ กรุณาตรวจสอบอีกครั้ง");
+            showKoToast(
+                this.isRefundOrder
+                    ? "บันทึกการคืนเงินไม่สำเร็จ กรุณาตรวจสอบอีกครั้ง"
+                    : "ชำระเงินไม่สำเร็จ กรุณาตรวจสอบอีกครั้ง"
+            );
             return;
         }
 
@@ -302,6 +575,10 @@ patch(PaymentScreen.prototype, {
     },
 
     koBackToSell() {
+        if (this.isRefundOrder && this.koState.requesting) {
+            showKoToast("กำลังรอผล Void จาก Beam กรุณาอย่าปิดหน้าจอ");
+            return;
+        }
         if (this.koCanCancelTerminal || this.koTerminalStatus === "waitingCancel") {
             showKoToast("กรุณายกเลิกรายการที่เครื่องรับชำระก่อนกลับหน้าขาย");
             return;

@@ -1,4 +1,6 @@
 from unittest.mock import Mock, patch
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests.common import TransactionCase
@@ -6,6 +8,9 @@ from odoo.tests.common import TransactionCase
 
 REQUESTS_TARGET = (
     'odoo.addons.ko_pos_beam_bolt.models.pos_payment_method.requests.request')
+NOW_TARGET = (
+    'odoo.addons.ko_pos_beam_bolt.models.pos_payment_method.'
+    'PosPaymentMethod._beam_bangkok_now')
 
 
 class TestBeamBolt(TransactionCase):
@@ -33,6 +38,32 @@ class TestBeamBolt(TransactionCase):
         response.text = '' if body is None else 'json'
         response.json.return_value = body
         return response
+
+    def _original_card_payment(self, *, payment_date, transaction_id='ch_void_test', amount=100):
+        self.method.write({'beam_payment_method_type': 'CARD'})
+        config = self.env['pos.config'].create({
+            'name': 'Beam Void Test POS',
+            'payment_method_ids': [(6, 0, self.method.ids)],
+        })
+        session = self.env['pos.session'].create({
+            'config_id': config.id,
+            'user_id': self.env.user.id,
+        })
+        order = self.env['pos.order'].create({
+            'session_id': session.id,
+            'company_id': self.env.company.id,
+            'amount_tax': 0,
+            'amount_total': amount,
+            'amount_paid': amount,
+            'amount_return': 0,
+        })
+        return self.env['pos.payment'].create({
+            'pos_order_id': order.id,
+            'amount': amount,
+            'payment_method_id': self.method.id,
+            'payment_date': payment_date,
+            'transaction_id': transaction_id,
+        })
 
     @patch(REQUESTS_TARGET)
     def test_pair_check_and_disconnect(self, request):
@@ -306,3 +337,91 @@ class TestBeamBolt(TransactionCase):
     def test_expiry_matches_beam_limits(self):
         with self.assertRaises(ValidationError):
             self.method.beam_expiry_sec = 30
+
+    def test_pos_load_includes_beam_payment_type_for_refund_routing(self):
+        self.assertIn('beam_payment_method_type', self.method._load_pos_data_fields(False))
+
+    @patch(REQUESTS_TARGET)
+    def test_same_day_card_before_cutoff_creates_beam_void(self, request):
+        payment = self._original_card_payment(
+            payment_date=datetime(2026, 8, 26, 12, 0),  # 19:00 Asia/Bangkok
+        )
+        request.return_value = self._response(201, {'refundId': 're_void_test'})
+        now = datetime(2026, 8, 26, 19, 15, tzinfo=ZoneInfo('Asia/Bangkok'))
+
+        with patch(NOW_TARGET, return_value=now):
+            result = self.method.beam_create_pos_void({
+                'original_payment_id': payment.id,
+                'charge_id': 'ch_void_test',
+                'amount_thb': 40.25,
+                'reason': 'Customer canceled',
+                'idempotency_key': 'void-idem-test',
+            })
+
+        self.assertEqual(result['refundId'], 're_void_test')
+        call = request.call_args
+        self.assertEqual(call.args[:2], (
+            'POST', 'https://playground.api.beamcheckout.com/api/v1/refunds'))
+        self.assertEqual(call.kwargs['json'], {
+            'chargeId': 'ch_void_test',
+            'reason': 'Customer canceled',
+            'amount': 4025,
+        })
+        self.assertEqual(call.kwargs['headers']['x-beam-idempotency-key'], 'void-idem-test')
+
+    @patch(REQUESTS_TARGET)
+    def test_pos_void_after_cutoff_requires_lighthouse(self, request):
+        payment = self._original_card_payment(
+            payment_date=datetime(2026, 8, 26, 12, 0),  # 19:00 Asia/Bangkok
+        )
+        now = datetime(2026, 8, 26, 19, 30, tzinfo=ZoneInfo('Asia/Bangkok'))
+
+        with patch(NOW_TARGET, return_value=now):
+            result = self.method.beam_create_pos_void({
+                'original_payment_id': payment.id,
+                'charge_id': 'ch_void_test',
+                'amount_thb': 100,
+                'idempotency_key': 'late-idem-test',
+            })
+
+        self.assertTrue(result['external_required'])
+        self.assertEqual(result['error_code'], 'VOID_WINDOW_CLOSED')
+        request.assert_not_called()
+
+    @patch(REQUESTS_TARGET)
+    def test_cutoff_recovery_reuses_the_original_idempotency_key(self, request):
+        payment = self._original_card_payment(
+            payment_date=datetime(2026, 8, 26, 12, 0),  # 19:00 Asia/Bangkok
+        )
+        request.return_value = self._response(201, {'refundId': 're_recovered'})
+        now = datetime(2026, 8, 26, 19, 31, tzinfo=ZoneInfo('Asia/Bangkok'))
+
+        with patch(NOW_TARGET, return_value=now):
+            result = self.method.beam_create_pos_void({
+                'original_payment_id': payment.id,
+                'charge_id': 'ch_void_test',
+                'amount_thb': 100,
+                'idempotency_key': 'started-before-cutoff',
+                'recovery': True,
+            })
+
+        self.assertEqual(result['refundId'], 're_recovered')
+        self.assertEqual(
+            request.call_args.kwargs['headers']['x-beam-idempotency-key'],
+            'started-before-cutoff',
+        )
+
+    @patch(REQUESTS_TARGET)
+    def test_successful_refund_reads_void_transaction_type(self, request):
+        request.side_effect = [
+            self._response(200, {'refundId': 're_void_test', 'status': 'SUCCEEDED'}),
+            self._response(200, {
+                'transactionId': 're_void_test',
+                'transactionType': 'VOID',
+            }),
+        ]
+
+        result = self.method.beam_get_refund({'refund_id': 're_void_test'})
+
+        self.assertEqual(result['transactionType'], 'VOID')
+        self.assertTrue(request.call_args.args[1].endswith('/transactions/re_void_test'))

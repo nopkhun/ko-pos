@@ -80,9 +80,17 @@ Customer wants one dish taken off a bill that is already paid:
 1. บิลแล้ว → tap the bill.
 2. Find the line. Tap **+** on its stepper until it shows how many to give back.
 3. The red button at the bottom shows the count and the money as you go.
-4. Tap **คืนเงิน N ชิ้น**.
-5. The payment screen opens with a negative total. Choose how the money goes back and press
-   **ยืนยันชำระเงิน**.
+4. Tap **คืนเงิน N ชิ้น**. The sheet already states the required route from the original
+   payment; POS does not let staff substitute an unrelated tender.
+5. The payment screen opens with a negative total and one of these instructions:
+   - Beam Card, same day before 19:30 Bangkok: press **ส่ง Void ผ่าน Beam ฿…** and wait for
+     Beam success. Odoo and KDS change only after success.
+   - Beam Card after 19:30 or an older/missing Charge ID: a manager refunds in Lighthouse,
+     enters the real Refund ID, ticks that the money was returned, then records Odoo.
+   - PromptPay or another unsupported Beam type: follow the store's external return
+     procedure, then enter that real transfer/reference and confirm it in POS.
+   - Cash: hand the displayed amount to the customer, tick the cash confirmation, and only
+     then validate.
 
 The kitchen loses exactly those dishes. Refund one plate out of three and the other two stay
 on the board and keep cooking. The rest of the bill is untouched, and the bill's label
@@ -107,6 +115,11 @@ the original bill keeps its old label and can still be refunded.
 
 Starting a new refund on the same bill throws the abandoned one away automatically, so a
 retry is never an empty ฿0 refund. Discarding it by hand (**ทิ้งรายการนี้**) does the same.
+
+There is one deliberate exception: after POS has sent a Beam Void, received a Refund ID,
+or staff have confirmed a Lighthouse/manual/cash hand-back, money may already have moved.
+That refund is protected — **ทิ้งรายการนี้** refuses to delete it and starting another
+refund opens the existing payment screen instead. Finish or reconcile that same record.
 
 ---
 
@@ -134,6 +147,9 @@ for a bill keyed against the wrong table or the wrong customer, not to swap one 
 | the payment screen looks like plain Odoo | same: old bundle. The KO screen must appear at every width |
 | a bill says คืนเงินครบแล้ว but no money was returned | pre-19.0.6.0.0 behaviour; see `docs/GOTCHAS.md` |
 | refunded dish still on the kitchen board | check the refund was actually **validated**, not just started |
+| Beam says `PENDING` | keep the refund open and reconcile the same Refund ID; do not submit another refund |
+| Card refund screen asks for a Lighthouse reference | the 19:30 Void window is closed, the bill is older/mixed, or the Charge ID is unavailable |
+| Another payment method is greyed out | correct: refunds must use the original tender; do not select Cash as a workaround |
 | the refund order comes out 0 บาท | an abandoned refund is still attached — discard it from ออเดอร์ค้าง first |
 | a table's fresh order turned into a refund | pre-19.0.6.1.0 behaviour; see `docs/GOTCHAS.md` |
 
