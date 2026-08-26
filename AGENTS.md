@@ -60,7 +60,7 @@ Thai with real Thai restaurant vocabulary.
 
 ## 2. Architecture
 
-Four services in one Compose project. Two are one-shot init containers that must
+Five services in one Compose project. Three are one-shot init containers that must
 exit successfully before Odoo starts.
 
 ```
@@ -72,6 +72,15 @@ addons-init (alpine/git, one-shot)
   └─ makes /mnt/extra-addons readable by the non-root Odoo user
       (the patch/thai_v2 + thai_v3 pipeline was folded into addons/ and
        deleted on 2026-08-23)
+        ↓ (service_completed_successfully)
+pydeps-init (python:3.13-slim, one-shot)
+  └─ pip install --no-deps --target /var/lib/odoo/pylibs
+      authlib>=1.6.12,<1.7.0 defusedxml packaging
+      (mcp_server's external_dependencies; the odoo:19 image ships none of them)
+  └─ echoes PYDEPS_READY and PYDEPS_IMPORT_OK <authlib version> into the log
+  └─ both Odoo services read it through PYTHONPATH=/var/lib/odoo/pylibs
+      (--no-deps on purpose: authlib only needs cryptography, which the image has,
+       and a second copy on PYTHONPATH would shadow it)
         ↓ (service_completed_successfully)
 odoo-upgrade (odoo:19, one-shot)
   └─ uses an explicit --addons-path ending in /mnt/extra-addons
@@ -106,6 +115,13 @@ All live in `addons.tar.gz` at the repo root.
 | `ko_pos_beam_bolt` | Beam Bolt+ terminal integration. One paired connection can be shared by multiple payment methods from 19.0.3.0.0 onward. |
 | `ko_pos_thai_lang` | The Thai translation override layer — see §5. Depends on all four above. |
 | `ko_pos_ui` | Touch-first restaurant POS interface: list-first Sell screen, current-order panel, prices, payment emphasis, responsive tablet/mobile layout. Presentation only; it does not change order, tax, or payment logic. |
+
+### Plus one third-party addon in the same directory
+
+`addons/mcp_server` (**MCP Server 19.0.2.0.0**, much. Consulting, **OPL-1 paid licence**,
+bought from the Odoo Apps store) is deployed exactly like ours but is **not ours to edit** —
+upgrades come from the store as a new zip. It exposes `/mcp` so MCP clients can query Odoo.
+See `docs/RUNBOOK-mcp.md`. It is the reason `pydeps-init` exists (§2).
 
 ---
 
@@ -786,6 +802,27 @@ Working and confirmed against the live system:
     enter a staff PIN, so none of it can be re-run or re-measured from here. Nothing in the
     checklist was reported as failing or skipped. If a specific step is ever disputed later,
     treat it as owner-attested rather than instrumented.
+
+- **`mcp_server` 19.0.2.0.0 installed on production 2026-08-26 (action `111396634`).**
+  The owner first tried ตั้งค่า → นำเข้าโมดูล and got
+  `External ID not found in the system: mcp_server.model_mcp_enabled_model`. That route can
+  never work for this module — see `docs/GOTCHAS.md`. The zip was unpacked into
+  `addons/mcp_server` and pushed (commit `e6bb79c`); a fresh clone diffed **byte-identical**
+  to the store zip, 90 files, no other addon touched. The deploy added the `pydeps-init`
+  service; the log shows `PYDEPS_IMPORT_OK 1.6.12`, `DEPLOYED_mcp_server: "version":
+  "19.0.2.0.0"`, `odoo-upgrade` exiting 0 with 88 modules and exactly **57** translation
+  files, `MASTER_PW_LINES=1`, and Odoo serving HTTP. The module was then installed from
+  แอป (module list, not the Apps filter) and `ir.module.module` reports it **installed**;
+  General Settings now shows *MCP Server Configuration → Enable MCP Access*.
+  - **What was checked:** module state via RPC, the settings section rendering, deploy log
+    signals. **What was not:** the master switch is still **off**, no model has been
+    exposed, no API key exists, and no MCP client has connected — so `/mcp` itself has never
+    been exercised on production. See `docs/RUNBOOK-mcp.md` for turning it on.
+  - The deploy key in the Compose is read-only, so this push used a **temporary write deploy
+    key** added by the owner and removed afterwards. Agents still cannot push from the cloud
+    container (`ssh.github.com:443` is intercepted by the egress proxy and returns HTTP 400);
+    `device_bash` on the owner's machine **can** reach GitHub over SSH through its proxy —
+    that is the byte-exact push route, and it is how this module landed.
 
 ---
 

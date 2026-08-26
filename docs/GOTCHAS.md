@@ -1227,3 +1227,43 @@ running project; wait about one minute, then resend the exact same Compose with 
 `111361235` created no action; the unchanged third request was accepted after the cooldown.
 Never respond to this symptom by omitting `environment` or using a destructive project
 delete/recreate sequence.
+
+---
+
+### “นำเข้าโมดูล” (Import Module) fails with `External ID not found: <module>.model_<something>`
+
+**Symptom:** Uploading a store module's zip through ตั้งค่า → นำเข้าโมดูล ends with
+`ValueError: External ID not found in the system: mcp_server.model_mcp_enabled_model`,
+raised while parsing that module's `security/security.xml`.
+
+**Cause:** the Import Module feature (`base_import_module`) **never executes a module's
+Python.** `_import_module` creates the `ir.module.module` row with `imported=True`, loads
+only its `.xml/.csv/.sql` data files and copies `static/` into attachments; imported modules
+are then excluded from the regular load (`_get_modules_to_load_domain`). No Python means no
+models, no `model_*` XML IDs, so the first `ir.rule` that references one blows up. The temp
+directory is thrown away afterwards, so nothing is left behind to repair either.
+
+**Fix:** that route only ever works for data/theme modules. Anything with new models must be
+installed as a real addon: unzip it into `addons/`, push, deploy, then install from แอป.
+Retrying the import, or importing twice, cannot help.
+
+**Tell:** the traceback's last frames are in `base_import_module/models/ir_module.py`
+`_import_zipfile` → `_import_module` → `convert_file`.
+
+---
+
+### Deploying an older Compose takes the site down now that `mcp_server` is installed
+
+**Symptom:** after a deploy that used a Compose from before 2026-08-26, Odoo will not start.
+The log shows `mcp_server` failing to import (`authlib`) instead of the registry loading.
+
+**Cause:** `mcp_server` declares `external_dependencies: authlib, defusedxml, packaging`, and
+the stock `odoo:19` image has none of them. They live in `/var/lib/odoo/pylibs`, written by
+the `pydeps-init` service and reached through `PYTHONPATH` on **both** `odoo` and
+`odoo-upgrade`. A Compose without those two pieces installs nothing and passes no PYTHONPATH,
+and an installed module that cannot import is a hard failure, not a skip.
+
+**Fix:** always deploy the current `deploy_real/vps-compose-git.yaml` from
+`deploy-secrets.zip` (it contains `pydeps-init` and both `PYTHONPATH` lines). If a stale
+Compose has already gone out, redeploy the current one — the volume still holds `pylibs`, so
+the recovery is one deploy. Check the log for `PYDEPS_IMPORT_OK` before trusting a deploy.
