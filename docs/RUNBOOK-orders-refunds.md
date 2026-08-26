@@ -92,6 +92,11 @@ Customer wants one dish taken off a bill that is already paid:
    - Cash: hand the displayed amount to the customer, tick the cash confirmation, and only
      then validate.
 
+The yellow line under these controls says exactly what is still missing. The final button
+turns green only after the signed payment amount matches the refund and the required fields
+are complete. For Lighthouse/manual returns, enter at least four characters and tick the
+money-returned confirmation; the line then changes to **พร้อมบันทึก**.
+
 The kitchen loses exactly those dishes. Refund one plate out of three and the other two stay
 on the board and keep cooking. The rest of the bill is untouched, and the bill's label
 becomes **คืนเงินบางส่วน**.

@@ -1210,6 +1210,16 @@ Beam decides whether a successful Refund resource becomes a `VOID` or `REFUND` t
 the Refund object does not say. Read `/transactions/{refundId}` and never guess `VOID` when
 the transaction is not yet available.
 
+**Follow-up (`ko_pos_ui` 19.0.7.0.1):** Odoo also marks a QR payment line `pending` on a
+refund, so `order.isPaid()` excludes that amount even though a Lighthouse/manual route must
+not contact the terminal. The result looks identical: Refund ID and confirmation are filled,
+but the save button stays grey. Refund readiness now compares the signed payment-line total
+with the signed order total directly. Immediately before a confirmed manual/Lighthouse save,
+the code clears the terminal status and lets Odoo validate normally. Do not remove the amount
+comparison: enabling from the checkbox/reference alone could book a partial or zero refund.
+The screen now states the exact missing step (four-character reference, money-returned
+confirmation, or amount preparation) instead of presenting an unexplained disabled button.
+
 ---
 
 ### Hostinger deploy returns “Too Many Attempts” before an action exists
