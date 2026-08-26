@@ -1174,3 +1174,21 @@ a success or uncertain result stays blocked. The device-ready deadline is stored
 as well as the line, so Card → PromptPay shares Beam's required five-second cooldown. Do not
 "fix" this by clearing `paymentTerminalInProgress` directly: that can permit a duplicate
 collection while Beam still has a charge in flight.
+
+---
+
+### Hostinger deploy returns “Too Many Attempts” before an action exists
+
+**Symptom:** `VPS_createNewProjectV1` immediately returns `Too Many Attempts` and no action
+ID. Production continues running the previous containers, so it is unclear whether retrying
+will duplicate or interrupt a deployment.
+
+**Cause:** the Hostinger write endpoint is rate-limited independently of the VPS action
+queue. A rejected request can fail before it creates a `docker_compose_up` action.
+
+**Fix:** read `VPS_getActionsV1` before retrying. If there is no new action, do not touch the
+running project; wait about one minute, then resend the exact same Compose with the complete
+`DB_PASSWORD` and `TRAEFIK_HOST` environment. Two rejected calls before production action
+`111361235` created no action; the unchanged third request was accepted after the cooldown.
+Never respond to this symptom by omitting `environment` or using a destructive project
+delete/recreate sequence.

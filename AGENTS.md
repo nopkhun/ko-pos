@@ -722,7 +722,7 @@ Working and confirmed against the live system:
   `ใช้การเชื่อมต่อ Beam จาก` field and the preserved connected owner id 5. Not verified:
   no dependent PromptPay method was created and no live payment was submitted.
 
-- **Beam terminal-cancellation lifecycle hotfix is ready on `main`, not deployed.**
+- **Beam terminal-cancellation lifecycle hotfix is deployed in production.**
   `ko_pos_beam_bolt` **19.0.3.1.0** and `ko_pos_ui` **19.0.6.3.0** at commit `8ba80db`
   restore the part of Odoo's standard terminal flow that the custom KO PaymentScreen had
   hidden. The screen now shows terminal state and **ยกเลิกรายการ · Cancel**, calls core
@@ -734,8 +734,16 @@ Working and confirmed against the live system:
   install with all 12 Beam tests passed; debug POS JS/CSS assets built and returned HTTP 200.
   GitHub Actions run **32870558018** also passed: source/lifecycle validation succeeded,
   both addons installed together, and Odoo reported `0 failed, 0 error(s) of 12 tests`.
-  Production still runs Beam 19.0.3.0.0 / UI 19.0.6.2.0 from action 111210069. No live
-  payment, cancel, Pair, or Disconnect was sent while diagnosing this issue.
+  Production action **111361235** deployed current `main` HEAD `d913ba2` on 2026-08-26.
+  `addons-init` logged Beam 19.0.3.1.0, KDS 19.0.8.0.0, UI 19.0.6.3.0 and all six addon
+  directories; `odoo-upgrade` loaded Beam at 73/88, UI at 86/88 and Thai at 88/88, then
+  applied exactly 57 translation files and exited 0. Runtime loaded 88 modules, both Odoo
+  processes used `/mnt/extra-addons`, `MASTER_PW_LINES=1`, PostgreSQL was healthy, and Odoo
+  served HTTP on 8069. The complete project log had no ERROR, CRITICAL, traceback, invalid
+  module, missing manifest, permission error, or unset Compose variable. Authenticated
+  read-only browser QA opened the Thai backend with no console warning/error. No live
+  payment, cancel, Pair, Disconnect, order, or POS-session change was sent during deploy QA.
+  Every till that remained open across this UI deploy still needs one hard refresh.
 
 - **The owner ran the production trial on 2026-08-25 and reported every step passing.**
   This is the check §9 had carried since the very first deploy, and it is now done: a dish
@@ -769,11 +777,11 @@ Working and confirmed against the live system:
    available; do not complete payment or change kitchen state.
 5. **Real business data from the owner:** real PromptPay number (currently the placeholder
    `0812345678`), the real menu items & prices, and the kitchen printer's IP (Epson).
-6. **Deploy and verify the Beam terminal-cancellation hotfix:** after explicit owner
-   approval, deploy `ko_pos_beam_bolt` 19.0.3.1.0 / `ko_pos_ui` 19.0.6.3.0 from `main`,
-   hard-refresh every open till, then supervise Card → Cancel → PromptPay and app-first
-   Cancel → Odoo Cancel using the connected owner id 5. Do not Pair again. Production uses
-   a live connection, so every transaction and any refund/reconciliation must be coordinated.
+6. **Finish Beam terminal-cancellation transaction QA:** hard-refresh every open till, then
+   supervise Card → Cancel → PromptPay and app-first Cancel → Odoo Cancel using connected
+   owner id 5. Do not Pair again. The code and deployment checks passed, but no live payment
+   was initiated during deploy QA. Production uses a live connection, so every transaction
+   and any refund/reconciliation must be coordinated.
 7. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close. `docs/RUNBOOK-kds.md` is written to be read straight to staff.
 8. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.

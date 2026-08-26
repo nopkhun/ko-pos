@@ -49,6 +49,13 @@ TRAEFIK_HOST=srv973354.hstgr.cloud
 > Postgres comes up with a different password than Odoo expects, and the stack fails
 > in a way that looks like a database problem. Always pass it.
 
+If `VPS_createNewProjectV1` returns **Too Many Attempts**, no action may have been created.
+Read `VPS_getActionsV1` first and leave the running project alone. If there is no new
+`docker_compose_up`, wait about one minute and resend the exact same Compose plus the full
+`environment`; do not switch endpoints or omit the environment on the retry. This happened
+before action `111361235` on 2026-08-26: two rate-limited calls created no action, and the
+unchanged third request was accepted after the cooldown.
+
 The Compose YAML to send is `deploy_real/vps-compose-git.yaml` inside
 `deploy-secrets.zip`. It is deliberately below Hostinger's 8,192-character `content`
 limit, embeds the read-only SSH deploy key, clones `main`, copies `addons/` into
@@ -110,7 +117,7 @@ Check, in order:
    DEPLOYED_ko_pos_beam_bolt:
    'version': '19.0.3.1.0',
    DEPLOYED_ko_pos_kds:
-   'version': '19.0.5.0.0',
+   'version': '19.0.8.0.0',
    DEPLOYED_ko_pos_ui:
    'version': '19.0.6.3.0',
    KDS_SECURITY_PRESENT=yes
