@@ -5,10 +5,10 @@
 > verified against the running production system, not inferred.
 >
 > **สรุปภาษาไทย:** โปรเจคนี้คือระบบ POS ร้านอาหาร (Odoo 19) รันจริงบน Hostinger VPS ที่
-> https://kodoo.viakuma.com — ใช้งานจริงแล้ว มี addon ของเราเอง 5 ตัว และระบบคำแปลไทย
+> https://kodoo.viakuma.com — ใช้งานจริงแล้ว มี addon ของเราเอง 6 ตัว และระบบคำแปลไทย
 > "ฉบับร้านอาหาร" ที่เขียนเอง อ่านหัวข้อ *Do not break these* ก่อนแก้อะไรทั้งสิ้น
 
-- **Last verified:** 2026-08-23 (kitchen display: stations, both order paths, kitchen alerts)
+- **Last verified:** 2026-08-26 (Beam Card Void/refund routing and Production deploy)
 - **Status:** LIVE in production. A real restaurant will use this.
 - **Owner:** Nop (Thai speaker — user-facing strings and all UI copy must be natural Thai)
 
@@ -253,7 +253,7 @@ means containers started. Verify the translation count line from §5 and check t
 
 ---
 
-## 8. Current state (verified 2026-08-25)
+## 8. Current state (verified 2026-08-26)
 
 Working and confirmed against the live system:
 
@@ -745,6 +745,34 @@ Working and confirmed against the live system:
   payment, cancel, Pair, Disconnect, order, or POS-session change was sent during deploy QA.
   Every till that remained open across this UI deploy still needs one hard refresh.
 
+- **Beam Card Void/refund routing hotfix is deployed in production.**
+  `ko_pos_beam_bolt` **19.0.4.0.0** and `ko_pos_ui` **19.0.7.0.0** at commit
+  **`10cd4e5`** stop a refund from being sent as a negative Bolt Intent and keep the refund
+  on the original tender. A single same-day plain Beam Card payment with its original
+  `ch_` Charge ID can use the Beam Refund API only before the store cutoff at **19:30
+  Asia/Bangkok**; the server rechecks the company, source payment, amount, date, method and
+  cutoff. At/after the cutoff, for older/mixed/missing-ID/non-Card Beam payments, the POS
+  sends no Beam request and guides a manager to complete the return in Lighthouse, enter
+  the real reference and confirm the money moved. PromptPay/unsupported external methods
+  use their manual reference route; Cash requires a physical hand-back confirmation.
+  Refund drafts become protected once a Beam request/reference or confirmed hand-back is
+  recorded, preventing staff from deleting a record after money may have moved.
+
+  Static JS/Python/XML checks, the Node lifecycle suite, debug POS asset compilation, and a
+  disposable Odoo 19/PostgreSQL install passed. The module suite reported **0 failed,
+  0 error(s) of 17 tests**; GitHub Actions run **32958533355** passed. Production action
+  **111373779** deployed current `main` HEAD `10cd4e5` on 2026-08-26. `addons-init` logged
+  Beam **19.0.4.0.0**, KDS **19.0.8.0.0**, UI **19.0.7.0.0** and
+  `KDS_SECURITY_PRESENT=yes`; `odoo-upgrade` loaded Beam at **73/88**, UI at **86/88** and
+  Thai at **88/88**, applied exactly **57** translation files, and exited 0. Postgres was
+  healthy, Odoo served HTTP on 8069, `MASTER_PW_LINES=1`, and the aggregated log had no
+  ERROR, CRITICAL, traceback, invalid module, missing manifest, permission error, or unset
+  Compose variable. Authenticated read-only browser QA opened the Thai backend with no
+  console warning/error. No live charge, Void, Refund, Lighthouse action, order, KDS state,
+  Pair/Disconnect, or POS-session change was made during deploy QA. The **19:30 cutoff is
+  the owner's store/acquirer operating rule**, not a claim that Beam documents that time.
+  Every open till must hard-refresh before using the new refund UI.
+
 - **The owner ran the production trial on 2026-08-25 and reported every step passing.**
   This is the check §9 had carried since the very first deploy, and it is now done: a dish
   rung up per station, ส่งครัว, the ticket appearing on the kitchen board, marked ready,
@@ -777,11 +805,15 @@ Working and confirmed against the live system:
    available; do not complete payment or change kitchen state.
 5. **Real business data from the owner:** real PromptPay number (currently the placeholder
    `0812345678`), the real menu items & prices, and the kitchen printer's IP (Epson).
-6. **Finish Beam terminal-cancellation transaction QA:** hard-refresh every open till, then
-   supervise Card → Cancel → PromptPay and app-first Cancel → Odoo Cancel using connected
-   owner id 5. Do not Pair again. The code and deployment checks passed, but no live payment
-   was initiated during deploy QA. Production uses a live connection, so every transaction
-   and any refund/reconciliation must be coordinated.
+6. **Finish supervised Beam transaction and reversal QA:** hard-refresh every open till,
+   then supervise Card → Cancel → PromptPay and app-first Cancel → Odoo Cancel using
+   connected owner id 5. Also use a deliberately small coordinated Card charge to verify a
+   same-day pre-19:30 POS Void ends as Beam `SUCCEEDED` with authoritative transaction type
+   `VOID`; inspect (but do not duplicate) the at/after-19:30 Lighthouse route; verify the
+   PromptPay/manual route; and exercise recovery when Beam succeeds but Odoo validation is
+   interrupted. Do not Pair again or submit a second Refund for the same Charge ID.
+   Production uses a live merchant connection, so every financial step and its
+   reconciliation must be coordinated with the owner.
 7. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close. `docs/RUNBOOK-kds.md` is written to be read straight to staff.
 8. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
