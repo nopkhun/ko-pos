@@ -308,8 +308,7 @@ patch(PaymentScreen.prototype, {
         }
 
         const needsRequest =
-            !this.isRefundOrder &&
-            target.payment_method_type === "qr_code" ||
+            (!this.isRefundOrder && target.payment_method_type === "qr_code") ||
             (!this.isRefundOrder &&
                 target.use_payment_terminal &&
                 !target.payment_terminal?.fastPayments);
@@ -425,6 +424,49 @@ patch(PaymentScreen.prototype, {
         return formatCurrency(this.koChangeAmount, this.pos.currency.id);
     },
 
+    get koRefundPaymentAmountReady() {
+        if (!this.isRefundOrder || !this.currentOrder || !this.paymentLines.length) {
+            return false;
+        }
+        // Odoo excludes a payment line whose terminal status is `pending` from
+        // `amountPaid`. That is correct for a sale, but a manual refund route
+        // deliberately does not contact the terminal. Check the signed amounts
+        // directly here, then clear the terminal status immediately before the
+        // manual/Lighthouse order is validated.
+        const paymentTotal = this.paymentLines.reduce(
+            (total, paymentLine) =>
+                total + Number(paymentLine.getAmount?.() ?? paymentLine.amount ?? 0),
+            0
+        );
+        return this.pos.currency.isZero(this.currentOrder.totalDue - paymentTotal);
+    },
+
+    get koRefundActionHint() {
+        if (!this.isRefundOrder) {
+            return "";
+        }
+        if (this.koRefundRoute === "blocked") {
+            return "ให้ผู้จัดการตรวจสอบจากหลังบ้าน — POS จะไม่บันทึกรายการนี้";
+        }
+        if (!this.selectedPaymentLine || !this.koRefundPaymentAmountReady) {
+            return "กำลังเตรียมยอดคืนให้ตรงกับบิล กรุณารอสักครู่";
+        }
+        if (this.koRefundRoute === "beam_void") {
+            return "พร้อมส่ง Void ไป Beam";
+        }
+        if (this.koRefundRoute === "cash") {
+            return this.koState.refundConfirmed
+                ? "พร้อมบันทึก — ยืนยันแล้วว่าได้คืนเงินสด"
+                : "ขั้นตอนที่ยังขาด: ติ๊กยืนยันว่าได้คืนเงินสดให้ลูกค้าแล้ว";
+        }
+        if (this.koState.manualReference.trim().length < 4) {
+            return "ขั้นตอนที่ยังขาด: กรอก Refund ID หรือเลขอ้างอิงอย่างน้อย 4 ตัว";
+        }
+        return this.koState.refundConfirmed
+            ? "พร้อมบันทึก — เลขอ้างอิงและการคืนเงินจริงครบแล้ว"
+            : "ขั้นตอนที่ยังขาด: ติ๊กยืนยันว่าเงินจริงถูกคืนให้ลูกค้าแล้ว";
+    },
+
     get koCanValidate() {
         if (!this.currentOrder || this.currentOrder.isEmpty() || this.koState.requesting) {
             return false;
@@ -434,7 +476,7 @@ patch(PaymentScreen.prototype, {
             if (!line || !this.koCanUseRefundMethod(line.payment_method_id)) {
                 return false;
             }
-            if (!this.currentOrder.isPaid() || this.koRefundRoute === "blocked") {
+            if (!this.koRefundPaymentAmountReady || this.koRefundRoute === "blocked") {
                 return false;
             }
             if (this.koRefundRoute === "beam_void") {

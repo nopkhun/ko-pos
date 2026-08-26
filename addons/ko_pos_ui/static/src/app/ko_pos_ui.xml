@@ -421,6 +421,11 @@
                                 <span>ตรวจสอบแล้วว่าเงินจริงถูกคืนให้ลูกค้าแล้ว</span>
                             </label>
                         </t>
+                        <div class="ko-refund-action-hint"
+                             t-att-class="{'is-ready': koCanValidate, 'is-blocked': koRefundRoute === 'blocked'}">
+                            <span aria-hidden="true"><t t-esc="koCanValidate ? '✓' : '•'"/></span>
+                            <t t-esc="koRefundActionHint"/>
+                        </div>
                     </div>
 
                     <!-- Cash Section -->

@@ -1151,6 +1151,30 @@
     outline: 2px solid color-mix(in srgb, var(--ko-primary) 18%, transparent);
 }
 
+.pos .ko-refund-action-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fff4d6;
+    color: #765600;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.pos .ko-refund-action-hint.is-ready {
+    background: #e5f6ec;
+    color: #176a3a;
+}
+
+.pos .ko-refund-action-hint.is-blocked {
+    background: #ffe4e4;
+    color: #a12626;
+}
+
 .pos .ko-card-icon {
     font-size: 44px;
     padding-bottom: 8px;

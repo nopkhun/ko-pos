@@ -315,4 +315,80 @@ await loadModule(uiPath, {
     assert.equal(screen.selectedPaymentLine, refundLine);
 }
 
+{
+    // Odoo marks QR payment lines as `pending` even on refunds. A manual
+    // external return must therefore compare the signed amounts directly,
+    // otherwise `order.isPaid()` keeps the save button disabled forever.
+    const sourceMethod = {
+        id: 6,
+        name: "Beam PromptPay",
+        use_payment_terminal: "beam_bolt",
+        payment_method_type: "qr_code",
+        beam_payment_method_type: "QR_PROMPT_PAY",
+    };
+    const sourcePayment = {
+        id: 102,
+        uuid: "source-payment-manual",
+        amount: 80,
+        transaction_id: "ch_promptpay",
+        payment_date: new Date(),
+        payment_method_id: sourceMethod,
+    };
+    const sourceOrder = { uuid: "source-manual", payment_ids: [sourcePayment] };
+    const refundLine = makeLine("pending");
+    refundLine.amount = -80;
+    refundLine.payment_method_id = sourceMethod;
+    refundLine.transaction_id = "";
+    refundLine.payment_ref_no = "";
+    refundLine.setReceiptInfo = (value) => {
+        refundLine.receipt = value;
+    };
+    const refundOrder = {
+        uuid: "refund-manual",
+        isRefund: true,
+        totalDue: -80,
+        isEmpty: () => false,
+        isPaid: () => false,
+        getOrderlines: () => [{ refunded_orderline_id: { order_id: sourceOrder } }],
+    };
+    let validations = 0;
+    const screen = Object.create(PaymentScreen.prototype);
+    Object.assign(screen, {
+        isRefundOrder: true,
+        koState: {
+            requesting: false,
+            selectedMethodType: "promptpay",
+            cashInput: "",
+            refundConfirmed: true,
+            manualReference: "TXN-1234",
+            refundStatus: "",
+        },
+        paymentLines: [refundLine],
+        selectedPaymentLine: refundLine,
+        currentOrder: refundOrder,
+        pos: {
+            currency: { id: 1, isZero: (value) => Math.abs(value) < 0.001 },
+            koRefundIntent: null,
+        },
+        async validateOrder() {
+            validations += 1;
+        },
+    });
+
+    assert.equal(screen.koRefundRoute, "manual");
+    assert.equal(screen.currentOrder.isPaid(), false, "control: Odoo ignores pending amount");
+    assert.equal(screen.koRefundPaymentAmountReady, true);
+    assert.equal(screen.koCanValidate, true, "complete external refund must enable save");
+    assert.match(screen.koRefundActionHint, /พร้อมบันทึก/);
+
+    await screen.koValidatePayment();
+    assert.equal(validations, 1);
+    assert.equal(refundLine.getPaymentStatus(), null);
+    assert.equal(refundLine.transaction_id, "manual-refund:TXN-1234");
+
+    screen.koState.manualReference = "123";
+    assert.equal(screen.koCanValidate, false);
+    assert.match(screen.koRefundActionHint, /อย่างน้อย 4 ตัว/);
+}
+
 console.log("Payment terminal lifecycle tests passed");
