@@ -872,7 +872,9 @@ Working and confirmed against the live system:
   `pending → done → validation`. Source/manifest/XML checks passed, a fresh Odoo
   19.0-20260817/PostgreSQL install reported **0 failed, 0 error(s) of 17 tests**, and the
   7,788,528-byte debug POS asset returned HTTP 200 with both the guard fix and rejection
-  message. **Not verified:** this version is not in Production and no real refund was sent.
+  message. GitHub Actions run **33064589825** also passed: source validation succeeded and
+  the Odoo 19 module-test job completed successfully. **Not verified:** this version is not
+  in Production and no real refund was sent.
 
 ---
 
