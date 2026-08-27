@@ -122,7 +122,7 @@ Check, in order:
    DEPLOYED_ko_pos_kds:
    'version': '19.0.8.0.0',
    DEPLOYED_ko_pos_ui:
-   'version': '19.0.7.0.1',
+   'version': '19.0.7.0.2',
    KDS_SECURITY_PRESENT=yes
    DEPLOYED_mcp_server:
    'version': '19.0.2.0.0',

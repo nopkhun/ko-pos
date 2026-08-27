@@ -97,6 +97,13 @@ turns green only after the signed payment amount matches the refund and the requ
 are complete. For Lighthouse/manual returns, enter at least four characters and tick the
 money-returned confirmation; the line then changes to **พร้อมบันทึก**.
 
+When the button is pressed, a confirmed external/QR payment line must move from Odoo's
+`pending` state to the standard `done` state before validation. This is an internal status;
+it does not send a second request to Beam. A successful save leaves the payment screen for
+the receipt/bill flow. If Odoo rejects validation and the screen does not advance, the POS
+must show **ยังบันทึกการคืนเงินไม่สำเร็จ…** and preserve the same draft for correction—do
+not create another refund or reuse the reference on a second draft.
+
 The kitchen loses exactly those dishes. Refund one plate out of three and the other two stay
 on the board and keep cooking. The rest of the bill is untouched, and the bill's label
 becomes **คืนเงินบางส่วน**.

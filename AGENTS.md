@@ -269,7 +269,7 @@ means containers started. Verify the translation count line from §5 and check t
 
 ---
 
-## 8. Current state (verified 2026-08-26)
+## 8. Current state (verified 2026-08-27)
 
 Working and confirmed against the live system:
 
@@ -856,6 +856,24 @@ Working and confirmed against the live system:
   refund, Void, Lighthouse action, payment, order, KDS mutation, or session change was made.
   Hard-refresh every already-open POS before testing the corrected button.
 
+- **Follow-up fix `ko_pos_ui` 19.0.7.0.2 is tested and ready, but not yet deployed.**
+  The owner's 2026-08-27 screenshot proved 19.0.7.0.1 reached the till: the external Card
+  refund had an exact −1.00 payment, a four-character reference, the confirmation checked,
+  the green **พร้อมบันทึก** hint, and an enabled green button. Clicking still did nothing.
+  The remaining Odoo 19 guard was `order.isRefundInProcess()`: 19.0.7.0.1 cleared the
+  electronic line's `pending` status to `null`, which makes `amountPaid` include it but still
+  counts as unfinished because the guard requires terminal refunds to be exactly `done`.
+  Odoo's `PaymentScreen.validateOrder()` also discards the underlying `false` result, which
+  explains why no error appeared. Version 19.0.7.0.2 marks a confirmed external return
+  `done` before standard validation and checks that the order actually became `paid` before
+  clearing protected refund intent; a silent rejection now produces a Thai toast.
+
+  The Node lifecycle test now models Odoo's exact `isRefundInProcess()` predicate and proves
+  `pending → done → validation`. Source/manifest/XML checks passed, a fresh Odoo
+  19.0-20260817/PostgreSQL install reported **0 failed, 0 error(s) of 17 tests**, and the
+  7,788,528-byte debug POS asset returned HTTP 200 with both the guard fix and rejection
+  message. **Not verified:** this version is not in Production and no real refund was sent.
+
 ---
 
 ## 9. Outstanding work
@@ -880,10 +898,10 @@ Working and confirmed against the live system:
    same-day pre-19:30 POS Void ends as Beam `SUCCEEDED` with authoritative transaction type
    `VOID`; inspect (but do not duplicate) the at/after-19:30 Lighthouse route; verify the
    PromptPay/manual route; and exercise recovery when Beam succeeds but Odoo validation is
-   interrupted. For the 19.0.7.0.1 regression, explicitly confirm a prepared Lighthouse or
+   interrupted. First deploy 19.0.7.0.2; then explicitly confirm a prepared Lighthouse or
    PromptPay/manual refund shows **พร้อมบันทึก**, enables **บันทึกการคืนเงิน**, saves once,
-   and does not leave a duplicate draft. Do not Pair again or submit a second Refund for the
-   same Charge ID.
+   reaches the receipt/bill state, and does not leave a duplicate draft. Do not Pair again or
+   submit a second Refund for the same Charge ID.
    Production uses a live merchant connection, so every financial step and its
    reconciliation must be coordinated with the owner.
 7. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day

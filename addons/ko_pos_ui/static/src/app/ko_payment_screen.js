@@ -562,8 +562,12 @@ patch(PaymentScreen.prototype, {
             this.koState.refundStatus = "done";
         } else if (this.isRefundOrder) {
             // Manual/Lighthouse routes record money that staff have already
-            // returned. They must never trigger a negative Bolt Intent.
-            line.setPaymentStatus?.(null);
+            // returned. They must never trigger a negative Bolt Intent. Mark
+            // the line `done` rather than clearing its status: Odoo 19's
+            // isRefundInProcess() treats every terminal line whose status is
+            // not exactly `done` as unfinished, even though a blank status is
+            // otherwise included in amountPaid.
+            line.setPaymentStatus?.("done");
             if (this.koRefundRoute === "cash") {
                 line.transaction_id = `cash-refund-confirmed:${order.uuid}`;
                 line.setReceiptInfo?.("ยืนยันคืนเงินสดให้ลูกค้าแล้ว");
@@ -585,6 +589,19 @@ patch(PaymentScreen.prototype, {
                 this.isRefundOrder
                     ? "บันทึกการคืนเงินไม่สำเร็จ กรุณาตรวจสอบอีกครั้ง"
                     : "ชำระเงินไม่สำเร็จ กรุณาตรวจสอบอีกครั้ง"
+            );
+            return;
+        }
+
+        // Odoo's PaymentScreen.validateOrder() does not return the boolean
+        // result from OrderPaymentValidation. A rejected validation therefore
+        // resolves silently. Do not clear the protected refund intent or imply
+        // success unless finalizeValidation actually moved the order to paid.
+        if (order.state !== "paid" && !order.finalized) {
+            showKoToast(
+                this.isRefundOrder
+                    ? "ยังบันทึกการคืนเงินไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วกดอีกครั้ง"
+                    : "ยังบันทึกการชำระเงินไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วกดอีกครั้ง"
             );
             return;
         }

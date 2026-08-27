@@ -65,6 +65,11 @@ function makeLine(status = "waitingCard") {
         isElectronic() {
             return Boolean(this.payment_status);
         },
+        isDone() {
+            return this.payment_status
+                ? ["done", "reversed"].includes(this.payment_status)
+                : true;
+        },
         setReceiptInfo() {},
     };
 }
@@ -345,10 +350,19 @@ await loadModule(uiPath, {
     };
     const refundOrder = {
         uuid: "refund-manual",
+        state: "draft",
+        finalized: false,
         isRefund: true,
         totalDue: -80,
         isEmpty: () => false,
         isPaid: () => false,
+        isRefundInProcess() {
+            return this.isRefund && [refundLine].some(
+                (line) =>
+                    line.payment_method_id.payment_terminal &&
+                    line.payment_status !== "done"
+            );
+        },
         getOrderlines: () => [{ refunded_orderline_id: { order_id: sourceOrder } }],
     };
     let validations = 0;
@@ -371,6 +385,13 @@ await loadModule(uiPath, {
             koRefundIntent: null,
         },
         async validateOrder() {
+            assert.equal(
+                refundOrder.isRefundInProcess(),
+                false,
+                "confirmed external refund must pass Odoo's refund-in-process guard"
+            );
+            assert.equal(refundLine.isDone(), true);
+            refundOrder.state = "paid";
             validations += 1;
         },
     });
@@ -383,7 +404,7 @@ await loadModule(uiPath, {
 
     await screen.koValidatePayment();
     assert.equal(validations, 1);
-    assert.equal(refundLine.getPaymentStatus(), null);
+    assert.equal(refundLine.getPaymentStatus(), "done");
     assert.equal(refundLine.transaction_id, "manual-refund:TXN-1234");
 
     screen.koState.manualReference = "123";

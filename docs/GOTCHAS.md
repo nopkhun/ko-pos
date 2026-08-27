@@ -1220,6 +1220,28 @@ comparison: enabling from the checkbox/reference alone could book a partial or z
 The screen now states the exact missing step (four-character reference, money-returned
 confirmation, or amount preparation) instead of presenting an unexplained disabled button.
 
+### Green “พร้อมบันทึก” refund button does nothing when clicked
+
+**Symptom:** the external Card/PromptPay refund has the exact amount, a reference of at
+least four characters, the money-returned checkbox checked, a green **พร้อมบันทึก** line,
+and an enabled green **บันทึกการคืนเงิน** button. Clicking it leaves the cashier on the
+same screen without a dialog or receipt.
+
+**Cause:** clearing a terminal payment's `pending` status to `null` solves only
+`amountPaid`: `PosPayment.isDone()` treats a blank status as done. A separate Odoo 19 guard,
+`PosOrder.isRefundInProcess()`, checks `payment_method.payment_terminal &&
+payment_status !== "done"`; `null` therefore still means an unfinished terminal refund and
+`OrderPaymentValidation.isOrderValid()` returns `false`. The wrapper
+`PaymentScreen.validateOrder()` does not return that boolean, so the rejection is silent.
+
+**Fix (`ko_pos_ui` 19.0.7.0.2):** after staff have completed and confirmed the external
+return, set the line to the standard terminal status `done`, then call Odoo validation. Keep
+the signed-amount, reference, and confirmation gates. After the call, require the order to
+be `paid` or finalized before clearing protected refund intent; otherwise show the Thai
+failure toast and leave the draft recoverable. The lifecycle test must model
+`isRefundInProcess()` explicitly—merely asserting that `validateOrder()` was invoked misses
+this exact failure.
+
 ---
 
 ### Hostinger deploy returns “Too Many Attempts” before an action exists
