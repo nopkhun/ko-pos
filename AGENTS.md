@@ -856,7 +856,7 @@ Working and confirmed against the live system:
   refund, Void, Lighthouse action, payment, order, KDS mutation, or session change was made.
   Hard-refresh every already-open POS before testing the corrected button.
 
-- **Follow-up fix `ko_pos_ui` 19.0.7.0.2 is tested and ready, but not yet deployed.**
+- **Follow-up fix `ko_pos_ui` 19.0.7.0.2 is deployed in Production.**
   The owner's 2026-08-27 screenshot proved 19.0.7.0.1 reached the till: the external Card
   refund had an exact −1.00 payment, a four-character reference, the confirmation checked,
   the green **พร้อมบันทึก** hint, and an enabled green button. Clicking still did nothing.
@@ -873,8 +873,19 @@ Working and confirmed against the live system:
   19.0-20260817/PostgreSQL install reported **0 failed, 0 error(s) of 17 tests**, and the
   7,788,528-byte debug POS asset returned HTTP 200 with both the guard fix and rejection
   message. GitHub Actions run **33064589825** also passed: source validation succeeded and
-  the Odoo 19 module-test job completed successfully. **Not verified:** this version is not
-  in Production and no real refund was sent.
+  the Odoo 19 module-test job completed successfully. Production deploy action
+  **111544836** completed successfully on 2026-08-27. `addons-init` confirmed Beam Bolt
+  **19.0.4.0.0**, KDS **19.0.8.0.0**, UI **19.0.7.0.2**, MCP Server **19.0.2.0.0**, and
+  `KDS_SECURITY_PRESENT=yes`; `pydeps-init` logged `PYDEPS_IMPORT_OK 1.6.12`; both init
+  services and `odoo-upgrade` exited 0. Upgrade/runtime logs loaded **89 modules**, UI at
+  **87/89**, Thai at **89/89**, and exactly **57** translation files. PostgreSQL was
+  healthy, `MASTER_PW_LINES=1`, both Odoo processes used `/mnt/extra-addons`, HTTP served
+  on 8069, and the aggregate deploy log had no ERROR, CRITICAL, traceback, invalid-module,
+  missing-manifest, permission, or unset-Compose-variable signal. Authenticated read-only
+  backend QA confirmed `KO POS Restaurant UI / 19.0.7.0.2 / ติดตั้งแล้ว` with no browser
+  console error. **Not verified live:** no real refund, Void, Lighthouse action, payment,
+  order, KDS mutation, or session change was made. Hard-refresh every already-open POS
+  before testing this fix.
 
 ---
 
@@ -900,8 +911,8 @@ Working and confirmed against the live system:
    same-day pre-19:30 POS Void ends as Beam `SUCCEEDED` with authoritative transaction type
    `VOID`; inspect (but do not duplicate) the at/after-19:30 Lighthouse route; verify the
    PromptPay/manual route; and exercise recovery when Beam succeeds but Odoo validation is
-   interrupted. First deploy 19.0.7.0.2; then explicitly confirm a prepared Lighthouse or
-   PromptPay/manual refund shows **พร้อมบันทึก**, enables **บันทึกการคืนเงิน**, saves once,
+   interrupted. Explicitly confirm a prepared Lighthouse or PromptPay/manual refund shows
+   **พร้อมบันทึก**, enables **บันทึกการคืนเงิน**, saves once,
    reaches the receipt/bill state, and does not leave a duplicate draft. Do not Pair again or
    submit a second Refund for the same Charge ID.
    Production uses a live merchant connection, so every financial step and its
