@@ -8,7 +8,7 @@
 > https://kodoo.viakuma.com — ใช้งานจริงแล้ว มี addon ของเราเอง 6 ตัว และระบบคำแปลไทย
 > "ฉบับร้านอาหาร" ที่เขียนเอง อ่านหัวข้อ *Do not break these* ก่อนแก้อะไรทั้งสิ้น
 
-- **Last verified:** 2026-08-26 (Beam Card Void/refund routing and Production deploy)
+- **Last verified:** 2026-08-27 (external refund save hotfix and Production deploy)
 - **Status:** LIVE in production. A real restaurant will use this.
 - **Owner:** Nop (Thai speaker — user-facing strings and all UI copy must be natural Thai)
 
@@ -824,6 +824,38 @@ Working and confirmed against the live system:
     `device_bash` on the owner's machine **can** reach GitHub over SSH through its proxy —
     that is the byte-exact push route, and it is how this module landed.
 
+- **External/Lighthouse refund save hotfix is deployed in production.**
+  `ko_pos_ui` **19.0.7.0.1** at `main` HEAD **`364810d`** fixes the grey
+  **บันทึกการคืนเงิน** button when Odoo leaves an electronic/QR refund payment line in
+  `pending`. Refund readiness now compares the signed sum of every payment line with the
+  signed refund total instead of using `order.isPaid()`, while the existing four-character
+  reference and money-returned confirmation remain mandatory. Immediately before a confirmed
+  manual/Lighthouse save, the terminal status is cleared so standard Odoo validation can
+  finish. The payment screen also tells staff the exact missing step and turns the ready hint
+  green only when every requirement is complete.
+
+  Local JS lifecycle regression QA reproduced `pending` + `isPaid() === false`, proved the
+  signed amount still enables the button, and proved a short reference remains blocked. A
+  disposable Odoo 19/PostgreSQL run reported **0 failed, 0 error(s) of 17 tests** and the real
+  debug POS asset compiled with the new hint/readiness code. GitHub Actions did not provide a
+  usable independent result: run `32984523424` ended `startup_failure` before creating a job
+  and run `32984404856` remained queued; do not describe that CI as passed.
+
+  Production action **`111456048`** deployed `main` on 2026-08-27. `addons-init` logged Beam
+  **19.0.4.0.0**, KDS **19.0.8.0.0**, UI **19.0.7.0.1**, MCP Server **19.0.2.0.0** and
+  `KDS_SECURITY_PRESENT=yes`; `pydeps-init` logged `PYDEPS_IMPORT_OK 1.6.12`; both init
+  services and `odoo-upgrade` exited 0. `odoo-upgrade` loaded UI at **87/89**, Thai at
+  **89/89**, applied exactly **57** translation files, and the runtime loaded **89 modules**.
+  This is expected: action `111396634` logged 88 during upgrade *before* MCP Server was
+  installed from the Apps screen; the installed MCP module is now part of the next registry
+  load. Authenticated read-only production QA confirmed the Thai backend, no browser console
+  warning/error, and the Apps list row `MCP Server / 19.0.2.0.0 / ติดตั้งแล้ว`. The aggregate
+  deploy log had no ERROR, CRITICAL, traceback, invalid-module, missing-manifest, permission,
+  or unset-Compose-variable signal; PostgreSQL was healthy, `MASTER_PW_LINES=1`, both Odoo
+  processes used `/mnt/extra-addons`, and HTTP served on 8069. **Not verified live:** no real
+  refund, Void, Lighthouse action, payment, order, KDS mutation, or session change was made.
+  Hard-refresh every already-open POS before testing the corrected button.
+
 ---
 
 ## 9. Outstanding work
@@ -848,7 +880,10 @@ Working and confirmed against the live system:
    same-day pre-19:30 POS Void ends as Beam `SUCCEEDED` with authoritative transaction type
    `VOID`; inspect (but do not duplicate) the at/after-19:30 Lighthouse route; verify the
    PromptPay/manual route; and exercise recovery when Beam succeeds but Odoo validation is
-   interrupted. Do not Pair again or submit a second Refund for the same Charge ID.
+   interrupted. For the 19.0.7.0.1 regression, explicitly confirm a prepared Lighthouse or
+   PromptPay/manual refund shows **พร้อมบันทึก**, enables **บันทึกการคืนเงิน**, saves once,
+   and does not leave a duplicate draft. Do not Pair again or submit a second Refund for the
+   same Charge ID.
    Production uses a live merchant connection, so every financial step and its
    reconciliation must be coordinated with the owner.
 7. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day

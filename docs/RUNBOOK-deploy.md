@@ -122,8 +122,10 @@ Check, in order:
    DEPLOYED_ko_pos_kds:
    'version': '19.0.8.0.0',
    DEPLOYED_ko_pos_ui:
-   'version': '19.0.7.0.0',
+   'version': '19.0.7.0.1',
    KDS_SECURITY_PRESENT=yes
+   DEPLOYED_mcp_server:
+   'version': '19.0.2.0.0',
    ```
    An older version here means the clone did not pick up your commit. Stop and fix that
    before reading any further signal.
@@ -139,6 +141,11 @@ Check, in order:
    also require `Loading module ko_pos_ui` followed by `Module ko_pos_ui loaded`. Any
    `manifest not found`, `invalid module names`, or `PermissionError` means the deploy
    did not install the custom modules even if the Hostinger action says success.
+
+   Do not treat **88** as a permanent expected module count. The 2026-08-26 deploy logged
+   88 modules before `mcp_server` was installed from Apps; every registry start after that
+   installation correctly loads **89**. Reconcile the count with known install/uninstall
+   activity and record the observed value instead of forcing an old expectation.
 
 4. **`odoo` service.** Its startup line must also list `/mnt/extra-addons`, followed by
    `HTTP service (werkzeug) running on …:8069` and `MASTER_PW_LINES=1`.
