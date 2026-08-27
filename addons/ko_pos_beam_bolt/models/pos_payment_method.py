@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import uuid
-from datetime import datetime, time, timezone
+from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
@@ -29,6 +29,10 @@ BEAM_CONNECTION_STATUSES = [
     ('connected', 'เชื่อมต่อแล้ว'),
     ('invalid', 'การเชื่อมต่อใช้ไม่ได้'),
 ]
+
+# ประเภทที่ขอ QR จาก Charges API มาแสดงบนจอลูกค้าได้ (actionRequired: ENCODED_IMAGE)
+# QR พร้อมเพย์ใบเดียวรองรับแอปธนาคารทุกแอปและ e-wallet ที่รับ PromptPay interop
+BEAM_QR_SUPPORTED_TYPES = {'QR_PROMPT_PAY'}
 
 PAYMENT_METHOD_DETAILS = {
     'CARD': 'card',
@@ -143,7 +147,17 @@ class PosPaymentMethod(models.Model):
         compute='_compute_beam_effective_connection')
 
     def _get_payment_terminal_selection(self):
-        return super()._get_payment_terminal_selection() + [('beam_bolt', 'Beam Bolt+')]
+        return super()._get_payment_terminal_selection() + [
+            ('beam_bolt', 'Beam Bolt+'),
+            ('beam_qr', 'Beam QR (จอลูกค้า)'),
+        ]
+
+    @api.onchange('use_payment_terminal')
+    def _onchange_use_payment_terminal_beam_qr(self):
+        # ค่าเริ่มต้นของ beam_payment_method_type คือ CARD (สำหรับ Bolt) —
+        # โหมด QR จอลูกค้ารองรับเฉพาะ QR พร้อมเพย์ จึงตั้งให้อัตโนมัติ
+        if self.use_payment_terminal == 'beam_qr':
+            self.beam_payment_method_type = 'QR_PROMPT_PAY'
 
     @api.model
     def _load_pos_data_fields(self, config):
@@ -270,9 +284,20 @@ class PosPaymentMethod(models.Model):
 
     @api.constrains('beam_expiry_sec')
     def _check_beam_expiry_sec(self):
-        for payment_method in self.filtered(lambda pm: pm.use_payment_terminal == 'beam_bolt'):
+        for payment_method in self.filtered(
+            lambda pm: pm.use_payment_terminal in ('beam_bolt', 'beam_qr')
+        ):
             if not 90 <= payment_method.beam_expiry_sec <= 600:
-                raise ValidationError(_('เวลาหมดอายุของ Beam Bolt ต้องอยู่ระหว่าง 90 ถึง 600 วินาที'))
+                raise ValidationError(_('เวลาหมดอายุของ Beam ต้องอยู่ระหว่าง 90 ถึง 600 วินาที'))
+
+    @api.constrains('use_payment_terminal', 'beam_payment_method_type')
+    def _check_beam_qr_type(self):
+        for payment_method in self.filtered(lambda pm: pm.use_payment_terminal == 'beam_qr'):
+            qr_type = payment_method.beam_payment_method_type or 'QR_PROMPT_PAY'
+            if qr_type not in BEAM_QR_SUPPORTED_TYPES:
+                raise ValidationError(_(
+                    'Beam QR บนจอลูกค้ารองรับเฉพาะ QR พร้อมเพย์ '
+                    '(ใบเดียวจ่ายได้ทั้งแอปธนาคารและ e-wallet ที่รองรับ PromptPay)'))
 
     # ------------------------------------------------------------------
     # Beam HTTP helpers
@@ -553,6 +578,89 @@ class PosPaymentMethod(models.Model):
             '/api/v1/bolt-intents/%s/cancel' % quote(str(intent_id), safe=''),
             idempotency_key=data.get('idempotency_key') or str(uuid.uuid4()),
         )
+
+    # ------------------------------------------------------------------
+    # Beam QR on the customer display (Charges API)
+    # ------------------------------------------------------------------
+    def beam_qr_create_charge(self, data):
+        """data: {amount_thb: float, reference_id: str, idempotency_key: str}
+
+        สร้าง charge แบบ QR แล้วคืนภาพ QR (base64) ให้ POS ส่งขึ้นจอลูกค้า
+        Charges API ไม่มี endpoint ยกเลิก — QR ตายด้วย expiryTime เท่านั้น
+        จึงตั้งอายุสั้นตาม beam_expiry_sec (ค่าเริ่มต้น 120 วินาที)
+        """
+        self.ensure_one()
+        sudo_self = self.sudo()
+        if sudo_self.use_payment_terminal != 'beam_qr':
+            return {'error': _('วิธีชำระเงินนี้ไม่ได้ตั้งค่าเป็น Beam QR')}
+        if not sudo_self.beam_merchant_id or not sudo_self.beam_api_key:
+            return {'error': _('ยังไม่ได้ตั้งค่า Beam Merchant ID / API Key')}
+        try:
+            amount_satang = int(
+                (Decimal(str(data.get('amount_thb'))) * 100).quantize(
+                    Decimal('1'), rounding=ROUND_HALF_UP))
+        except (InvalidOperation, TypeError, ValueError):
+            return {'error': _('ยอดเงินไม่ถูกต้อง')}
+        if amount_satang <= 0:
+            return {'error': _('ยอดเงินไม่ถูกต้อง')}
+        payment_method_type = sudo_self.beam_payment_method_type or 'QR_PROMPT_PAY'
+        if payment_method_type not in BEAM_QR_SUPPORTED_TYPES:
+            return {'error': _('ประเภท QR นี้ยังไม่รองรับบนจอลูกค้า')}
+        expiry_sec = sudo_self.beam_expiry_sec or 120
+        expiry_sec = min(600, max(90, expiry_sec))
+        expiry_time = (fields.Datetime.now() + timedelta(seconds=expiry_sec)).strftime(
+            '%Y-%m-%dT%H:%M:%SZ')
+        reference_id = str(data.get('reference_id') or uuid.uuid4().hex)[:100]
+        detail_key = PAYMENT_METHOD_DETAILS[payment_method_type]
+        payload = {
+            'amount': amount_satang,
+            'currency': 'THB',
+            'referenceId': reference_id,
+            'returnUrl': self.get_base_url(),
+            'paymentMethod': {
+                'paymentMethodType': payment_method_type,
+                detail_key: {'expiryTime': expiry_time},
+            },
+        }
+        result = self._beam_call(
+            'POST', '/api/v1/charges', payload,
+            idempotency_key=data.get('idempotency_key') or str(uuid.uuid4()))
+        if result.get('error'):
+            return result
+        charge_id = result.get('chargeId') or result.get('id')
+        encoded = result.get('encodedImage') or {}
+        _logger.info(
+            'Beam create charge reference=%s charge=%s action=%s',
+            reference_id, charge_id, result.get('actionRequired'),
+        )
+        if not charge_id:
+            return {'error': _(
+                'Beam ไม่ส่ง Charge ID กลับมา กรุณาอย่าสร้างรายการใหม่และตรวจสอบ Lighthouse')}
+        if not encoded.get('imageBase64Encoded'):
+            # charge อาจถูกสร้างแล้วที่ Beam — ห้ามให้ Retry สร้างซ้ำโดยไม่บอกพนักงาน
+            return {
+                'error': _(
+                    'Beam ไม่ส่งภาพ QR กลับมา กรุณาตรวจสอบรายการ %s ใน Lighthouse '
+                    'ก่อนลองใหม่', charge_id),
+                'charge_id': charge_id,
+            }
+        return {
+            'charge_id': charge_id,
+            'status': result.get('status') or 'PENDING',
+            'qr_image_base64': encoded['imageBase64Encoded'],
+            'qr_expiry': encoded.get('expiry') or expiry_time,
+        }
+
+    def beam_qr_get_charge(self, data):
+        """data: {charge_id: str}"""
+        self.ensure_one()
+        if self.sudo().use_payment_terminal != 'beam_qr':
+            return {'error': _('วิธีชำระเงินนี้ไม่ได้ตั้งค่าเป็น Beam QR')}
+        charge_id = data.get('charge_id')
+        if not charge_id:
+            return {'error': _('ไม่มี charge id')}
+        return self._beam_call(
+            'GET', '/api/v1/charges/%s' % quote(str(charge_id), safe=''))
 
     # ------------------------------------------------------------------
     # Same-day card voids from POS

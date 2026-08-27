@@ -1,0 +1,388 @@
+// จอลูกค้า KO — layout เดียว ปรับตัวเองตามอุปกรณ์:
+// ฐานหน่วยคือ font-size ของ .ko-cds (clamp ตาม vmin) ทุกอย่างข้างในเป็น em
+// จอเล็กตัวเล็ก จอ TV ตัวใหญ่ โดยไม่ต้องตั้งค่าอะไร
+// แนวตั้ง = คอลัมน์เดียว, แนวนอน = รายการซ้าย / สรุปยอดขวา
+
+@font-face {
+    font-family: "Prompt";
+    src: url("/ko_pos_ui/static/src/fonts/Prompt-Regular.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Prompt";
+    src: url("/ko_pos_ui/static/src/fonts/Prompt-Medium.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Prompt";
+    src: url("/ko_pos_ui/static/src/fonts/Prompt-SemiBold.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Prompt";
+    src: url("/ko_pos_ui/static/src/fonts/Prompt-Bold.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+}
+
+.ko-cds {
+    --ko-primary: oklch(0.5 0.15 190);
+    --ko-primary-dark: oklch(0.4 0.15 190);
+    --ko-primary-soft: oklch(0.5 0.15 190 / 0.07);
+    --ko-ink: #1c2426;
+    --ko-muted: #8fa0a3;
+    --ko-muted-2: #5b6d70;
+    --ko-line: #f2f5f5;
+    --ko-border: #e4ebeb;
+    --ko-canvas: #f7fafa;
+    --ko-surface: #ffffff;
+    --ko-warn-text: #b06f00;
+    --ko-warn-bg: #fff7e8;
+
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--ko-canvas);
+    color: var(--ko-ink);
+    font-family: "Prompt", -apple-system, "Noto Sans Thai", sans-serif;
+    // ฐานสเกลทั้งจอ: มือถือ ~16px, แท็บเล็ต ~20px, TV 4K ได้ถึง 34px
+    font-size: clamp(16px, 2.6vmin, 34px);
+    line-height: 1.4;
+}
+
+// ---------------------------------------------------------------- header
+.ko-cds__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6em;
+    padding: 0.55em 0.9em;
+    background: var(--ko-surface);
+    border-bottom: 1px solid var(--ko-border);
+    flex: 0 0 auto;
+}
+
+.ko-cds__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.55em;
+    min-width: 0;
+}
+
+.ko-cds__logo {
+    height: 1.9em;
+    width: auto;
+    border-radius: 0.35em;
+}
+
+.ko-cds__shop {
+    font-size: 1.1em;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ko-cds__where {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    flex: 0 0 auto;
+}
+
+.ko-cds__chip {
+    padding: 0.15em 0.7em;
+    border-radius: 2em;
+    background: var(--ko-primary-soft);
+    color: var(--ko-primary-dark);
+    font-weight: 600;
+    white-space: nowrap;
+
+    &--name {
+        background: var(--ko-line);
+        color: var(--ko-muted-2);
+        max-width: 9em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+// ---------------------------------------------------------------- body
+.ko-cds__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.ko-cds__lines {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    scroll-snap-type: y proximity;
+    padding: 0 0.9em;
+    background: var(--ko-surface);
+}
+
+.ko-cds__line {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7em;
+    padding: 0.65em 0;
+    border-bottom: 1px solid var(--ko-line);
+    scroll-snap-align: start;
+
+    &.selected {
+        background: var(--ko-primary-soft);
+        margin: 0 -0.9em;
+        padding-left: 0.9em;
+        padding-right: 0.9em;
+    }
+
+    &--combo {
+        padding-left: 1.6em;
+        font-style: italic;
+    }
+}
+
+.ko-cds__qty {
+    flex: 0 0 auto;
+    min-width: 1.7em;
+    text-align: center;
+    padding: 0.1em 0.3em;
+    border-radius: 0.4em;
+    background: var(--ko-line);
+    font-weight: 700;
+}
+
+.ko-cds__line-main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.ko-cds__line-name {
+    font-weight: 600;
+    overflow-wrap: break-word;
+}
+
+.ko-cds__line-sub {
+    color: var(--ko-muted-2);
+    font-size: 0.78em;
+}
+
+.ko-cds__note {
+    margin-top: 0.25em;
+    padding: 0.3em 0.6em;
+    border-radius: 0.4em;
+    background: var(--ko-warn-bg);
+    color: var(--ko-warn-text);
+    font-weight: 500;
+    font-size: 0.85em;
+    width: fit-content;
+    max-width: 100%;
+
+    &--order {
+        margin: 0.6em 0;
+    }
+}
+
+.ko-cds__line-price {
+    flex: 0 0 auto;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+// welcome / thank-you
+.ko-cds__center {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    text-align: center;
+    padding: 1em;
+}
+
+.ko-cds__welcome-logo {
+    height: 4.5em;
+    width: auto;
+    border-radius: 0.6em;
+}
+
+.ko-cds__welcome {
+    font-size: 1.9em;
+    font-weight: 700;
+}
+
+.ko-cds__welcome-sub {
+    font-size: 1.1em;
+    color: var(--ko-muted-2);
+}
+
+.ko-cds__thanks {
+    font-size: 2.2em;
+    font-weight: 700;
+    color: var(--ko-primary-dark);
+}
+
+.ko-cds__change {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6em;
+    font-size: 1.4em;
+}
+
+.ko-cds__change-amount {
+    font-size: 1.6em;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+// ---------------------------------------------------------------- totals
+.ko-cds__totals {
+    flex: 0 0 auto;
+    padding: 0.6em 0.9em 0.8em;
+    background: var(--ko-surface);
+    border-top: 1px solid var(--ko-border);
+}
+
+.ko-cds__trow {
+    display: flex;
+    justify-content: space-between;
+    gap: 1em;
+    font-variant-numeric: tabular-nums;
+
+    &--muted {
+        color: var(--ko-muted-2);
+        font-size: 0.85em;
+    }
+
+    &--total {
+        font-size: 1.45em;
+        font-weight: 700;
+        color: var(--ko-primary-dark);
+        margin-top: 0.1em;
+    }
+
+    &--pay {
+        color: var(--ko-muted-2);
+        font-size: 0.9em;
+    }
+
+    &--change {
+        font-size: 1.1em;
+        font-weight: 600;
+    }
+}
+
+// ---------------------------------------------------------------- landscape
+// จอกว้าง (แท็บเล็ตแนวนอน / TV): รายการอยู่ซ้าย สรุปยอดเป็นแผงขวา
+@media (orientation: landscape) and (min-width: 700px) {
+    .ko-cds {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-columns: minmax(0, 62fr) minmax(0, 38fr);
+    }
+
+    .ko-cds__header {
+        grid-column: 1 / -1;
+    }
+
+    .ko-cds__body {
+        grid-row: 2;
+        grid-column: 1 / -1; // จอต้อนรับ/ขอบคุณ กินเต็มความกว้าง
+    }
+
+    .ko-cds:has(.ko-cds__totals) .ko-cds__body {
+        grid-column: 1; // มียอดรวมเมื่อไหร่ รายการชิดซ้าย สรุปยอดขึ้นแผงขวา
+    }
+
+    .ko-cds__totals {
+        grid-row: 2;
+        grid-column: 2;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        border-top: none;
+        border-left: 1px solid var(--ko-border);
+        padding: 1em;
+        font-size: 1.15em;
+    }
+}
+
+// ---------------------------------------------------------------- ads
+.ko-cds-ads {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ko-cds-ads__media {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+// ---------------------------------------------------------------- QR dialog
+.ko-cds-qr-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ko-cds-qr {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6em;
+    padding: 0.5em 0;
+    font-family: "Prompt", -apple-system, "Noto Sans Thai", sans-serif;
+    text-align: center;
+}
+
+.ko-cds-qr__title {
+    font-size: 1.25em;
+    font-weight: 600;
+}
+
+.ko-cds-qr__img {
+    // ห้ามใช้ min(vmin, px) — libsass ของ Odoo ตีความเป็นฟังก์ชัน SCSS แล้วพังทั้ง bundle
+    width: 58vmin;
+    max-width: 420px;
+    aspect-ratio: 1 / 1;
+    height: auto;
+    image-rendering: pixelated;
+}
+
+.ko-cds-qr__amount {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5em;
+    font-size: 1.2em;
+}
+
+.ko-cds-qr__amount-value {
+    font-size: 1.5em;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.ko-cds-qr__expiry {
+    color: #b06f00;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}

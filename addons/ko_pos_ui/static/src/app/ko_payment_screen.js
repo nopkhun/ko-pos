@@ -363,10 +363,14 @@ patch(PaymentScreen.prototype, {
                 return "ยังไม่สำเร็จ กรุณาตรวจสอบข้อความด้านบนก่อนลองใหม่";
             }
         }
+        const isQrDisplay =
+            this.koTerminalLine?.payment_method_id?.use_payment_terminal === "beam_qr";
         const labels = {
             pending: "พร้อมส่งรายการไปเครื่องรับชำระ",
             waiting: "กำลังส่งรายการไปเครื่องรับชำระ…",
-            waitingCard: "รอลูกค้าชำระที่เครื่อง Beam Bolt…",
+            waitingCard: isQrDisplay
+                ? "รอลูกค้าสแกน QR บนจอลูกค้า…"
+                : "รอลูกค้าชำระที่เครื่อง Beam Bolt…",
             waitingCancel: "กำลังยกเลิกรายการกับ Beam…",
             waitingCapture: "กำลังยืนยันผลการชำระเงิน…",
             timeout: "หมดเวลารอเครื่อง กรุณายกเลิกรายการ",

@@ -103,18 +103,19 @@ under `addons/` and push `main` before deploying.
 
 ---
 
-## 3. The six custom addons
+## 3. The seven custom addons
 
-All live in `addons.tar.gz` at the repo root.
+All live under `addons/` in the repo.
 
 | Module | Purpose |
 | --- | --- |
 | `ko_pos_setup` | Restaurant seed data: POS categories, floors/tables, demo products |
 | `ko_pos_thai_receipt` | Thai abbreviated tax invoice (ใบกำกับภาษีอย่างย่อ) receipt layout |
 | `ko_pos_kds` | Kitchen Display System (จอครัว). One screen = one POS (`/kds` picks the shop, the board is `/kds/pos/<config_id>`) and optionally one station (`?station_id=`). Owns station routing, both order-to-kitchen paths, and the kitchen→front-of-house alert. See `docs/RUNBOOK-kds.md` |
-| `ko_pos_beam_bolt` | Beam Bolt+ terminal integration. One paired connection can be shared by multiple payment methods from 19.0.3.0.0 onward. |
+| `ko_pos_beam_bolt` | Beam Bolt+ terminal integration. One paired connection can be shared by multiple payment methods from 19.0.3.0.0 onward. From 19.0.5.0.0 also owns **Beam QR (จอลูกค้า)**: a `beam_qr` payment terminal that creates a Beam Charges-API QR (PromptPay) and shows it on the customer display — no Bolt device needed. |
 | `ko_pos_thai_lang` | The Thai translation override layer — see §5. Depends on all four above. |
 | `ko_pos_ui` | Touch-first restaurant POS interface: list-first Sell screen, current-order panel, prices, payment emphasis, responsive tablet/mobile layout. Presentation only; it does not change order, tax, or payment logic. |
+| `ko_pos_customer_display` | จอลูกค้า (customer display) on top of Odoo 19's built-in one: Thai KO layout that auto-adapts portrait/landscape/TV, table/queue/customer chips, and an ad slideshow (images **and muted videos**, `ko.cds.media`) that plays when the screen is idle. See `docs/RUNBOOK-customer-display.md` |
 
 ### Plus one third-party addon in the same directory
 
@@ -887,6 +888,64 @@ Working and confirmed against the live system:
   order, KDS mutation, or session change was made. Hard-refresh every already-open POS
   before testing this fix.
 
+- **Customer display + ads + Beam QR built and locally verified (2026-08-27, not yet
+  deployed at the time of writing this entry — see the deploy record below if present).**
+  New seventh addon `ko_pos_customer_display` **19.0.1.0.0** extends Odoo 19's built-in
+  customer display (`/pos_customer_display/<config_id>/<device_uuid>?access_token=…`,
+  bus channel `UPDATE_CUSTOMER_DISPLAY-<uuid>` + same-browser BroadcastChannel):
+  - Replaces the display template with a Thai KO layout (header: logo/shop/โต๊ะ/คิว/ชื่อลูกค้า
+    chips; lines with qty badge, discount "ลด n% (จาก …)", amber customer notes; totals
+    ยอดก่อนภาษี/ภาษี/ยอดรวม/เงินทอน; ยินดีต้อนรับ / ขอบคุณที่ใช้บริการ states). Layout
+    auto-adapts with no configuration: portrait = single column, landscape ≥700px = lines
+    left + totals panel right (CSS grid + `:has`), font scale `clamp(16px, 2.6vmin, 34px)`.
+  - Ad slideshow when idle: `ko.cds.media` (per-POS playlist, sequence, active toggle,
+    images JPG/PNG/WebP/GIF + videos MP4/WebM, 50 MB cap, per-image seconds). Config on
+    `pos.config`: `ko_cds_idle_seconds` (default 15) / `ko_cds_image_seconds` (default 8).
+    Media served by `/ko_cds/media/<config>/<media>?access_token=…&v=<checksum>` (consteq
+    token check, long cache, ir.binary streaming with range support). Videos always play
+    muted (browser autoplay rule); a broken/stalled video is skipped automatically
+    (native error/ended listeners + metadata watchdog) so the screen can never stick black.
+  - POS side: `CustomerDisplayPosAdapter.formatOrderData` patched to add koTable/koFloor/
+    koTracking/koCustomer. Odoo's navbar "Customer Display" button/QR link is unchanged
+    and is the staff flow for opening the screen on any device without login.
+  - **Beam QR on the customer display**: `ko_pos_beam_bolt` **19.0.5.0.0** adds payment
+    terminal `beam_qr`. Server RPCs `beam_qr_create_charge` / `beam_qr_get_charge` call the
+    Beam **Charges API** (`POST/GET /api/v1/charges`) with the method's own Merchant ID/API
+    key (no Bolt pairing), amount in satang, `qrPromptPay.expiryTime` from `beam_expiry_sec`
+    (clamped 90–600), idempotency keys persisted in `transaction_id`
+    (`beam-qr-idem:` prefix) exactly like the Bolt flow. The POS interface
+    (`payment_beam_qr.js`) sets `line.qrPaymentData` (qr image + amount + expiry) which
+    Odoo pushes to the customer display; our display shows a large QR with Thai title and a
+    live expiry countdown; polling resolves SUCCEEDED/FAILED/EXPIRED. **Beam has no
+    cancel-charge API**: POS cancel re-checks status first (refuses if already SUCCEEDED),
+    then warns staff the QR stays scannable until expiry. Refunds of `beam_qr` payments
+    route to the existing manual/Lighthouse path automatically (the KO payment screen only
+    special-cases `beam_bolt`). `ko_pos_ui` **19.0.7.1.0** shows "รอลูกค้าสแกน QR บนจอลูกค้า…"
+    for `beam_qr` lines and is otherwise unchanged.
+  - **Verified on disposable Odoo 19 + Postgres (image f99ffac9, 2026-08-19):** module
+    tests `0 failed, 0 error(s) of 31 tests` (Beam 27 incl. 6 new QR tests: satang
+    conversion, expiryTime, idempotency header, missing-QR-image reports charge_id,
+    wrong-terminal and bad-amount rejects; customer display 12: mimetype-from-filename
+    for videos, disallowed-type rejection, playlist scoping per POS, media route 404
+    without/with wrong token and cross-config, 200 + correct Content-Type with token).
+    Browser QA on the real asset pipeline: Thai welcome/order/thank-you/QR-countdown
+    screens, ads at idle→instant hide on activity, broken-video auto-skip, portrait
+    375×812 and landscape layouts, and a **real POS session** (open register, add
+    product) live-syncing "2 × ข้าวกะเพราหมูสับ / คิว 1001 / ยอดรวม" to the display page.
+  - **Traps found:** (1) libsass in Odoo treats CSS `min(58vmin, 420px)` as its own
+    `min()` and kills the whole bundle with "Incompatible units" — use width+max-width
+    instead (see GOTCHAS). (2) OWL `t-on-error`/`t-on-ended` on `<video>` never fired in
+    the display page — media events don't bubble; attach native listeners in a
+    `useEffect`. (3) The ir.attachment behind a binary field is named after the *field*,
+    so Odoo sniffs video uploads as `application/octet-stream`; detect mimetype from the
+    uploaded filename. (4) A fresh `--without-demo` QA database shows a dismissable
+    stock-Odoo "Oops!" on POS load even with zero KO modules — environment noise, not a
+    KO defect (confirmed by control installs of pure `point_of_sale`).
+  - **Not verified:** a real (playable) advertisement video end-to-end (no ffmpeg on the
+    QA machine — the error-skip path was verified instead); a live Beam Playground /
+    production charge (needs the shop's real credentials and coordination with the owner);
+    production deploy checks.
+
 ---
 
 ## 9. Outstanding work
@@ -920,6 +979,14 @@ Working and confirmed against the live system:
 7. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close. `docs/RUNBOOK-kds.md` is written to be read straight to staff.
 8. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
+9. **Customer display follow-ups:** (a) verify a real advertisement video (MP4 H.264)
+   plays and advances on the live display — the broken-file skip path is verified but a
+   playable file was not; (b) create the `Beam QR (จอลูกค้า)` payment method in
+   production, first with **Playground** on, and run one supervised small charge → scan →
+   SUCCEEDED cycle plus one expiry cycle before turning Playground off (coordinate with
+   the owner — production charges are real money); (c) upload the shop's real ad media
+   and set the idle/seconds values; (d) both production shops need one hard refresh on
+   every till and display after the deploy. See `docs/RUNBOOK-customer-display.md`.
 
 > ✅ Completed 2026-08-25: **the production trial**. The owner operated the POS and the
 > kitchen board end to end on the real machines — one dish per station, ส่งครัว, ready,

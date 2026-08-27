@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "addons/ko_pos_beam_bolt/**"
+      - "addons/ko_pos_customer_display/**"
       - "addons/ko_pos_ui/static/src/app/ko_payment_screen.js"
       - "addons/ko_pos_ui/static/src/app/ko_pos_ui.xml"
       - "addons/ko_pos_ui/static/src/app/ko_pos_ui.scss"
@@ -12,6 +13,7 @@ on:
   pull_request:
     paths:
       - "addons/ko_pos_beam_bolt/**"
+      - "addons/ko_pos_customer_display/**"
       - "addons/ko_pos_ui/static/src/app/ko_payment_screen.js"
       - "addons/ko_pos_ui/static/src/app/ko_pos_ui.xml"
       - "addons/ko_pos_ui/static/src/app/ko_pos_ui.scss"
@@ -42,9 +44,13 @@ jobs:
       - name: Validate source files
         run: |
           node --check addons/ko_pos_beam_bolt/static/src/app/payment_beam_bolt.js
+          node --check addons/ko_pos_beam_bolt/static/src/app/payment_beam_qr.js
           node --check addons/ko_pos_ui/static/src/app/ko_payment_screen.js
+          node --check addons/ko_pos_customer_display/static/src/customer_display/ko_cds.js
+          node --check addons/ko_pos_customer_display/static/src/customer_display/ko_cds_ads.js
+          node --check addons/ko_pos_customer_display/static/src/pos/ko_cds_adapter_patch.js
           node --experimental-vm-modules addons/ko_pos_beam_bolt/tests/test_payment_terminal_lifecycle.mjs
-          python3 -m compileall -q addons/ko_pos_beam_bolt
+          python3 -m compileall -q addons/ko_pos_beam_bolt addons/ko_pos_customer_display
           python3 - <<'PY'
           import ast
           import xml.etree.ElementTree as ET
@@ -53,13 +59,18 @@ jobs:
           manifest = ast.literal_eval(
               Path("addons/ko_pos_beam_bolt/__manifest__.py").read_text()
           )
-          assert manifest["version"] == "19.0.4.0.0"
+          assert manifest["version"] == "19.0.5.0.0"
           ui_manifest = ast.literal_eval(
               Path("addons/ko_pos_ui/__manifest__.py").read_text()
           )
-          assert ui_manifest["version"] == "19.0.7.0.2"
-          for xml_file in Path("addons/ko_pos_beam_bolt").rglob("*.xml"):
-              ET.parse(xml_file)
+          assert ui_manifest["version"] == "19.0.7.1.0"
+          cds_manifest = ast.literal_eval(
+              Path("addons/ko_pos_customer_display/__manifest__.py").read_text()
+          )
+          assert cds_manifest["version"] == "19.0.1.0.0"
+          for module in ("ko_pos_beam_bolt", "ko_pos_customer_display"):
+              for xml_file in Path("addons", module).rglob("*.xml"):
+                  ET.parse(xml_file)
           ET.parse("addons/ko_pos_ui/static/src/app/ko_pos_ui.xml")
           PY
 
@@ -74,9 +85,9 @@ jobs:
             odoo:19 \
             -d beam_bolt_ci \
             --addons-path=/usr/lib/python3/dist-packages/odoo/addons,/mnt/extra-addons \
-            -i ko_pos_beam_bolt,ko_pos_ui \
+            -i ko_pos_beam_bolt,ko_pos_customer_display,ko_pos_ui \
             --test-enable \
-            --test-tags=/ko_pos_beam_bolt \
+            --test-tags=/ko_pos_beam_bolt,/ko_pos_customer_display \
             --stop-after-init \
             --without-demo=all \
             --log-level=test

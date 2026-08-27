@@ -1299,3 +1299,65 @@ and an installed module that cannot import is a hard failure, not a skip.
 `deploy-secrets.zip` (it contains `pydeps-init` and both `PYTHONPATH` lines). If a stale
 Compose has already gone out, redeploy the current one — the volume still holds `pylibs`, so
 the recovery is one deploy. Check the log for `PYDEPS_IMPORT_OK` before trusting a deploy.
+
+---
+
+### CSS `min()`/`max()` inside SCSS killed the whole asset bundle
+
+**Symptom:** A page using a KO stylesheet renders unstyled with a banner
+"Style error / The style compilation failed"; the server log warns
+`Internal Error: Incompatible units: 'px' and 'vmin'` while compiling the bundle.
+Every stylesheet in that bundle is lost, not just yours.
+
+**Cause:** Odoo compiles SCSS with libsass, and libsass claims `min()`/`max()` as its own
+functions. `width: min(58vmin, 420px)` is evaluated at compile time, the units clash, and
+the bundle aborts. CSS `clamp()` is safe (libsass doesn't know it and passes it through).
+
+**Fix:** express it another way — `width: 58vmin; max-width: 420px;` — or interpolate.
+Found in `ko_pos_customer_display` on 2026-08-27.
+
+---
+
+### OWL `t-on-error` / `t-on-ended` on `<video>` never fire
+
+**Symptom:** A broken video on the customer display ad loop sticks on a black screen;
+the element has `error.code = 4` but the component's handler was never called.
+
+**Cause:** media events (`error`, `ended`, `loadedmetadata`) do not bubble, and the
+template-attached handler on the `<video>` element never fired in the customer display
+page. The error can also fire *before* effects run.
+
+**Fix:** attach native listeners in a `useEffect` that owns the element, and check
+`video.error` truthiness immediately in case it already failed. Also set `video.muted`
+as a *property* before calling `play()` — the `muted` attribute alone doesn't reliably
+satisfy the autoplay policy. See `ko_cds_ads.js`.
+
+---
+
+### Video uploaded to a binary field is sniffed as `application/octet-stream`
+
+**Symptom:** A valid MP4 uploaded into a `fields.Binary(attachment=True)` is rejected or
+served with the wrong Content-Type (Safari refuses to play it).
+
+**Cause:** the `ir.attachment` behind a binary field is named after the **field**
+(`media_file`), not the uploaded filename, so `mimetypes.guess_type` on the name fails
+and Odoo's content sniffer doesn't know MP4 → `application/octet-stream`.
+
+**Fix:** keep the real filename in a companion `*_filename` char field, guess the
+mimetype from *that*, and pass the result explicitly to `ir.binary._get_stream_from`.
+See `ko.cds.media._detect_mimetype`.
+
+---
+
+### A bare `--without-demo` QA database shows "Oops!" when the POS opens
+
+**Symptom:** on a freshly created disposable database, `/pos/ui` shows Odoo's generic
+"Oops! Something went wrong" dialog over the loading screen. It happens with **zero** KO
+modules installed too (verified with pure `point_of_sale` on 2026-08-27).
+
+**Cause:** environment noise of a bare database (no localization data/setup that stock
+POS expects), not a KO defect.
+
+**Fix for QA:** close the dialog — the register screen behind it works normally. Do not
+burn time bisecting KO addons for this one; bisect only if the dialog appears with a
+traceback naming KO code.

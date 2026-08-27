@@ -425,3 +425,118 @@ class TestBeamBolt(TransactionCase):
 
         self.assertEqual(result['transactionType'], 'VOID')
         self.assertTrue(request.call_args.args[1].endswith('/transactions/re_void_test'))
+
+
+class TestBeamQr(TransactionCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.method = cls.env['pos.payment.method'].create({
+            'name': 'Beam QR Test',
+            'payment_method_type': 'terminal',
+            'use_payment_terminal': 'beam_qr',
+            'beam_merchant_id': 'merchant_test',
+            'beam_api_key': 'api_key_test',
+            'beam_test_mode': True,
+            'beam_expiry_sec': 120,
+            'beam_payment_method_type': 'QR_PROMPT_PAY',
+        })
+
+    @staticmethod
+    def _response(status_code, body=None):
+        response = Mock()
+        response.status_code = status_code
+        response.headers = {'x-request-id': 'req_test'}
+        response.text = '' if body is None else 'json'
+        response.json.return_value = body
+        return response
+
+    def test_qr_method_rejects_non_qr_type(self):
+        with self.assertRaises(ValidationError):
+            self.method.beam_payment_method_type = 'CARD'
+
+    @patch(REQUESTS_TARGET)
+    def test_create_charge_returns_qr(self, request):
+        request.return_value = self._response(201, {
+            'chargeId': 'ch_qr_test',
+            'status': 'PENDING',
+            'actionRequired': 'ENCODED_IMAGE',
+            'encodedImage': {
+                'imageBase64Encoded': 'UUFCQw==',
+                'expiry': '2026-08-27T12:00:00Z',
+                'rawData': '000201...',
+            },
+        })
+
+        result = self.method.beam_qr_create_charge({
+            'amount_thb': 100.50,
+            'reference_id': 'KO-test-ref',
+            'idempotency_key': 'qr-idem-1',
+        })
+
+        self.assertEqual(result['charge_id'], 'ch_qr_test')
+        self.assertEqual(result['qr_image_base64'], 'UUFCQw==')
+        self.assertEqual(result['qr_expiry'], '2026-08-27T12:00:00Z')
+
+        args, kwargs = request.call_args
+        self.assertEqual(args[0], 'POST')
+        self.assertTrue(args[1].endswith('/api/v1/charges'))
+        payload = kwargs['json']
+        self.assertEqual(payload['amount'], 10050)
+        self.assertEqual(payload['currency'], 'THB')
+        self.assertEqual(payload['referenceId'], 'KO-test-ref')
+        self.assertTrue(payload['returnUrl'])
+        self.assertEqual(
+            payload['paymentMethod']['paymentMethodType'], 'QR_PROMPT_PAY')
+        self.assertIn('expiryTime', payload['paymentMethod']['qrPromptPay'])
+        self.assertEqual(
+            kwargs['headers']['x-beam-idempotency-key'], 'qr-idem-1')
+
+    @patch(REQUESTS_TARGET)
+    def test_create_charge_without_qr_image_reports_charge_id(self, request):
+        request.return_value = self._response(201, {
+            'chargeId': 'ch_qr_no_image',
+            'status': 'PENDING',
+            'actionRequired': 'NONE',
+        })
+
+        result = self.method.beam_qr_create_charge({
+            'amount_thb': 50,
+            'reference_id': 'KO-test-ref-2',
+            'idempotency_key': 'qr-idem-2',
+        })
+
+        self.assertIn('error', result)
+        self.assertEqual(result['charge_id'], 'ch_qr_no_image')
+
+    @patch(REQUESTS_TARGET)
+    def test_get_charge_polls_status(self, request):
+        request.return_value = self._response(200, {
+            'chargeId': 'ch_qr_test',
+            'status': 'SUCCEEDED',
+        })
+
+        result = self.method.beam_qr_get_charge({'charge_id': 'ch_qr_test'})
+
+        self.assertEqual(result['status'], 'SUCCEEDED')
+        args, _kwargs = request.call_args
+        self.assertEqual(args[0], 'GET')
+        self.assertTrue(args[1].endswith('/api/v1/charges/ch_qr_test'))
+
+    def test_create_charge_wrong_terminal(self):
+        bolt_method = self.env['pos.payment.method'].create({
+            'name': 'Beam Bolt Not QR',
+            'payment_method_type': 'terminal',
+            'use_payment_terminal': 'beam_bolt',
+            'beam_merchant_id': 'merchant_test',
+            'beam_api_key': 'api_key_test',
+            'beam_test_mode': True,
+        })
+        result = bolt_method.beam_qr_create_charge({'amount_thb': 10})
+        self.assertIn('error', result)
+
+    def test_create_charge_rejects_bad_amount(self):
+        for bad_amount in (0, -5, 'abc', None):
+            result = self.method.beam_qr_create_charge({'amount_thb': bad_amount})
+            self.assertIn('error', result)

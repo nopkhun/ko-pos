@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_config_form_cds" model="ir.ui.view">
+        <field name="name">pos.config.form.ko.cds</field>
+        <field name="model">pos.config</field>
+        <field name="inherit_id" ref="point_of_sale.pos_config_view_form"/>
+        <field name="arch" type="xml">
+            <setting id="other_devices" position="before">
+                <setting string="โฆษณาบนจอลูกค้า (KO)"
+                         help="จอลูกค้าว่างนานเกินเวลาที่ตั้ง จะเล่นภาพ/วิดีโอโฆษณาวนอัตโนมัติ">
+                    <div class="mt-2">
+                        <span>เริ่มเล่นโฆษณาหลังจอว่าง</span>
+                        <field name="ko_cds_idle_seconds" class="w-25 ms-2"/>
+                        <span class="ms-2">วินาที</span>
+                    </div>
+                    <div class="mt-2">
+                        <span>ภาพนิ่งแสดงภาพละ</span>
+                        <field name="ko_cds_image_seconds" class="w-25 ms-2"/>
+                        <span class="ms-2">วินาที</span>
+                    </div>
+                    <div class="mt-2 text-muted">
+                        จัดการไฟล์สื่อได้ที่เมนู ตั้งค่า → สื่อโฆษณาจอลูกค้า
+                        (เปลี่ยนสื่อแล้วให้รีเฟรชจอลูกค้าหนึ่งครั้ง)
+                    </div>
+                </setting>
+            </setting>
+        </field>
+    </record>
+
+    <record id="view_cds_media_list" model="ir.ui.view">
+        <field name="name">ko.cds.media.list</field>
+        <field name="model">ko.cds.media</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="config_id" options="{'no_create': True}"/>
+                <field name="media_file" widget="binary" filename="media_filename"/>
+                <field name="media_filename" column_invisible="True"/>
+                <field name="name"/>
+                <field name="media_type"/>
+                <field name="duration_seconds" optional="show"/>
+                <field name="active" widget="boolean_toggle"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_cds_media_form" model="ir.ui.view">
+        <field name="name">ko.cds.media.form</field>
+        <field name="model">ko.cds.media</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="config_id" options="{'no_create': True}"/>
+                            <field name="media_file" widget="binary" filename="media_filename"/>
+                            <field name="media_filename" invisible="1"/>
+                            <field name="name"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="media_type"/>
+                            <field name="mimetype"/>
+                            <field name="duration_seconds"
+                                   invisible="media_type == 'video'"/>
+                            <field name="sequence"/>
+                        </group>
+                    </group>
+                    <div class="text-muted">
+                        ภาพ: JPG / PNG / WebP / GIF — วิดีโอ: MP4 (H.264) / WebM ไม่เกิน 50 MB
+                        แนะนำ 1080p แนวเดียวกับจอที่ตั้งไว้ วิดีโอเล่นแบบไม่มีเสียงเสมอ
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_cds_media" model="ir.actions.act_window">
+        <field name="name">สื่อโฆษณาจอลูกค้า</field>
+        <field name="res_model">ko.cds.media</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีสื่อโฆษณา</p>
+            <p>อัปโหลดภาพหรือวิดีโอ แล้วจอลูกค้าจะเล่นวนอัตโนมัติเมื่อไม่มีออเดอร์</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_cds_media"
+              name="สื่อโฆษณาจอลูกค้า"
+              parent="point_of_sale.menu_point_config_product"
+              action="action_cds_media"
+              sequence="65"/>
+</odoo>

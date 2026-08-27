@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KO Restaurant - Beam Bolt+ Payment Terminal',
-    'version': '19.0.4.0.0',
+    'version': '19.0.5.0.0',
     'category': 'Sales/Point of Sale',
     'summary': 'เชื่อม POS กับเครื่องชำระเงิน Beam Bolt+ (Pairing Mode)',
     'description': """
@@ -17,6 +17,8 @@ Beam Bolt+ payment terminal integration for Odoo POS
 - ใช้ idempotency key ป้องกันการสร้างรายการซ้ำเมื่อเครือข่ายสะดุด
 - Void บัตรวันเดียวกันก่อน 19:30 น. ผ่าน Beam และส่งรายการหลังเวลาไป Lighthouse
 - รองรับ Playground (sandbox) ของ Beam สำหรับทดสอบ
+- Beam QR (จอลูกค้า): สร้าง QR พร้อมเพย์ผ่าน Charges API แสดงบนจอลูกค้า
+  ไม่ต้องมีเครื่อง Bolt — poll สถานะจนสำเร็จ/ล้มเหลว/หมดอายุ พร้อม idempotency key
 
 การตั้งค่า: Point of Sale > Configuration > Payment Methods
 สร้างวิธีชำระเงินหลัก เลือก "ใช้เครื่องชำระเงิน" = Beam Bolt+

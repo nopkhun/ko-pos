@@ -12,12 +12,17 @@
                        options="{'no_create': True, 'no_open': True}"
                        placeholder="เว้นว่างเพื่อ Pair เครื่องใหม่ หรือเลือกช่องทางที่ Pair ไว้แล้ว"/>
                 <field name="beam_merchant_id"
-                       invisible="use_payment_terminal != 'beam_bolt' or beam_connection_source_id"
-                       required="use_payment_terminal == 'beam_bolt' and not beam_connection_source_id"/>
+                       invisible="use_payment_terminal not in ('beam_bolt', 'beam_qr') or beam_connection_source_id"
+                       required="use_payment_terminal in ('beam_bolt', 'beam_qr') and not beam_connection_source_id"/>
                 <field name="beam_api_key"
-                       invisible="use_payment_terminal != 'beam_bolt' or beam_connection_source_id"
-                       required="use_payment_terminal == 'beam_bolt' and not beam_connection_source_id"
+                       invisible="use_payment_terminal not in ('beam_bolt', 'beam_qr') or beam_connection_source_id"
+                       required="use_payment_terminal in ('beam_bolt', 'beam_qr') and not beam_connection_source_id"
                        password="True"/>
+                <div class="text-muted" invisible="use_payment_terminal != 'beam_qr'">
+                    Beam QR (จอลูกค้า): สร้าง QR พร้อมเพย์ผ่าน Beam Charges API แล้วแสดงบนจอลูกค้า
+                    ให้ลูกค้าสแกนจ่ายได้ทั้งแอปธนาคารและ e-wallet — ใช้ Merchant ID / API Key
+                    ชุดเดียวกับเครื่อง Bolt+ ได้ ไม่ต้อง Pair เครื่อง
+                </div>
                 <field name="beam_pairing_code"
                        invisible="use_payment_terminal != 'beam_bolt' or beam_connection_source_id or beam_effective_bolt_connection_id"
                        placeholder="กรอกรหัสที่แสดงบน Beam Bolt"/>
@@ -34,8 +39,8 @@
                 <field name="beam_payment_method_type" invisible="use_payment_terminal != 'beam_bolt'"/>
                 <field name="beam_installment_period" invisible="use_payment_terminal != 'beam_bolt' or beam_payment_method_type != 'CARD_INSTALLMENTS'" required="use_payment_terminal == 'beam_bolt' and beam_payment_method_type == 'CARD_INSTALLMENTS'"/>
                 <field name="beam_installment_issuer_group" invisible="use_payment_terminal != 'beam_bolt' or beam_payment_method_type != 'CARD_INSTALLMENTS'" required="use_payment_terminal == 'beam_bolt' and beam_payment_method_type == 'CARD_INSTALLMENTS'"/>
-                <field name="beam_expiry_sec" invisible="use_payment_terminal != 'beam_bolt'"/>
-                <field name="beam_test_mode" invisible="use_payment_terminal != 'beam_bolt' or beam_connection_source_id"/>
+                <field name="beam_expiry_sec" invisible="use_payment_terminal not in ('beam_bolt', 'beam_qr')"/>
+                <field name="beam_test_mode" invisible="use_payment_terminal not in ('beam_bolt', 'beam_qr') or beam_connection_source_id"/>
                 <div class="oe_button_box" name="beam_bolt_actions" invisible="use_payment_terminal != 'beam_bolt'">
                     <button name="action_beam_pair" type="object" string="เชื่อมต่อเครื่อง" class="btn-primary"
                             invisible="beam_connection_source_id or beam_effective_bolt_connection_id" groups="point_of_sale.group_pos_manager"/>

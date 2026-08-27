@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="ko_pos_customer_display.CustomerDisplay">
+        <div class="ko-cds">
+            <header class="ko-cds__header">
+                <div class="ko-cds__brand">
+                    <img class="ko-cds__logo" t-attf-src="/logo?company={{ session.company_id }}" alt=""/>
+                    <span class="ko-cds__shop" t-esc="koCds.shop_name"/>
+                </div>
+                <div class="ko-cds__where">
+                    <span t-if="order.koTable" class="ko-cds__chip">โต๊ะ <t t-esc="order.koTable"/></span>
+                    <span t-elif="order.koTracking" class="ko-cds__chip">คิว <t t-esc="order.koTracking"/></span>
+                    <span t-if="order.koCustomer" class="ko-cds__chip ko-cds__chip--name" t-esc="order.koCustomer"/>
+                </div>
+            </header>
+
+            <t t-set="hasLines" t-value="order.lines and order.lines.length > 0"/>
+
+            <main class="ko-cds__body">
+                <t t-if="hasLines and !order.finalized">
+                    <div class="ko-cds__lines" t-ref="scrollable">
+                        <div t-foreach="order.lines" t-as="line" t-key="line_index"
+                             class="orderline ko-cds__line"
+                             t-att-class="{ 'selected': line.isSelected, 'ko-cds__line--combo': line.comboParent }">
+                            <div class="ko-cds__qty" t-esc="line.qty"/>
+                            <div class="ko-cds__line-main">
+                                <div class="ko-cds__line-name" t-esc="line.productName"/>
+                                <div class="ko-cds__line-sub">
+                                    <t t-esc="line.qty"/> × <t t-esc="line.unitPrice"/>
+                                    <t t-if="line.discount and line.discount !== '0'">
+                                        · ลด <t t-esc="line.discount"/>% (จาก <t t-esc="line.price_without_discount"/>)
+                                    </t>
+                                </div>
+                                <div t-if="line.customerNote" class="ko-cds__note" t-esc="line.customerNote"/>
+                            </div>
+                            <div class="ko-cds__line-price" t-esc="line.price"/>
+                        </div>
+                        <div t-if="order.general_customer_note"
+                             class="ko-cds__note ko-cds__note--order" t-esc="order.general_customer_note"/>
+                    </div>
+                </t>
+                <div t-elif="order.finalized" class="ko-cds__center">
+                    <div class="ko-cds__thanks">ขอบคุณที่ใช้บริการ</div>
+                    <div t-if="order.change" class="ko-cds__change">
+                        <span>เงินทอน</span>
+                        <span class="ko-cds__change-amount" t-esc="order.change"/>
+                    </div>
+                </div>
+                <div t-else="" class="ko-cds__center">
+                    <img class="ko-cds__welcome-logo" t-attf-src="/logo?company={{ session.company_id }}" alt=""/>
+                    <div class="ko-cds__welcome" t-esc="koCds.shop_name"/>
+                    <div class="ko-cds__welcome-sub">ยินดีต้อนรับ</div>
+                </div>
+            </main>
+
+            <footer t-if="order.amount and !order.finalized" class="ko-cds__totals">
+                <div t-if="order.subtotal" class="ko-cds__trow ko-cds__trow--muted">
+                    <span>ยอดก่อนภาษี</span><span t-esc="order.subtotal"/>
+                </div>
+                <div t-if="order.amountTaxes" class="ko-cds__trow ko-cds__trow--muted">
+                    <span>ภาษี</span><span t-esc="order.amountTaxes"/>
+                </div>
+                <div class="ko-cds__trow ko-cds__trow--total">
+                    <span>ยอดรวม</span><span t-esc="order.amount"/>
+                </div>
+                <div t-foreach="order.paymentLines or []" t-as="pl" t-key="pl_index"
+                     class="ko-cds__trow ko-cds__trow--pay">
+                    <span t-esc="pl.name"/><span t-esc="pl.amount"/>
+                </div>
+                <div t-if="order.change" class="ko-cds__trow ko-cds__trow--change">
+                    <span>เงินทอน</span><span t-esc="order.change"/>
+                </div>
+            </footer>
+
+            <KoCdsAds t-if="koState.showAds"
+                      playlist="koCds.playlist"
+                      imageSeconds="koCds.image_seconds"/>
+        </div>
+        <MainComponentsContainer/>
+    </t>
+
+    <t t-name="ko_pos_customer_display.KoCdsAds">
+        <div class="ko-cds-ads" t-ref="root">
+            <t t-if="current">
+                <img t-if="current.type === 'image'" t-key="'img-' + state.idx"
+                     class="ko-cds-ads__media" t-att-src="current.url" alt=""/>
+                <video t-else="" t-key="'vid-' + state.idx"
+                       class="ko-cds-ads__media" t-att-src="current.url"
+                       autoplay="autoplay" muted="muted" playsinline="playsinline" preload="auto"/>
+            </t>
+        </div>
+    </t>
+
+    <t t-name="ko_pos_customer_display.CustomerFacingQR">
+        <Dialog size="'lg'" footer="false" header="false" bodyClass="'ko-cds-qr-body'">
+            <div class="ko-cds-qr">
+                <div class="ko-cds-qr__title" t-esc="title"/>
+                <img class="ko-cds-qr__img" t-att-src="props.qrCode" alt="QR Code"/>
+                <div class="ko-cds-qr__amount">
+                    <span>ยอดชำระ</span>
+                    <span class="ko-cds-qr__amount-value" t-esc="props.amount"/>
+                </div>
+                <div t-if="koQr.remaining" class="ko-cds-qr__expiry">
+                    QR หมดอายุใน <t t-esc="koQr.remaining"/> นาที
+                </div>
+            </div>
+        </Dialog>
+    </t>
+
+</templates>
