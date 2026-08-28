@@ -943,8 +943,22 @@ Working and confirmed against the live system:
     KO defect (confirmed by control installs of pure `point_of_sale`).
   - **Not verified:** a real (playable) advertisement video end-to-end (no ffmpeg on the
     QA machine — the error-skip path was verified instead); a live Beam Playground /
-    production charge (needs the shop's real credentials and coordination with the owner);
-    production deploy checks.
+    production charge (needs the shop's real credentials and coordination with the owner).
+  - **Deployed to production by action `111694845` (2026-08-28 10:00 UTC), commit
+    `44ea91b`.** The addons-init log shows all four version checks
+    (`DEPLOYED_ko_pos_customer_display: '19.0.1.0.0'`, Beam `19.0.5.0.0`,
+    UI `19.0.7.1.0`, KDS `19.0.8.0.0`) plus `KDS_SECURITY_PRESENT=yes` and
+    `mcp_server 19.0.2.0.0`; both init services exited 0 (`PYDEPS_IMPORT_OK 1.6.12`);
+    odoo-upgrade installed `ko_pos_customer_display` as module 90/90 with no traceback
+    (the two `<string>: (ERROR/3)` lines are cosmetic rst lint of the manifest
+    description, also present in QA); Thai overrides remained exactly **57 files**;
+    `MASTER_PW_LINES=1`; Odoo serving on 8069. Live checks: the customer display page of
+    both shops (`/pos_customer_display/2/…` ร้านชอบแกง and `/pos_customer_display/3/…`
+    ร้านหวานอยู่) renders the KO Thai welcome layout with **zero console errors**, and
+    `pos.config` on production carries `ko_cds_idle_seconds=15` /
+    `ko_cds_image_seconds=8` for both shops. **Every till/display that was already open
+    needs one hard refresh.** No order was keyed, no payment made, no ad media uploaded,
+    and no Beam QR method created in production.
 
 ---
 
