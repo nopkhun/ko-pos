@@ -1361,3 +1361,47 @@ POS expects), not a KO defect.
 **Fix for QA:** close the dialog — the register screen behind it works normally. Do not
 burn time bisecting KO addons for this one; bisect only if the dialog appears with a
 traceback naming KO code.
+
+---
+
+### The customer display keeps the previous bill on screen after staff leave the order screen
+
+**Symptom:** cashier taps **Tables** (or **Orders**) and walks away, but the second screen
+still shows that bill's line items — welcome screen and ads never come back. Reported
+from the shop on 2026-08-28.
+
+**Cause:** Odoo pushes data to the customer display from exactly one place — an `effect`
+in `Chrome.setup` (`point_of_sale/static/src/app/pos_app.js`) that fires when
+`pos.selectedOrder` changes. `pos.navigate()` **never clears `selectedOrderUuid`**: going
+to FloorScreen or TicketScreen leaves the same order selected, so nothing changes,
+nothing is dispatched, and the display renders its last payload forever. Ad playback is
+suppressed too, because the payload still has lines.
+
+**Fix (`ko_pos_customer_display` ≥ 19.0.1.1.0):** patch `Chrome` to also watch
+`pos.router.state.current` and dispatch an idle payload whenever the current page is not
+one of the order-facing screens (allowlist in `static/src/pos/ko_cds_adapter_patch.js`).
+
+**Second trap inside the fix:** the display's data service does
+`Object.assign(data, payload)` — it **merges**, it does not replace. Posting `{}` or a
+partial payload does nothing; stale keys survive. So the idle payload is a `koIdle: true`
+flag that the KO template honours (plus an explicit `qrPaymentData: false`, otherwise a
+Beam QR dialog stays open on the display). Do not try to "clear" the display by listing
+every field — Odoo adds fields between versions and the list rots.
+
+---
+
+### Odoo QA container writes attachments to the wrong filestore when you mount your own odoo.conf
+
+**Symptom:** on a disposable QA stack, an uploaded attachment (e.g. `ko.cds.media`) is in
+the database but the route serving it 500s with
+`FileNotFoundError: /var/lib/odoo/filestore/<db>/<xx>/<checksum>`.
+
+**Cause:** the `odoo:19` image ships `/etc/odoo/odoo.conf` containing `data_dir =
+/var/lib/odoo`. Bind-mounting your own config over that path **replaces** it, so
+`data_dir` falls back to `~/.local/share/Odoo` and the file lands in
+`/var/lib/odoo/.local/share/Odoo/filestore/...` while the server reads
+`/var/lib/odoo/filestore/...`.
+
+**Fix:** always include `data_dir = /var/lib/odoo` in any odoo.conf you mount into the
+image, and keep `/var/lib/odoo` on a named volume shared by every container that touches
+that database.

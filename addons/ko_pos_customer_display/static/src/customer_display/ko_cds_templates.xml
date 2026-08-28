@@ -3,19 +3,22 @@
 
     <t t-name="ko_pos_customer_display.CustomerDisplay">
         <div class="ko-cds">
+            <!-- koIdle = พนักงานไม่ได้อยู่หน้าออเดอร์แล้ว: รายการเดิมยังค้างอยู่ใน data
+                 (จอ merge ข้อมูลใหม่ทับ ไม่ได้แทนทั้งก้อน) แต่ต้องไม่แสดงให้ลูกค้าเห็น -->
+            <t t-set="koIdle" t-value="order.koIdle"/>
             <header class="ko-cds__header">
                 <div class="ko-cds__brand">
                     <img class="ko-cds__logo" t-attf-src="/logo?company={{ session.company_id }}" alt=""/>
                     <span class="ko-cds__shop" t-esc="koCds.shop_name"/>
                 </div>
-                <div class="ko-cds__where">
+                <div t-if="!koIdle" class="ko-cds__where">
                     <span t-if="order.koTable" class="ko-cds__chip">โต๊ะ <t t-esc="order.koTable"/></span>
                     <span t-elif="order.koTracking" class="ko-cds__chip">คิว <t t-esc="order.koTracking"/></span>
                     <span t-if="order.koCustomer" class="ko-cds__chip ko-cds__chip--name" t-esc="order.koCustomer"/>
                 </div>
             </header>
 
-            <t t-set="hasLines" t-value="order.lines and order.lines.length > 0"/>
+            <t t-set="hasLines" t-value="!koIdle and order.lines and order.lines.length > 0"/>
 
             <main class="ko-cds__body">
                 <t t-if="hasLines and !order.finalized">
@@ -40,7 +43,7 @@
                              class="ko-cds__note ko-cds__note--order" t-esc="order.general_customer_note"/>
                     </div>
                 </t>
-                <div t-elif="order.finalized" class="ko-cds__center">
+                <div t-elif="!koIdle and order.finalized" class="ko-cds__center">
                     <div class="ko-cds__thanks">ขอบคุณที่ใช้บริการ</div>
                     <div t-if="order.change" class="ko-cds__change">
                         <span>เงินทอน</span>
@@ -54,7 +57,7 @@
                 </div>
             </main>
 
-            <footer t-if="order.amount and !order.finalized" class="ko-cds__totals">
+            <footer t-if="!koIdle and order.amount and !order.finalized" class="ko-cds__totals">
                 <div t-if="order.subtotal" class="ko-cds__trow ko-cds__trow--muted">
                     <span>ยอดก่อนภาษี</span><span t-esc="order.subtotal"/>
                 </div>

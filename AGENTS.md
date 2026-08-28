@@ -960,6 +960,45 @@ Working and confirmed against the live system:
     needs one hard refresh.** No order was keyed, no payment made, no ad media uploaded,
     and no Beam QR method created in production.
 
+- **Customer display: stale-order freeze fixed + ad size guidance (2026-08-29, built and
+  QA-verified, NOT yet deployed).** `ko_pos_customer_display` **19.0.1.1.0**, from the
+  owner's shop test on 2026-08-28 ("จอที่ 2 ค้างที่หน้ารายการเมื่อออกจากหน้าออเดอร์ /
+  ไปหน้าโต๊ะ").
+  - **Root cause (now in `docs/GOTCHAS.md`):** Odoo dispatches to the customer display
+    from exactly one `effect` in `Chrome.setup` (`point_of_sale/.../app/pos_app.js`) that
+    fires on `pos.selectedOrder` change, and `pos.navigate()` never clears
+    `selectedOrderUuid`. Going to FloorScreen/TicketScreen changes nothing, so the
+    display keeps rendering the last payload and ads never resume.
+  - **Fix:** `static/src/pos/ko_cds_adapter_patch.js` now also patches `Chrome` — an
+    `effect` on `pos.router.state.current` plus a gate in `sendOrderToCustomerDisplay`.
+    Order-facing **allowlist**: `ProductScreen, PaymentScreen, ReceiptScreen,
+    FeedbackScreen, SplitBillScreen, TipScreen`; everything else (โต๊ะ, รายการบิล, login,
+    พักจอ, ActionScreen) dispatches an idle payload. Allowlist on purpose — an unknown
+    future screen must fall back to "idle", never to "keep the last bill".
+  - **Idle payload is `{koIdle: true, qrPaymentData: false}` only.** The display's data
+    service does `Object.assign(data, payload)` — it merges, so a partial payload cannot
+    clear anything; the KO template hides lines/chips/totals on `koIdle` instead, and
+    `qrPaymentData` is cleared explicitly so a Beam QR dialog cannot stay open. Repeated
+    idle dispatches are de-duplicated (`_koDisplayIdle`) so walking between โต๊ะ and
+    รายการบิล does not spam `update_customer_display` RPCs.
+  - **Ad content sizes now stated in the UI** (item 2 of the same report): the POS
+    settings block, the `ko.cds.media` form, the `media_file` tooltip, and the media
+    list's empty state all say **1920 × 1080 (16:9)** landscape / **1080 × 1920 (9:16)**
+    portrait, must match the real screen's aspect ratio (`object-fit: contain` → black
+    bars, no crop), ~5% safe margin, images ≤ 2 MB, video MP4 H.264/WebM 1080p 24–30 fps
+    10–30 s ≤ 50 MB, always muted. Full copy in `docs/RUNBOOK-customer-display.md` §2.
+  - **Verified on a disposable Odoo 19 + Postgres 17 stack (image f99ffac9, demo data,
+    POS "Restaurant" with floors):** module tests **0 failed, 0 error(s)** (12 tests);
+    live two-tab check with a real POS session — ProductScreen = 2 lines on the display /
+    no ads; tap **Tables** → 0 lines + ยินดีต้อนรับ within 1 s → ads playing after the
+    configured idle (3 s in QA, real ad image served 200 `image/png`); back into the
+    table → lines restored within 1 s; **Orders** (TicketScreen) → welcome; PaymentScreen
+    → order still shown. Settings copy confirmed rendering in both the pos.config form
+    and the media form. The only console errors were the QA stack's service-worker
+    registration and `ko_pos_ui` font 404s (that addon is not installed in QA).
+  - **Not verified:** anything on production (not deployed), a real ad *video* file, and
+    Beam QR on the display across the idle transition (no Beam credentials in QA).
+
 ---
 
 ## 9. Outstanding work
@@ -993,7 +1032,12 @@ Working and confirmed against the live system:
 7. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close. `docs/RUNBOOK-kds.md` is written to be read straight to staff.
 8. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
-9. **Customer display follow-ups:** (a) verify a real advertisement video (MP4 H.264)
+9. **Deploy `ko_pos_customer_display` 19.0.1.1.0** (stale-order freeze fix + ad size
+   guidance, §8). Built and QA-verified 2026-08-29, **not deployed** — needs the owner's
+   go-ahead. The Compose already carries `-u ko_pos_customer_display`, so no Compose
+   change; after deploying, hard-refresh **every** till and display, then re-run the shop
+   test: order on a table → กลับหน้าโต๊ะ → จอต้องกลับ ยินดีต้อนรับ แล้วเข้าโฆษณา.
+10. **Customer display follow-ups:** (a) verify a real advertisement video (MP4 H.264)
    plays and advances on the live display — the broken-file skip path is verified but a
    playable file was not; (b) create the `Beam QR (จอลูกค้า)` payment method in
    production, first with **Playground** on, and run one supervised small charge → scan →

@@ -32,12 +32,18 @@ patch(CustomerDisplay.prototype, {
                 this.order.lines?.length,
                 this.order.finalized,
                 this.order.qrPaymentData,
+                this.order.koIdle,
             ]
         );
     },
 
     _koOrderIsActive() {
         const order = this.order;
+        // พนักงานออกจากหน้าออเดอร์ไปแล้ว (หน้าโต๊ะ / รายการบิล) — ฝั่ง POS ส่งธงนี้มา
+        // รายการเดิมยังค้างอยู่ใน data เพราะจอ merge ข้อมูลใหม่ทับ ไม่ได้แทนทั้งก้อน
+        if (order?.koIdle) {
+            return false;
+        }
         if (order?.qrPaymentData) {
             return true;
         }

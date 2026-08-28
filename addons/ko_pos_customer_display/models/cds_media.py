@@ -29,7 +29,10 @@ class KoCdsMedia(models.Model):
         related='config_id.company_id', store=True, index=True)
     media_file = fields.Binary(
         string='ไฟล์สื่อ', attachment=True, required=True,
-        help='ภาพนิ่ง (JPG/PNG/WebP/GIF) หรือวิดีโอ (MP4/WebM ไม่เกิน 50 MB) '
+        help='ภาพนิ่ง (JPG/PNG/WebP/GIF) หรือวิดีโอ (MP4 H.264/WebM ไม่เกิน 50 MB)\n'
+             'ขนาดที่แนะนำ: จอแนวนอน/TV 1920 × 1080 px (16:9), '
+             'จอแนวตั้ง/แท็บเล็ต 1080 × 1920 px (9:16)\n'
+             'อัตราส่วนต้องตรงกับจอลูกค้าจริง ไม่งั้นสื่อจะถูกย่อให้พอดีจอและเหลือขอบดำ\n'
              'วิดีโอจะเล่นแบบไม่มีเสียงเสมอ — browser ไม่อนุญาตให้เล่นเสียงอัตโนมัติ')
     media_filename = fields.Char(string='ชื่อไฟล์')
     mimetype = fields.Char(
