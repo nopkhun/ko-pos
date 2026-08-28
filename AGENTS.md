@@ -8,7 +8,7 @@
 > https://kodoo.viakuma.com — ใช้งานจริงแล้ว มี addon ของเราเอง 6 ตัว และระบบคำแปลไทย
 > "ฉบับร้านอาหาร" ที่เขียนเอง อ่านหัวข้อ *Do not break these* ก่อนแก้อะไรทั้งสิ้น
 
-- **Last verified:** 2026-08-27 (external refund save hotfix and Production deploy)
+- **Last verified:** 2026-08-29 (customer display 19.0.1.1.0 deploy — action 111784152)
 - **Status:** LIVE in production. A real restaurant will use this.
 - **Owner:** Nop (Thai speaker — user-facing strings and all UI copy must be natural Thai)
 
@@ -270,7 +270,7 @@ means containers started. Verify the translation count line from §5 and check t
 
 ---
 
-## 8. Current state (verified 2026-08-27)
+## 8. Current state (verified 2026-08-29)
 
 Working and confirmed against the live system:
 
@@ -960,10 +960,9 @@ Working and confirmed against the live system:
     needs one hard refresh.** No order was keyed, no payment made, no ad media uploaded,
     and no Beam QR method created in production.
 
-- **Customer display: stale-order freeze fixed + ad size guidance (2026-08-29, built and
-  QA-verified, NOT yet deployed).** `ko_pos_customer_display` **19.0.1.1.0**, from the
-  owner's shop test on 2026-08-28 ("จอที่ 2 ค้างที่หน้ารายการเมื่อออกจากหน้าออเดอร์ /
-  ไปหน้าโต๊ะ").
+- **Customer display: stale-order freeze fixed + ad size guidance — DEPLOYED
+  2026-08-29.** `ko_pos_customer_display` **19.0.1.1.0**, from the owner's shop test on
+  2026-08-28 ("จอที่ 2 ค้างที่หน้ารายการเมื่อออกจากหน้าออเดอร์ / ไปหน้าโต๊ะ").
   - **Root cause (now in `docs/GOTCHAS.md`):** Odoo dispatches to the customer display
     from exactly one `effect` in `Chrome.setup` (`point_of_sale/.../app/pos_app.js`) that
     fires on `pos.selectedOrder` change, and `pos.navigate()` never clears
@@ -996,8 +995,34 @@ Working and confirmed against the live system:
     → order still shown. Settings copy confirmed rendering in both the pos.config form
     and the media form. The only console errors were the QA stack's service-worker
     registration and `ko_pos_ui` font 404s (that addon is not installed in QA).
-  - **Not verified:** anything on production (not deployed), a real ad *video* file, and
-    Beam QR on the display across the idle transition (no Beam credentials in QA).
+  - **Deployed to production by action `111784152` (2026-08-28 17:38 UTC), commit
+    `23a6964`.** addons-init logged `DEPLOYED_ko_pos_customer_display: '19.0.1.1.0'`
+    (Beam `19.0.5.0.0`, UI `19.0.7.1.0`, KDS `19.0.8.0.0`, `KDS_SECURITY_PRESENT=yes`,
+    `mcp_server 19.0.2.0.0`); both init services exited 0 (`PYDEPS_IMPORT_OK 1.6.12`);
+    odoo-upgrade loaded `ko_pos_customer_display` as module **75/90** including
+    `views/cds_views.xml`, Thai overrides stayed at **57 files**, `Modules loaded.` and a
+    clean shutdown; the runtime `odoo` service reports `MASTER_PW_LINES=1`, 90 modules,
+    HTTP on 8069. No `variable is not set`, no traceback. The `<string>:4 (ERROR/3)
+    Unexpected indentation` + `:5 (WARNING/2)` pair is the same cosmetic rst lint of the
+    manifest description seen on every deploy of this addon.
+  - **Live production checks (read-only, admin session, logged out afterwards):**
+    `ir.module.module` reports `ko_pos_customer_display 19.0.1.1.0 installed`; the
+    `pos.config.form.ko.cds` view arch on production contains the new
+    "ขนาดที่แนะนำ" copy; both shops keep `ko_cds_idle_seconds=15` /
+    `ko_cds_image_seconds=8`; the customer display page of **both** shops
+    (`/pos_customer_display/2/…` ร้านชอบแกง, `/pos_customer_display/3/…` ร้านหวานอยู่)
+    renders the Thai welcome layout with **zero console errors**; the served bundles
+    carry the new code — `point_of_sale.customer_display_assets.min.js` contains
+    `koIdle`, and the current `point_of_sale.assets_prod.min.js` (`/web/assets/13554ab/`)
+    contains `koSendIdleToCustomerDisplay` + `koSyncCustomerDisplay`. (An *older*
+    `assets_prod` attachment `/web/assets/4e77596/` still lacks it — that is the
+    pre-upgrade bundle, which is exactly why every open till needs a hard refresh.)
+  - **Not verified:** no order was keyed and no live till was driven through the
+    order → โต๊ะ → welcome → ads cycle on production; a real ad *video* file; Beam QR on
+    the display across the idle transition (no Beam credentials in QA).
+  - **Every till and every customer display that was already open needs one hard
+    refresh** — until then they keep running the pre-upgrade bundle and will still show
+    the old freeze.
 
 ---
 
@@ -1032,11 +1057,11 @@ Working and confirmed against the live system:
 7. **Staff training:** POS at `/pos/ui`, kitchen display at `/kds`, and the end-of-day
    session close. `docs/RUNBOOK-kds.md` is written to be read straight to staff.
 8. **Optional:** drop the unused `ko_pos` and `kodoo` databases once confirmed.
-9. **Deploy `ko_pos_customer_display` 19.0.1.1.0** (stale-order freeze fix + ad size
-   guidance, §8). Built and QA-verified 2026-08-29, **not deployed** — needs the owner's
-   go-ahead. The Compose already carries `-u ko_pos_customer_display`, so no Compose
-   change; after deploying, hard-refresh **every** till and display, then re-run the shop
-   test: order on a table → กลับหน้าโต๊ะ → จอต้องกลับ ยินดีต้อนรับ แล้วเข้าโฆษณา.
+9. **Re-run the owner's shop test for the freeze fix.** 19.0.1.1.0 is deployed (§8) but
+   only verified read-only. On a real till: hard-refresh the POS **and** the customer
+   display, key an order on a table → กลับหน้าโต๊ะ → จอต้องกลับ ยินดีต้อนรับ ทันที
+   แล้วเข้าโฆษณาตามเวลา → กลับเข้าโต๊ะเดิม รายการต้องกลับมา. Do the same from
+   รายการบิล (Orders).
 10. **Customer display follow-ups:** (a) verify a real advertisement video (MP4 H.264)
    plays and advances on the live display — the broken-file skip path is verified but a
    playable file was not; (b) create the `Beam QR (จอลูกค้า)` payment method in
