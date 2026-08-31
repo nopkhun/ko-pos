@@ -1423,3 +1423,26 @@ around that await and the cancel button was both disabled by and guarded on the 
 **Fix (`ko_pos_ui` 19.0.7.2.0):** cancel uses its own `koState.cancelling` flag; never
 gate `koCancelTerminalPayment` on `requesting`. Covered by
 `addons/ko_pos_ui/tests/test_ko_payment_screen.mjs` (run in the Test Beam Bolt workflow).
+
+---
+
+### Odoo 19 silently ignores `_sql_constraints` — your unique index never exists
+
+**Symptom:** a model declares `_sql_constraints = [('x_unique', 'unique(x)', ...)]`,
+everything installs and tests pass, but duplicate rows can be inserted. The only trace
+is one WARNING in the upgrade log: `Model attribute '_sql_constraints' is no longer
+supported, please define models.Constraint on the model.`
+
+**Cause:** Odoo 19 replaced the list attribute with class-level `models.Constraint`
+declarations. The old attribute is not migrated — it is skipped with a warning that is
+easy to miss in a 300-line deploy log.
+
+**Fix:** declare it the way core does (see `point_of_sale/models/pos_payment.py`):
+
+```python
+_charge_id_unique = models.Constraint('unique (charge_id)', 'ข้อความ error')
+```
+
+Caught on the 2026-08-31 deploy of `ko.beam.qr.charge` (fixed in
+`ko_pos_beam_bolt` 19.0.6.0.1). When reading deploy logs, treat any `odoo.registry`
+WARNING as a real defect, not noise.

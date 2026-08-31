@@ -1084,6 +1084,25 @@ Working and confirmed against the live system:
     MCP), so set it in the backend form of method id 12 during the deploy window.
   - **Not verified:** live behaviour on a running till and the real cron cadence (no
     local Odoo stack this session; QR creation needs the shop's Beam credentials).
+  - **DEPLOYED to production 2026-08-31 (owner approved).** Two actions:
+    - Action `112217340` (08:08 UTC, commit `6627756`) landed the whole feature set.
+      Its upgrade log carried `WARNING … '_sql_constraints' is no longer supported` —
+      Odoo 19 silently skips that attribute, so the `charge_id` unique index was never
+      created (now in `docs/GOTCHAS.md`).
+    - Action `112217729` (08:11 UTC, commit `16bacf1`, `ko_pos_beam_bolt`
+      **19.0.6.0.1**) redeployed with `models.Constraint` (core style). Log clean: no
+      `_sql_constraints` warning, no `variable is not set`, version echoes
+      `beam_bolt 19.0.6.0.1` / `ui 19.0.7.3.0` / cds `19.0.1.1.0` / KDS `19.0.8.0.0` /
+      `mcp_server 19.0.2.0.0`, `KDS_SECURITY_PRESENT=yes`,
+      `PYDEPS_IMPORT_OK 1.6.12`; odoo-upgrade loaded
+      `ko_pos_beam_bolt` 74/90 including `security/ir.model.access.csv`,
+      `data/beam_qr_cron.xml`, `views/beam_qr_charge_views.xml`; Thai overrides
+      **57 files**; 90 modules; clean shutdown; runtime `odoo` serves on 8069 with
+      `MASTER_PW_LINES=1`.
+    - **Verified via logs only.** The Odoo MCP user cannot read `ir.module.module` /
+      `ir.cron` / `ko.beam.qr.charge` (model allowlist), and the agent cannot log in to
+      the backend, so live checks (QR on the till, cancel, ledger menu, cron firing)
+      remain §9 item 11 — plus every open till/display needs one hard refresh.
 
 ---
 
@@ -1132,15 +1151,16 @@ Working and confirmed against the live system:
    real ad media and set the idle/seconds values; (d) both production shops need one hard
    refresh on every till and display after the deploy. See
    `docs/RUNBOOK-customer-display.md`.
-11. **Deploy `ko_pos_ui` 19.0.7.3.0 + `ko_pos_beam_bolt` 19.0.6.0.0 (QR on the till,
-   working cancel, charge ledger, manual confirm) and verify live:** after the owner
-   approves the deploy, hard-refresh a till, select QR Promptpay on a small real order,
+11. **Live-verify the 2026-08-31 Beam QR deploy (deployed — see §8; only log-verified).**
+   On a real till after a hard refresh: select QR Promptpay on a small real order,
    confirm the QR image appears on the staff screen itself (not only the customer
    display), press ยกเลิก QR นี้ while waiting and confirm the POS frees the method
-   chooser, check the charge appears in **Beam QR — สมุดรายการ**, then complete the
-   bill by cash. §8 has what was and was not verified locally. During the same window:
+   chooser, check the charge appears in **Point of Sale → Beam QR — สมุดรายการ** with
+   the "ต้องตรวจสอบก่อนปิดรอบ" filter behaving, then complete the bill by cash. Every
+   open till and customer display needs one hard refresh first. During the same window:
    **set `beam_expiry_sec` = 90 on payment method id 12** (owner chose 90 s; MCP cannot
-   write `pos.payment.method`, do it in the backend form).
+   write `pos.payment.method`, do it in the backend form: ตั้งค่า → วิธีชำระเงิน →
+   QR Promptpay).
 
 > ✅ Completed 2026-08-25: **the production trial**. The owner operated the POS and the
 > kitchen board end to end on the real machines — one dish per station, ส่งครัว, ready,
