@@ -466,12 +466,26 @@
                     <!-- PromptPay Section -->
                     <div t-if="koIsPromptPay and !isRefundOrder" class="ko-pay-promptpay-section">
                         <div class="ko-qr-container">
-                            <div class="ko-qr-placeholder">
+                            <img t-if="koQrPaymentData"
+                                 class="ko-qr-image"
+                                 t-att-src="koQrPaymentData.qrCode"
+                                 alt="PromptPay QR"/>
+                            <div t-else="" class="ko-qr-placeholder">
                                 <i class="fa fa-qrcode" style="font-size: 80px; color: var(--ko-primary);"/>
                             </div>
                         </div>
                         <div class="ko-qr-title">ให้ลูกค้าสแกนจ่าย · Customer scans to pay</div>
-                        <div class="ko-qr-sub">พร้อมเพย์ร้าน KO POS</div>
+                        <div class="ko-qr-sub">
+                            <t t-if="koQrPaymentData">ไม่มีจอลูกค้า? หันหน้าจอนี้ให้ลูกค้าสแกนได้เลย</t>
+                            <t t-elif="koState.requesting">กำลังสร้าง QR พร้อมเพย์…</t>
+                            <t t-else="">พร้อมเพย์ร้าน KO POS</t>
+                        </div>
+                        <button t-if="koCanCancelTerminal"
+                                class="ko-qr-cancel-btn"
+                                t-att-disabled="koState.cancelling"
+                                t-on-click="koCancelTerminalPayment">
+                            ยกเลิก QR นี้ · เปลี่ยนช่องทางชำระเงิน
+                        </button>
                     </div>
 
                     <!-- Card Section -->
@@ -495,9 +509,10 @@
                                aria-hidden="true"/>
                             <span t-esc="koTerminalStatusText"/>
                         </div>
-                        <button t-if="koCanCancelTerminal"
+                        <!-- ส่วน PromptPay มีปุ่มยกเลิกใหญ่ของตัวเองใต้ QR — ไม่ต้องซ้ำตรงนี้ -->
+                        <button t-if="koCanCancelTerminal and !(koIsPromptPay and !isRefundOrder)"
                                 class="ko-terminal-cancel-btn"
-                                t-att-disabled="koState.requesting"
+                                t-att-disabled="koState.cancelling"
                                 t-on-click="koCancelTerminalPayment">
                             ยกเลิกรายการ · Cancel
                         </button>

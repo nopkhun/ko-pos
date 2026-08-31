@@ -93,6 +93,13 @@ While Bolt is waiting, the KO payment page must show the current terminal status
 cash, or another method. Odoo deliberately blocks switching while a terminal request may
 still charge the customer.
 
+For **QR Promptpay (`beam_qr`)** the staff screen renders the same scannable QR that the
+customer display shows (from `ko_pos_ui` 19.0.7.2.0) — a shop without a second screen
+turns the till toward the customer. The cancel button for that flow sits directly under
+the QR (**ยกเลิก QR นี้ · เปลี่ยนช่องทางชำระเงิน**) and works while the POS is waiting for
+the scan. Remember Beam has no cancel API for QR charges: after cancelling, the old QR
+stays scannable until it expires, and the POS warns staff accordingly.
+
 If the customer already cancelled in the Beam Bolt app, press the same Odoo Cancel button.
 Odoo re-reads the Bolt Intent; a final `BI_CANCELED`, `BI_EXPIRED`, or failed Charge releases
 Odoo's standard terminal lock. A successful or still-uncertain Beam result stays blocked so

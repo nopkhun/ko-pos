@@ -1405,3 +1405,21 @@ the database but the route serving it 500s with
 **Fix:** always include `data_dir = /var/lib/odoo` in any odoo.conf you mount into the
 image, and keep `/var/lib/odoo` on a named volume shared by every container that touches
 that database.
+
+---
+
+### The red Cancel button renders but never responds while a terminal payment is waiting
+
+**Symptom:** QR Promptpay (or Bolt) is waiting for the customer, the KO payment page shows
+the red cancel button, but tapping it does nothing — staff cannot switch the customer to
+cash without finishing or abandoning the bill.
+
+**Cause:** `PaymentScreen.sendPaymentRequest` awaits the terminal's **entire** payment
+lifecycle — for `beam_qr`/`beam_bolt` that Promise stays pending the whole time the
+customer has not scanned/tapped. `ko_payment_screen.js` set `koState.requesting = true`
+around that await and the cancel button was both disabled by and guarded on the same
+`requesting` flag, so it was inert exactly during the window it exists for.
+
+**Fix (`ko_pos_ui` 19.0.7.2.0):** cancel uses its own `koState.cancelling` flag; never
+gate `koCancelTerminalPayment` on `requesting`. Covered by
+`addons/ko_pos_ui/tests/test_ko_payment_screen.mjs` (run in the Test Beam Bolt workflow).

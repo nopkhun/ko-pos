@@ -9,6 +9,7 @@ on:
       - "addons/ko_pos_ui/static/src/app/ko_pos_ui.xml"
       - "addons/ko_pos_ui/static/src/app/ko_pos_ui.scss"
       - "addons/ko_pos_ui/__manifest__.py"
+      - "addons/ko_pos_ui/tests/**"
       - ".github/workflows/test-beam-bolt.yml"
   pull_request:
     paths:
@@ -18,6 +19,7 @@ on:
       - "addons/ko_pos_ui/static/src/app/ko_pos_ui.xml"
       - "addons/ko_pos_ui/static/src/app/ko_pos_ui.scss"
       - "addons/ko_pos_ui/__manifest__.py"
+      - "addons/ko_pos_ui/tests/**"
       - ".github/workflows/test-beam-bolt.yml"
 
 jobs:
@@ -50,6 +52,7 @@ jobs:
           node --check addons/ko_pos_customer_display/static/src/customer_display/ko_cds_ads.js
           node --check addons/ko_pos_customer_display/static/src/pos/ko_cds_adapter_patch.js
           node --experimental-vm-modules addons/ko_pos_beam_bolt/tests/test_payment_terminal_lifecycle.mjs
+          node --experimental-vm-modules addons/ko_pos_ui/tests/test_ko_payment_screen.mjs
           python3 -m compileall -q addons/ko_pos_beam_bolt addons/ko_pos_customer_display
           python3 - <<'PY'
           import ast
@@ -63,11 +66,11 @@ jobs:
           ui_manifest = ast.literal_eval(
               Path("addons/ko_pos_ui/__manifest__.py").read_text()
           )
-          assert ui_manifest["version"] == "19.0.7.1.0"
+          assert ui_manifest["version"] == "19.0.7.2.0"
           cds_manifest = ast.literal_eval(
               Path("addons/ko_pos_customer_display/__manifest__.py").read_text()
           )
-          assert cds_manifest["version"] == "19.0.1.0.0"
+          assert cds_manifest["version"] == "19.0.1.1.0"
           for module in ("ko_pos_beam_bolt", "ko_pos_customer_display"):
               for xml_file in Path("addons", module).rglob("*.xml"):
                   ET.parse(xml_file)

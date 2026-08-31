@@ -1024,6 +1024,33 @@ Working and confirmed against the live system:
     refresh** — until then they keep running the pre-upgrade bundle and will still show
     the old freeze.
 
+- **Beam QR now renders on the till itself + the cancel button actually works
+  (2026-08-31, built and unit-tested, NOT yet deployed).** From the owner's report: a shop
+  without a customer display had no way to show the customer the PromptPay QR, and no way
+  out of a waiting QR payment.
+  - `ko_pos_ui` **19.0.7.2.0**: the PromptPay section of the KO payment screen renders
+    `line.qrPaymentData.qrCode` (the same data-URI PNG `payment_beam_qr.js` sends to the
+    customer display) as a 250 px `<img>`, with the hint "ไม่มีจอลูกค้า? หันหน้าจอนี้ให้ลูกค้าสแกนได้เลย".
+    While the charge is being created it keeps the placeholder + "กำลังสร้าง QR พร้อมเพย์…".
+    A dedicated red **ยกเลิก QR นี้ · เปลี่ยนช่องทางชำระเงิน** button sits under the QR; the
+    duplicate small cancel in the terminal-status strip is hidden for that section.
+  - **Real bug found on the way (now in `docs/GOTCHAS.md`):** the existing cancel button
+    was gated *and* disabled on `koState.requesting`, but `sendPaymentRequest` keeps that
+    flag `true` for the entire wait-for-scan window — so cancel was inert exactly when it
+    was needed. Cancel now runs on its own `koState.cancelling` flag.
+  - New unit tests `addons/ko_pos_ui/tests/test_ko_payment_screen.mjs` (vm-module harness
+    like the beam one) cover the QR getter fallbacks and the cancel guard regression; the
+    Test Beam Bolt workflow runs them and its stale manifest assertions were fixed
+    (`ko_pos_ui` → 19.0.7.2.0, `ko_pos_customer_display` 19.0.1.0.0 → **19.0.1.1.0** — the
+    latter was already wrong and would have failed the next CI run).
+  - **Verified:** `xmllint` on the template, `node --check` on the JS, both mjs test
+    suites pass locally. **Not verified:** live rendering/reactivity on a running till
+    (no local Odoo QA stack this session, and QR creation needs the shop's Beam
+    credentials); the deploy itself.
+  - Noted in passing via MCP: production now has payment method id 12 **"QR Promptpay"**
+    with `use_payment_terminal = beam_qr` — the method §9 item 10(b) asked to create
+    exists, so what remains there is the supervised charge/expiry cycle.
+
 ---
 
 ## 9. Outstanding work
@@ -1064,12 +1091,19 @@ Working and confirmed against the live system:
    รายการบิล (Orders).
 10. **Customer display follow-ups:** (a) verify a real advertisement video (MP4 H.264)
    plays and advances on the live display — the broken-file skip path is verified but a
-   playable file was not; (b) create the `Beam QR (จอลูกค้า)` payment method in
-   production, first with **Playground** on, and run one supervised small charge → scan →
-   SUCCEEDED cycle plus one expiry cycle before turning Playground off (coordinate with
-   the owner — production charges are real money); (c) upload the shop's real ad media
-   and set the idle/seconds values; (d) both production shops need one hard refresh on
-   every till and display after the deploy. See `docs/RUNBOOK-customer-display.md`.
+   playable file was not; (b) the `QR Promptpay` (`beam_qr`) payment method now **exists**
+   in production (id 12, seen 2026-08-31) — still run one supervised small charge → scan →
+   SUCCEEDED cycle plus one expiry cycle, with **Playground** on first if credentials allow
+   (coordinate with the owner — production charges are real money); (c) upload the shop's
+   real ad media and set the idle/seconds values; (d) both production shops need one hard
+   refresh on every till and display after the deploy. See
+   `docs/RUNBOOK-customer-display.md`.
+11. **Deploy `ko_pos_ui` 19.0.7.2.0 (QR on the till + working cancel) and verify live:**
+   after the owner approves the deploy, hard-refresh a till, select QR Promptpay on a
+   small real order, confirm the QR image appears on the staff screen itself (not only
+   the customer display), press ยกเลิก QR นี้ while waiting and confirm the POS frees the
+   method chooser, then complete the bill by cash. §8 has what was and was not verified
+   locally.
 
 > ✅ Completed 2026-08-25: **the production trial**. The owner operated the POS and the
 > kitchen board end to end on the real machines — one dish per station, ส่งครัว, ready,

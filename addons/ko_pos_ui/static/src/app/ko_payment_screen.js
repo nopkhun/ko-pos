@@ -77,6 +77,7 @@ patch(PaymentScreen.prototype, {
                 ? methodType(this.selectedPaymentLine.payment_method_id)
                 : "cash",
             requesting: false,
+            cancelling: false,
             refundConfirmed: false,
             manualReference: "",
             refundStatus: "",
@@ -381,6 +382,16 @@ patch(PaymentScreen.prototype, {
         return labels[this.koTerminalStatus] || "กำลังตรวจสอบสถานะการชำระเงิน…";
     },
 
+    get koQrPaymentData() {
+        // Beam QR (payment_beam_qr) วางภาพ QR ไว้บน payment line เพื่อจอลูกค้า —
+        // ร้านที่ไม่มีจอสองต้องเห็น QR เดียวกันบนจอพนักงาน จะได้หันจอให้ลูกค้าสแกน
+        const hasQr = (line) => Boolean(line?.qrPaymentData?.qrCode);
+        if (hasQr(this.selectedPaymentLine)) {
+            return this.selectedPaymentLine.qrPaymentData;
+        }
+        return this.paymentLines.find(hasQr)?.qrPaymentData || null;
+    },
+
     get koCanCancelTerminal() {
         if (this.isRefundOrder) {
             return false;
@@ -392,10 +403,12 @@ patch(PaymentScreen.prototype, {
 
     async koCancelTerminalPayment() {
         const line = this.koTerminalLine;
-        if (!line || !this.koCanCancelTerminal || this.koState.requesting) {
+        // ห้าม gate ด้วย koState.requesting: sendPaymentRequest ของ terminal ค้าง
+        // await อยู่ตลอดช่วงรอลูกค้าสแกน/แตะบัตร ปุ่มยกเลิกต้องกดได้ระหว่างนั้น
+        if (!line || !this.koCanCancelTerminal || this.koState.cancelling) {
             return;
         }
-        this.koState.requesting = true;
+        this.koState.cancelling = true;
         try {
             await this.sendPaymentCancel(line);
             if (line.getPaymentStatus() === "retry") {
@@ -404,7 +417,7 @@ patch(PaymentScreen.prototype, {
                 showKoToast("ยังยกเลิกรายการไม่ได้ ระบบจะตรวจสอบสถานะต่อ");
             }
         } finally {
-            this.koState.requesting = false;
+            this.koState.cancelling = false;
         }
     },
 

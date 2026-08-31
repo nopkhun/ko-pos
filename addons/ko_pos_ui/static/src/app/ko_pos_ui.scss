@@ -1026,6 +1026,34 @@
     background: #f5f8f8;
 }
 
+.pos .ko-qr-image {
+    width: 250px;
+    height: 250px;
+    object-fit: contain;
+    border: 1.5px solid var(--ko-border);
+    border-radius: 16px;
+    background: #fff;
+    padding: 8px;
+}
+
+.pos .ko-qr-cancel-btn {
+    display: block;
+    margin: 16px auto 0;
+    min-height: 48px;
+    padding: 10px 22px;
+    border: 1px solid #d34b4b;
+    border-radius: 999px;
+    background: #fff;
+    color: #b52f2f;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pos .ko-qr-cancel-btn:disabled {
+    opacity: 0.55;
+}
+
 .pos .ko-qr-title {
     padding-top: 12px;
     font-size: 14px;
