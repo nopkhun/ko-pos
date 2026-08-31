@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KO Restaurant - Beam Bolt+ Payment Terminal',
-    'version': '19.0.6.0.0',
+    'version': '19.0.6.0.1',
     'category': 'Sales/Point of Sale',
     'summary': 'เชื่อม POS กับเครื่องชำระเงิน Beam Bolt+ (Pairing Mode)',
     'description': """

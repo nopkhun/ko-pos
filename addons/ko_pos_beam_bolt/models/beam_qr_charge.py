@@ -56,9 +56,9 @@ class KoBeamQrCharge(models.Model):
         string='ต้องตรวจสอบก่อนปิดรอบ',
         compute='_compute_needs_review', search='_search_needs_review')
 
-    _sql_constraints = [
-        ('charge_id_unique', 'unique(charge_id)', 'Charge ID ต้องไม่ซ้ำ'),
-    ]
+    # Odoo 19 เลิกรองรับ _sql_constraints — ต้องประกาศแบบ models.Constraint
+    _charge_id_unique = models.Constraint(
+        'unique (charge_id)', 'Charge ID ต้องไม่ซ้ำ')
 
     # ------------------------------------------------------------------
     # needs_review: เงินเข้าแต่ไม่ถูกผูกกับบิล หรือค้างสถานะจนเลิก poll แล้ว
