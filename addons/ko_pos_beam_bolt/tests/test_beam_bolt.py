@@ -540,3 +540,166 @@ class TestBeamQr(TransactionCase):
         for bad_amount in (0, -5, 'abc', None):
             result = self.method.beam_qr_create_charge({'amount_thb': bad_amount})
             self.assertIn('error', result)
+
+
+class TestBeamQrLedger(TransactionCase):
+    """สมุดบันทึก Beam QR charge + cron + การยืนยัน Manual"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.method = cls.env['pos.payment.method'].create({
+            'name': 'Beam QR Ledger Test',
+            'payment_method_type': 'terminal',
+            'use_payment_terminal': 'beam_qr',
+            'beam_merchant_id': 'merchant_test',
+            'beam_api_key': 'api_key_test',
+            'beam_test_mode': True,
+            'beam_expiry_sec': 120,
+            'beam_payment_method_type': 'QR_PROMPT_PAY',
+        })
+        cls.Ledger = cls.env['ko.beam.qr.charge']
+
+    @staticmethod
+    def _response(status_code, body=None):
+        response = Mock()
+        response.status_code = status_code
+        response.headers = {'x-request-id': 'req_test'}
+        response.text = '' if body is None else 'json'
+        response.json.return_value = body
+        return response
+
+    def _create_charge(self, request, charge_id='ch_ledger_1'):
+        request.return_value = self._response(201, {
+            'chargeId': charge_id,
+            'status': 'PENDING',
+            'actionRequired': 'ENCODED_IMAGE',
+            'encodedImage': {
+                'imageBase64Encoded': 'UUFCQw==',
+                'expiry': '2026-08-31T12:00:00Z',
+            },
+        })
+        return self.method.beam_qr_create_charge({
+            'amount_thb': 100.50,
+            'reference_id': 'KO-ledger-ref',
+            'idempotency_key': 'ledger-idem-1',
+        })
+
+    @patch(REQUESTS_TARGET)
+    def test_create_charge_records_ledger_row(self, request):
+        self._create_charge(request)
+        row = self.Ledger.search([('charge_id', '=', 'ch_ledger_1')])
+        self.assertEqual(len(row), 1)
+        self.assertEqual(row.status, 'PENDING')
+        self.assertAlmostEqual(row.amount_thb, 100.50)
+        self.assertEqual(row.payment_method_id, self.method)
+        self.assertTrue(row.expiry_time)
+
+    @patch(REQUESTS_TARGET)
+    def test_idempotent_retry_keeps_single_row(self, request):
+        self._create_charge(request)
+        self._create_charge(request)
+        rows = self.Ledger.search([('charge_id', '=', 'ch_ledger_1')])
+        self.assertEqual(len(rows), 1)
+
+    @patch(REQUESTS_TARGET)
+    def test_get_charge_updates_ledger_status(self, request):
+        self._create_charge(request)
+        request.return_value = self._response(200, {
+            'chargeId': 'ch_ledger_1', 'status': 'SUCCEEDED',
+        })
+        self.method.beam_qr_get_charge({'charge_id': 'ch_ledger_1'})
+        row = self.Ledger.search([('charge_id', '=', 'ch_ledger_1')])
+        self.assertEqual(row.status, 'SUCCEEDED')
+
+    @patch(REQUESTS_TARGET)
+    def test_pos_cancel_then_paid_needs_review(self, request):
+        self._create_charge(request)
+        self.method.beam_qr_mark_cancelled({'charge_id': 'ch_ledger_1'})
+        row = self.Ledger.search([('charge_id', '=', 'ch_ledger_1')])
+        self.assertTrue(row.pos_cancelled)
+        self.Ledger._record_status('ch_ledger_1', 'SUCCEEDED')
+        self.assertTrue(row.needs_review)
+        found = self.Ledger.search([('needs_review', '=', True)])
+        self.assertIn(row, found)
+
+    @patch(REQUESTS_TARGET)
+    def test_expired_charge_never_needs_review(self, request):
+        self._create_charge(request)
+        self.Ledger._record_status('ch_ledger_1', 'EXPIRED')
+        row = self.Ledger.search([('charge_id', '=', 'ch_ledger_1')])
+        self.assertFalse(row.needs_review)
+
+    @patch(REQUESTS_TARGET)
+    def test_manual_confirm_when_beam_confirms_succeeded(self, request):
+        self._create_charge(request)
+        request.return_value = self._response(200, {
+            'chargeId': 'ch_ledger_1', 'status': 'SUCCEEDED',
+        })
+        result = self.method.beam_qr_manual_confirm({
+            'charge_id': 'ch_ledger_1',
+            'manual_ref': 'REF1234',
+        })
+        self.assertEqual(result.get('status'), 'SUCCEEDED')
+        row = self.Ledger.search([('charge_id', '=', 'ch_ledger_1')])
+        # Beam ยืนยันเองได้ — ไม่ใช่ Manual จึงต้องไม่แปะ manual_ref
+        self.assertFalse(row.manual_ref)
+        self.assertEqual(row.status, 'SUCCEEDED')
+
+    @patch(REQUESTS_TARGET)
+    def test_manual_confirm_when_api_down_stamps_manual_ref(self, request):
+        self._create_charge(request)
+        import requests as requests_lib
+        request.side_effect = requests_lib.exceptions.ConnectionError('down')
+        result = self.method.beam_qr_manual_confirm({
+            'charge_id': 'ch_ledger_1',
+            'manual_ref': 'REF1234',
+        })
+        self.assertTrue(result.get('ok'))
+        row = self.Ledger.search([('charge_id', '=', 'ch_ledger_1')])
+        self.assertEqual(row.manual_ref, 'REF1234')
+        # มี manual_ref แล้ว — ไม่ต้องค้างในรายการต้องตรวจสอบ
+        self.Ledger._record_status('ch_ledger_1', 'SUCCEEDED')
+        self.assertFalse(row.needs_review)
+
+    @patch(REQUESTS_TARGET)
+    def test_manual_confirm_rejects_final_failed_charge(self, request):
+        self._create_charge(request)
+        request.return_value = self._response(200, {
+            'chargeId': 'ch_ledger_1', 'status': 'EXPIRED',
+        })
+        result = self.method.beam_qr_manual_confirm({
+            'charge_id': 'ch_ledger_1',
+            'manual_ref': 'REF1234',
+        })
+        self.assertIn('error', result)
+        row = self.Ledger.search([('charge_id', '=', 'ch_ledger_1')])
+        self.assertFalse(row.manual_ref)
+
+    def test_manual_confirm_requires_reference(self):
+        result = self.method.beam_qr_manual_confirm({
+            'charge_id': 'ch_x', 'manual_ref': 'ab',
+        })
+        self.assertIn('error', result)
+
+    @patch(REQUESTS_TARGET)
+    def test_cron_polls_expired_pending_rows(self, request):
+        self._create_charge(request)
+        row = self.Ledger.search([('charge_id', '=', 'ch_ledger_1')])
+        row.write({'expiry_time': datetime(2026, 8, 30, 0, 0, 0)})
+        request.return_value = self._response(200, {
+            'chargeId': 'ch_ledger_1', 'status': 'EXPIRED',
+        })
+        self.Ledger._cron_poll_unresolved()
+        self.assertEqual(row.status, 'EXPIRED')
+
+    @patch(REQUESTS_TARGET)
+    def test_cron_skips_rows_still_inside_expiry(self, request):
+        self._create_charge(request)
+        request.reset_mock()
+        request.return_value = self._response(200, {
+            'chargeId': 'ch_ledger_1', 'status': 'EXPIRED',
+        })
+        # แถวยังไม่หมดอายุ — POS ยัง poll เองอยู่ cron ต้องไม่ยุ่ง
+        self.Ledger._cron_poll_unresolved()
+        request.assert_not_called()

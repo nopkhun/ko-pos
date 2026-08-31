@@ -486,6 +486,34 @@
                                 t-on-click="koCancelTerminalPayment">
                             ยกเลิก QR นี้ · เปลี่ยนช่องทางชำระเงิน
                         </button>
+
+                        <div t-if="koQrPaidAfterCancel" class="ko-qr-manual-alert">
+                            ⚠️ ลูกค้าโอนเข้า QR ที่ยกเลิกไปแล้ว (รายการ <t t-esc="koQrPaidAfterCancel"/>)
+                            — ห้ามเก็บเงินซ้ำ ใช้ปุ่มด้านล่างบันทึกยอดนี้เข้าบิล
+                        </div>
+
+                        <div t-if="koCanQrManual" class="ko-qr-manual">
+                            <button t-if="!koState.qrManualOpen"
+                                    class="ko-qr-manual-toggle"
+                                    t-on-click="() =&gt; this.koState.qrManualOpen = true">
+                                ลูกค้าโอนแล้วแต่ระบบไม่ยืนยัน? บันทึก Manual
+                            </button>
+                            <div t-else="" class="ko-qr-manual-form">
+                                <label class="ko-qr-manual-check">
+                                    <input type="checkbox" t-model="koState.qrManualConfirmed"/>
+                                    <span>ฉันเห็นเงินเข้าจริงในแอปธนาคาร / Beam Lighthouse แล้ว</span>
+                                </label>
+                                <input class="ko-qr-manual-ref"
+                                       type="text"
+                                       placeholder="เลขอ้างอิงการโอน อย่างน้อย 4 ตัว"
+                                       t-model="koState.qrManualRef"/>
+                                <button class="ko-qr-manual-save"
+                                        t-att-disabled="!koQrManualReady or koState.requesting"
+                                        t-on-click="koQrManualConfirm">
+                                    บันทึกว่าลูกค้าโอนแล้ว
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Card Section -->

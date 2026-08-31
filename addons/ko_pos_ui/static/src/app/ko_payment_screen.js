@@ -78,6 +78,9 @@ patch(PaymentScreen.prototype, {
                 : "cash",
             requesting: false,
             cancelling: false,
+            qrManualOpen: false,
+            qrManualRef: "",
+            qrManualConfirmed: false,
             refundConfirmed: false,
             manualReference: "",
             refundStatus: "",
@@ -294,6 +297,9 @@ patch(PaymentScreen.prototype, {
 
         this.koState.selectedMethodType = methodItem.type;
         this.koState.cashInput = "";
+        this.koState.qrManualOpen = false;
+        this.koState.qrManualRef = "";
+        this.koState.qrManualConfirmed = false;
         const added = await this.addNewPaymentLine(target);
         if (!added) {
             return;
@@ -390,6 +396,80 @@ patch(PaymentScreen.prototype, {
             return this.selectedPaymentLine.qrPaymentData;
         }
         return this.paymentLines.find(hasQr)?.qrPaymentData || null;
+    },
+
+    get koQrLine() {
+        const isQrLine = (line) =>
+            line?.payment_method_id?.use_payment_terminal === "beam_qr";
+        if (isQrLine(this.selectedPaymentLine)) {
+            return this.selectedPaymentLine;
+        }
+        return this.paymentLines.find(isQrLine) || null;
+    },
+
+    get koQrTerminal() {
+        return this.koQrLine?.payment_method_id?.payment_terminal || null;
+    },
+
+    get koQrPaidAfterCancel() {
+        // ลูกค้าโอนเข้า QR ที่ถูกยกเลิกไปแล้ว — watcher ฝั่ง beam_qr ตั้งธงนี้
+        return (
+            this.koQrLine?.uiState?.beam_qr_paid_after_cancel ||
+            this.koQrTerminal?.paidAfterCancel?.chargeId ||
+            null
+        );
+    },
+
+    get koCanQrManual() {
+        if (this.isRefundOrder || !this.koIsPromptPay) {
+            return false;
+        }
+        const line = this.koQrLine;
+        if (!line || !this.koQrTerminal?.manualConfirm) {
+            return false;
+        }
+        // เปิดให้บันทึก Manual เฉพาะเมื่อรายการอัตโนมัติจบไปแล้ว (retry หลัง
+        // ยกเลิก/ล้มเหลว) หรือ Beam ยืนยันว่าเงินเข้าใบที่ยกเลิกไป — ระหว่างรอ
+        // สแกนปกติต้องให้ระบบยืนยันเอง (ถ้า API ล่ม ให้กดยกเลิกก่อนแล้วค่อย Manual)
+        return (
+            Boolean(this.koQrPaidAfterCancel) ||
+            line.getPaymentStatus?.() === "retry"
+        );
+    },
+
+    get koQrManualReady() {
+        return (
+            this.koState.qrManualConfirmed &&
+            this.koState.qrManualRef.trim().length >= 4
+        );
+    },
+
+    async koQrManualConfirm() {
+        const line = this.koQrLine;
+        if (
+            !line ||
+            !this.koCanQrManual ||
+            !this.koQrManualReady ||
+            this.koState.requesting
+        ) {
+            return;
+        }
+        this.koState.requesting = true;
+        try {
+            const confirmed = await this.koQrTerminal.manualConfirm(
+                this.currentOrder,
+                line,
+                this.koState.qrManualRef.trim()
+            );
+            if (confirmed) {
+                this.koState.qrManualOpen = false;
+                this.koState.qrManualRef = "";
+                this.koState.qrManualConfirmed = false;
+                showKoToast("บันทึกยอดโอนแล้ว — กดยืนยันชำระเงินเพื่อปิดบิล");
+            }
+        } finally {
+            this.koState.requesting = false;
+        }
     },
 
     get koCanCancelTerminal() {

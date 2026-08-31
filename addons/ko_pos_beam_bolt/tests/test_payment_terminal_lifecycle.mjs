@@ -412,4 +412,135 @@ await loadModule(uiPath, {
     assert.match(screen.koRefundActionHint, /อย่างน้อย 4 ตัว/);
 }
 
+// ---------------------------------------------------------------------------
+// Beam QR: เฝ้า charge หลังยกเลิก + ยืนยันโอน Manual
+// ---------------------------------------------------------------------------
+const qrPath = fileURLToPath(
+    new URL("../static/src/app/payment_beam_qr.js", import.meta.url)
+);
+const qrDialogs = [];
+const beamQr = await loadModule(qrPath, {
+    "@web/core/l10n/translation": { _t: translate },
+    "@point_of_sale/app/utils/payment/payment_interface": { PaymentInterface },
+    "@web/core/confirmation_dialog/confirmation_dialog": { AlertDialog: class {} },
+    "@point_of_sale/app/services/pos_store": { register_payment_method() {} },
+});
+
+function makeQrLine(chargeId = "ch_watch_1") {
+    const line = makeLine();
+    line.amount = 80;
+    line.transaction_id = chargeId;
+    line.uiState = {
+        beam_qr_charge_id: chargeId,
+        beam_qr_idempotency_key: "idem-1",
+        beam_qr_expiry_ms: Date.now() + 120000,
+    };
+    return line;
+}
+
+function makeQrTerminal(line, beamResponses) {
+    const pos = {
+        env: {
+            services: {
+                dialog: { add: (_cls, props) => qrDialogs.push(props.body) },
+            },
+            utils: { formatCurrency: (value) => `฿${value}` },
+        },
+        getOrder: () => ({ uuid: "order-qr", payment_ids: [line] }),
+        getPendingPaymentLine: () => line,
+    };
+    const terminal = new beamQr.PaymentBeamQr(pos, { id: 12, name: "QR Promptpay" });
+    terminal.calls = [];
+    terminal._callBeam = async (method, data) => {
+        terminal.calls.push([method, data]);
+        const responder = beamResponses[method];
+        return responder ? responder(data) : {};
+    };
+    return terminal;
+}
+
+{
+    // ยกเลิกแล้วต้อง (1) ประทับ mark_cancelled (2) เฝ้าใบเก่าต่อ (3) เก็บ charge id
+    const line = makeQrLine();
+    const terminal = makeQrTerminal(line, {
+        beam_qr_get_charge: () => ({ status: "PENDING" }),
+        beam_qr_mark_cancelled: () => ({ ok: true }),
+    });
+    assert.equal(
+        await terminal.sendPaymentCancel(terminal.pos.getOrder(), line.uuid),
+        true
+    );
+    const methods = terminal.calls.map(([method]) => method);
+    assert.ok(methods.includes("beam_qr_mark_cancelled"), "cancel must stamp the ledger");
+    assert.equal(line.uiState.beam_qr_last_charge_id, "ch_watch_1");
+    assert.equal(terminal.cancelWatchers.size, 1, "a watcher must be scheduled");
+    terminal.close();
+    assert.equal(terminal.cancelWatchers.size, 0, "close must clear watchers");
+}
+
+{
+    // ลูกค้าโอนเข้า QR ที่ยกเลิกไปแล้ว → ธง paid_after_cancel + แจ้งเตือนดัง ๆ
+    const line = makeQrLine("ch_watch_2");
+    const terminal = makeQrTerminal(line, {
+        beam_qr_get_charge: () => ({ status: "SUCCEEDED" }),
+    });
+    const realSetTimeout = globalThis.setTimeout;
+    globalThis.setTimeout = (fn) => realSetTimeout(fn, 0);
+    try {
+        terminal._watchCancelledCharge("ch_watch_2", line);
+        await new Promise((resolve) => realSetTimeout(resolve, 25));
+    } finally {
+        globalThis.setTimeout = realSetTimeout;
+    }
+    assert.equal(line.uiState.beam_qr_paid_after_cancel, "ch_watch_2");
+    assert.equal(terminal.paidAfterCancel?.chargeId, "ch_watch_2");
+    assert.ok(
+        qrDialogs.some((body) => body.includes("ch_watch_2")),
+        "staff must be alerted with the charge id"
+    );
+}
+
+{
+    // Manual confirm: Beam ยืนยันเองได้ → ปิดด้วย charge id จริง ไม่ใช่ Manual
+    const line = makeQrLine("ch_manual_1");
+    const terminal = makeQrTerminal(line, {
+        beam_qr_manual_confirm: () => ({ status: "SUCCEEDED", charge_id: "ch_manual_1" }),
+    });
+    assert.equal(
+        await terminal.manualConfirm({ uuid: "order-qr" }, line, "REF9999"),
+        true
+    );
+    assert.equal(line.transaction_id, "ch_manual_1");
+    assert.equal(line.getPaymentStatus(), "done");
+}
+
+{
+    // Manual confirm: Beam ตอบไม่ได้ → บันทึกเป็น manual-qr:<ref>
+    const line = makeQrLine("ch_manual_2");
+    const terminal = makeQrTerminal(line, {
+        beam_qr_manual_confirm: () => ({ ok: true, manual_ref: "REF9999" }),
+    });
+    assert.equal(
+        await terminal.manualConfirm({ uuid: "order-qr" }, line, "REF9999"),
+        true
+    );
+    assert.equal(line.transaction_id, "manual-qr:REF9999");
+    assert.equal(line.payment_ref_no, "REF9999");
+    assert.equal(line.getPaymentStatus(), "done");
+    assert.equal(terminal.calls[0][1].charge_id, "ch_manual_2");
+}
+
+{
+    // Manual confirm: เซิร์ฟเวอร์ปฏิเสธ (เช่น charge จบเป็น EXPIRED) → ไม่ปิดบิล
+    const line = makeQrLine("ch_manual_3");
+    const terminal = makeQrTerminal(line, {
+        beam_qr_manual_confirm: () => ({ error: "Beam ระบุว่ารายการจบด้วยสถานะ EXPIRED" }),
+    });
+    assert.equal(
+        await terminal.manualConfirm({ uuid: "order-qr" }, line, "REF9999"),
+        false
+    );
+    assert.notEqual(line.getPaymentStatus(), "done");
+}
+
 console.log("Payment terminal lifecycle tests passed");

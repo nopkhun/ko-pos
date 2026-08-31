@@ -142,4 +142,80 @@ function cancelContext({ requesting, cancelling, canCancel = true, statusAfter =
     assert.equal(cancelCalls.length, 0, "cancel must respect koCanCancelTerminal");
 }
 
+// --- Manual confirm สำหรับ Beam QR: เปิดเฉพาะตอนที่เส้นทางอัตโนมัติจบแล้ว ---
+
+function qrScreen({ status, paidAfterCancel = null, manualConfirmResult = true }) {
+    const manualCalls = [];
+    const line = {
+        payment_method_id: {
+            use_payment_terminal: "beam_qr",
+            payment_method_type: "terminal",
+            name: "QR Promptpay",
+            payment_terminal: {
+                paidAfterCancel: paidAfterCancel ? { chargeId: paidAfterCancel } : null,
+                manualConfirm: async (order, targetLine, ref) => {
+                    manualCalls.push([order, targetLine, ref]);
+                    return manualConfirmResult;
+                },
+            },
+        },
+        uiState: {},
+        getPaymentStatus: () => status,
+    };
+    const ctx = Object.create(patched);
+    Object.assign(ctx, {
+        isRefundOrder: false,
+        selectedPaymentLine: line,
+        paymentLines: [line],
+        currentOrder: { uuid: "order-1" },
+        koState: {
+            requesting: false,
+            cancelling: false,
+            qrManualOpen: true,
+            qrManualRef: "REF-1234",
+            qrManualConfirmed: true,
+            selectedMethodType: "promptpay",
+        },
+    });
+    return { ctx, line, manualCalls };
+}
+
+{
+    // ระหว่างรอสแกนปกติ — ห้ามเปิดทาง Manual (ต้องกดยกเลิกก่อน)
+    const { ctx } = qrScreen({ status: "waitingCard" });
+    assert.equal(ctx.koCanQrManual, false);
+}
+
+{
+    // หลังยกเลิก (retry) — เปิดทาง Manual และบันทึกผ่าน terminal ได้
+    const { ctx, line, manualCalls } = qrScreen({ status: "retry" });
+    assert.equal(ctx.koCanQrManual, true);
+    assert.equal(ctx.koQrManualReady, true);
+    await ctx.koQrManualConfirm();
+    assert.equal(manualCalls.length, 1);
+    assert.equal(manualCalls[0][1], line);
+    assert.equal(manualCalls[0][2], "REF-1234");
+    assert.equal(ctx.koState.qrManualOpen, false, "form must close after saving");
+    assert.equal(ctx.koState.qrManualRef, "");
+}
+
+{
+    // เงินเข้าใบที่ยกเลิกไปแล้ว — เปิดทาง Manual แม้สถานะไม่ใช่ retry
+    const { ctx } = qrScreen({ status: "waitingCard", paidAfterCancel: "ch_late_1" });
+    assert.equal(ctx.koQrPaidAfterCancel, "ch_late_1");
+    assert.equal(ctx.koCanQrManual, true);
+}
+
+{
+    // เลขอ้างอิงสั้นเกิน / ยังไม่ติ๊กยืนยัน — ห้ามบันทึก
+    const { ctx, manualCalls } = qrScreen({ status: "retry" });
+    ctx.koState.qrManualRef = "12";
+    assert.equal(ctx.koQrManualReady, false);
+    await ctx.koQrManualConfirm();
+    assert.equal(manualCalls.length, 0);
+    ctx.koState.qrManualRef = "REF-1234";
+    ctx.koState.qrManualConfirmed = false;
+    assert.equal(ctx.koQrManualReady, false);
+}
+
 console.log("KO payment screen patch tests passed");

@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ko_beam_qr_charge_pos_manager,ko.beam.qr.charge pos manager,model_ko_beam_qr_charge,point_of_sale.group_pos_manager,1,0,0,0
+access_ko_beam_qr_charge_system,ko.beam.qr.charge system,model_ko_beam_qr_charge,base.group_system,1,1,1,1

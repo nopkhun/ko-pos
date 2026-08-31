@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KO Restaurant - Beam Bolt+ Payment Terminal',
-    'version': '19.0.5.0.0',
+    'version': '19.0.6.0.0',
     'category': 'Sales/Point of Sale',
     'summary': 'เชื่อม POS กับเครื่องชำระเงิน Beam Bolt+ (Pairing Mode)',
     'description': """
@@ -30,7 +30,10 @@ Beam Bolt+ payment terminal integration for Odoo POS
     'license': 'LGPL-3',
     'depends': ['point_of_sale'],
     'data': [
+        'security/ir.model.access.csv',
+        'data/beam_qr_cron.xml',
         'views/pos_payment_method_views.xml',
+        'views/beam_qr_charge_views.xml',
     ],
     'assets': {
         'point_of_sale._assets_pos': [

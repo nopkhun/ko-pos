@@ -1051,6 +1051,40 @@ Working and confirmed against the live system:
     with `use_payment_terminal = beam_qr` — the method §9 item 10(b) asked to create
     exists, so what remains there is the supervised charge/expiry cycle.
 
+- **Beam QR safety net: charge ledger + cancelled-QR watch + manual confirm
+  (2026-08-31, built and unit-tested, NOT yet deployed).** From the owner's two concerns:
+  (1) a "cancelled" QR cannot really be cancelled (Beam Charges API has no cancel
+  endpoint) so a customer can still pay the old QR and break the day's close; (2) staff
+  need a manual path when the Beam API is down.
+  - `ko_pos_beam_bolt` **19.0.6.0.0**: new model `ko.beam.qr.charge` records every
+    charge the POS creates; `beam_qr_get_charge` updates it on every poll; a 5-minute
+    cron (`_cron_poll_unresolved`) re-polls unresolved rows after expiry; computed+
+    searchable `needs_review` = SUCCEEDED-but-unmatched (no `pos.payment` carries the
+    charge id, no manual_ref) or non-final rows older than the 2-day give-up. Manager
+    menu **Point of Sale → Beam QR — สมุดรายการ** with a "ต้องตรวจสอบก่อนปิดรอบ" filter
+    (read-only; POS RPCs write via sudo). New RPCs: `beam_qr_mark_cancelled` (stamps
+    `pos_cancelled`) and `beam_qr_manual_confirm` (re-checks Beam one last time —
+    SUCCEEDED closes with the real charge id; EXPIRED/FAILED refuses; otherwise stamps
+    `manual_ref` and lets the POS record `manual-qr:<ref>`).
+  - `payment_beam_qr.js`: after a POS cancel the interface **keeps polling the old
+    charge until expiry+grace** (`_watchCancelledCharge`); if the customer pays it
+    anyway, staff get a loud dialog with the charge id and the line/interface carry a
+    `paid_after_cancel` flag. `manualConfirm(order, line, ref)` implements the manual
+    path. Charge id survives cancel in `uiState.beam_qr_last_charge_id`.
+  - `ko_pos_ui` **19.0.7.3.0**: PromptPay section gains the paid-after-cancel warning
+    banner and a gated manual form ("ลูกค้าโอนแล้วแต่ระบบไม่ยืนยัน? บันทึก Manual") —
+    only on `retry` (cancel first if Beam is down) or when the paid-after-cancel flag
+    is set; requires a seen-the-money checkbox + reference ≥ 4 chars.
+  - Tests: `TestBeamQrLedger` (11 cases — ledger writes, idempotent retry, cancel→paid
+    needs_review, manual paths, cron poll/skip) in the Odoo suite; mjs suites extended
+    for the watcher and manualConfirm; all local checks pass. CI manifest assertions
+    bumped (beam 19.0.6.0.0, ui 19.0.7.3.0).
+  - **Owner picked all four options, including dropping `beam_expiry_sec` to 90 s — NOT
+    yet applied:** the MCP user cannot write `pos.payment.method` (write is blocked via
+    MCP), so set it in the backend form of method id 12 during the deploy window.
+  - **Not verified:** live behaviour on a running till and the real cron cadence (no
+    local Odoo stack this session; QR creation needs the shop's Beam credentials).
+
 ---
 
 ## 9. Outstanding work
@@ -1098,12 +1132,15 @@ Working and confirmed against the live system:
    real ad media and set the idle/seconds values; (d) both production shops need one hard
    refresh on every till and display after the deploy. See
    `docs/RUNBOOK-customer-display.md`.
-11. **Deploy `ko_pos_ui` 19.0.7.2.0 (QR on the till + working cancel) and verify live:**
-   after the owner approves the deploy, hard-refresh a till, select QR Promptpay on a
-   small real order, confirm the QR image appears on the staff screen itself (not only
-   the customer display), press ยกเลิก QR นี้ while waiting and confirm the POS frees the
-   method chooser, then complete the bill by cash. §8 has what was and was not verified
-   locally.
+11. **Deploy `ko_pos_ui` 19.0.7.3.0 + `ko_pos_beam_bolt` 19.0.6.0.0 (QR on the till,
+   working cancel, charge ledger, manual confirm) and verify live:** after the owner
+   approves the deploy, hard-refresh a till, select QR Promptpay on a small real order,
+   confirm the QR image appears on the staff screen itself (not only the customer
+   display), press ยกเลิก QR นี้ while waiting and confirm the POS frees the method
+   chooser, check the charge appears in **Beam QR — สมุดรายการ**, then complete the
+   bill by cash. §8 has what was and was not verified locally. During the same window:
+   **set `beam_expiry_sec` = 90 on payment method id 12** (owner chose 90 s; MCP cannot
+   write `pos.payment.method`, do it in the backend form).
 
 > ✅ Completed 2026-08-25: **the production trial**. The owner operated the POS and the
 > kitchen board end to end on the real machines — one dish per station, ส่งครัว, ready,

@@ -62,11 +62,11 @@ jobs:
           manifest = ast.literal_eval(
               Path("addons/ko_pos_beam_bolt/__manifest__.py").read_text()
           )
-          assert manifest["version"] == "19.0.5.0.0"
+          assert manifest["version"] == "19.0.6.0.0"
           ui_manifest = ast.literal_eval(
               Path("addons/ko_pos_ui/__manifest__.py").read_text()
           )
-          assert ui_manifest["version"] == "19.0.7.2.0"
+          assert ui_manifest["version"] == "19.0.7.3.0"
           cds_manifest = ast.literal_eval(
               Path("addons/ko_pos_customer_display/__manifest__.py").read_text()
           )

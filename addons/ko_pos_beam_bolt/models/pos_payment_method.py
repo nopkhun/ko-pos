@@ -608,8 +608,8 @@ class PosPaymentMethod(models.Model):
             return {'error': _('ประเภท QR นี้ยังไม่รองรับบนจอลูกค้า')}
         expiry_sec = sudo_self.beam_expiry_sec or 120
         expiry_sec = min(600, max(90, expiry_sec))
-        expiry_time = (fields.Datetime.now() + timedelta(seconds=expiry_sec)).strftime(
-            '%Y-%m-%dT%H:%M:%SZ')
+        expiry_dt = fields.Datetime.now() + timedelta(seconds=expiry_sec)
+        expiry_time = expiry_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
         reference_id = str(data.get('reference_id') or uuid.uuid4().hex)[:100]
         detail_key = PAYMENT_METHOD_DETAILS[payment_method_type]
         payload = {
@@ -636,6 +636,12 @@ class PosPaymentMethod(models.Model):
         if not charge_id:
             return {'error': _(
                 'Beam ไม่ส่ง Charge ID กลับมา กรุณาอย่าสร้างรายการใหม่และตรวจสอบ Lighthouse')}
+        # ทุก charge ที่เกิดขึ้นจริงต้องลงสมุด — Beam ไม่มี API ยกเลิก
+        # สมุดนี้คือสิ่งที่ทำให้เงินเข้าที่หลุดจากบิลโผล่ก่อนปิดรอบ
+        self.env['ko.beam.qr.charge'].sudo()._record_created(
+            sudo_self, charge_id, reference_id,
+            float(amount_satang) / 100, expiry_dt,
+            status=result.get('status') or 'PENDING')
         if not encoded.get('imageBase64Encoded'):
             # charge อาจถูกสร้างแล้วที่ Beam — ห้ามให้ Retry สร้างซ้ำโดยไม่บอกพนักงาน
             return {
@@ -659,8 +665,68 @@ class PosPaymentMethod(models.Model):
         charge_id = data.get('charge_id')
         if not charge_id:
             return {'error': _('ไม่มี charge id')}
-        return self._beam_call(
+        result = self._beam_call(
             'GET', '/api/v1/charges/%s' % quote(str(charge_id), safe=''))
+        if not result.get('error') and result.get('status'):
+            self.env['ko.beam.qr.charge'].sudo()._record_status(
+                charge_id, result.get('status'))
+        return result
+
+    def beam_qr_mark_cancelled(self, data):
+        """data: {charge_id: str} — พนักงานกดยกเลิกที่หน้าร้าน
+
+        Beam ไม่มี API ยกเลิก charge จึงยกเลิกจริงไม่ได้ — แค่ประทับในสมุดว่า
+        หน้าร้านเลิกรอรายการนี้แล้ว ถ้าลูกค้าโอนเข้า QR ใบนี้ภายหลัง สถานะ
+        SUCCEEDED + pos_cancelled จะดันแถวขึ้นรายงานต้องตรวจสอบทันที
+        """
+        self.ensure_one()
+        if self.sudo().use_payment_terminal != 'beam_qr':
+            return {'error': _('วิธีชำระเงินนี้ไม่ได้ตั้งค่าเป็น Beam QR')}
+        self.env['ko.beam.qr.charge'].sudo()._record_pos_cancelled(
+            data.get('charge_id'))
+        return {'ok': True}
+
+    def beam_qr_manual_confirm(self, data):
+        """data: {charge_id: str|None, manual_ref: str, reference_id: str|None}
+
+        ทางออกเมื่อ Beam API มีปัญหา: พนักงานเห็นเงินเข้าจริงในแอปธนาคาร/
+        Lighthouse แล้วยืนยันเอง — แต่ก่อนยอมรับ ให้ลองถาม Beam อีกครั้งสุดท้าย
+        ถ้า Beam ตอบว่า SUCCEEDED ให้ POS ปิดบิลด้วยเส้นทางปกติ (ไม่ต้อง Manual)
+        """
+        self.ensure_one()
+        sudo_self = self.sudo()
+        if sudo_self.use_payment_terminal != 'beam_qr':
+            return {'error': _('วิธีชำระเงินนี้ไม่ได้ตั้งค่าเป็น Beam QR')}
+        manual_ref = str(data.get('manual_ref') or '').strip()[:100]
+        if len(manual_ref) < 4:
+            return {'error': _('กรุณากรอกเลขอ้างอิงอย่างน้อย 4 ตัวอักษร')}
+        charge_id = data.get('charge_id') or None
+        ledger = self.env['ko.beam.qr.charge'].sudo()
+        if charge_id:
+            live = self._beam_call(
+                'GET', '/api/v1/charges/%s' % quote(str(charge_id), safe=''))
+            live_status = str(live.get('status') or '').upper()
+            if not live.get('error') and live_status:
+                ledger._record_status(charge_id, live_status)
+            if live_status == 'SUCCEEDED':
+                # Beam ยืนยันเองได้ — ไม่ต้องบันทึก Manual ให้ปิดบิลปกติ
+                return {'status': 'SUCCEEDED', 'charge_id': charge_id}
+            if live_status in ('FAILED', 'EXPIRED', 'CANCELED', 'VOIDED'):
+                return {
+                    'error': _(
+                        'Beam ระบุว่ารายการ %s จบด้วยสถานะ %s — เงินไม่ได้เข้า '
+                        'รายการนี้ กรุณาตรวจสอบกับลูกค้าอีกครั้งก่อนบันทึก',
+                        charge_id, live_status),
+                    'beam_status': live_status,
+                }
+        ledger._record_manual_ref(
+            sudo_self, charge_id, manual_ref,
+            reference_id=data.get('reference_id'))
+        _logger.warning(
+            'Beam QR manual confirm: charge=%s ref=%s reference_id=%s — '
+            'ต้องกระทบยอดกับ Lighthouse ตอนปิดรอบ',
+            charge_id, manual_ref, data.get('reference_id'))
+        return {'ok': True, 'manual_ref': manual_ref}
 
     # ------------------------------------------------------------------
     # Same-day card voids from POS

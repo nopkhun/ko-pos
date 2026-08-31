@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ko_beam_qr_charge_list" model="ir.ui.view">
+        <field name="name">ko.beam.qr.charge.list</field>
+        <field name="model">ko.beam.qr.charge</field>
+        <field name="arch" type="xml">
+            <list create="false" delete="false" edit="false"
+                  decoration-danger="needs_review"
+                  decoration-success="status == 'SUCCEEDED' and not needs_review"
+                  decoration-muted="status in ('EXPIRED', 'CANCELED', 'FAILED', 'VOIDED')">
+                <field name="create_date" string="สร้างเมื่อ"/>
+                <field name="charge_id"/>
+                <field name="amount_thb" sum="รวม"/>
+                <field name="status"/>
+                <field name="pos_cancelled"/>
+                <field name="manual_ref"/>
+                <field name="needs_review"/>
+                <field name="reference_id" optional="hide"/>
+                <field name="payment_method_id" optional="hide"/>
+                <field name="expiry_time" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ko_beam_qr_charge_form" model="ir.ui.view">
+        <field name="name">ko.beam.qr.charge.form</field>
+        <field name="model">ko.beam.qr.charge</field>
+        <field name="arch" type="xml">
+            <form create="false" delete="false" edit="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="charge_id"/>
+                            <field name="reference_id"/>
+                            <field name="payment_method_id"/>
+                            <field name="amount_thb"/>
+                        </group>
+                        <group>
+                            <field name="status"/>
+                            <field name="expiry_time"/>
+                            <field name="pos_cancelled"/>
+                            <field name="manual_ref"/>
+                            <field name="needs_review"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ko_beam_qr_charge_search" model="ir.ui.view">
+        <field name="name">ko.beam.qr.charge.search</field>
+        <field name="model">ko.beam.qr.charge</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="charge_id"/>
+                <field name="reference_id"/>
+                <field name="manual_ref"/>
+                <filter name="needs_review" string="ต้องตรวจสอบก่อนปิดรอบ"
+                        domain="[('needs_review', '=', True)]"/>
+                <filter name="succeeded" string="เงินเข้าแล้ว"
+                        domain="[('status', '=', 'SUCCEEDED')]"/>
+                <filter name="pos_cancelled" string="ยกเลิกจากหน้าร้าน"
+                        domain="[('pos_cancelled', '=', True)]"/>
+                <filter name="manual" string="ยืนยัน Manual"
+                        domain="[('manual_ref', '!=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ko_beam_qr_charge" model="ir.actions.act_window">
+        <field name="name">Beam QR — สมุดรายการ</field>
+        <field name="res_model">ko.beam.qr.charge</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_ko_beam_qr_charge_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ยังไม่มีรายการ Beam QR</p>
+            <p>ทุก QR ที่ POS สร้างจะถูกบันทึกที่นี่ ก่อนปิดรอบให้กดตัวกรอง
+            "ต้องตรวจสอบก่อนปิดรอบ" — ถ้าว่าง แปลว่าเงินเข้า Beam ทุกบาท
+            ถูกผูกกับบิลแล้ว</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_ko_beam_qr_charge"
+              name="Beam QR — สมุดรายการ"
+              parent="point_of_sale.menu_point_root"
+              action="action_ko_beam_qr_charge"
+              groups="point_of_sale.group_pos_manager"
+              sequence="35"/>
+</odoo>

@@ -183,3 +183,32 @@ Automatic POS Void is deliberately limited to a single original `CARD` payment. 
 tenders, manager PIN approval, webhook-driven reconciliation, attachments, and a central
 pending-refund dashboard remain follow-up work; do not emulate them by splitting one refund
 onto an unrelated payment method.
+
+## 8. Beam QR safety net — the ledger, cancelled-QR watch, and manual confirm
+
+From `ko_pos_beam_bolt` 19.0.6.0.0 / `ko_pos_ui` 19.0.7.3.0. Beam's Charges API has
+no cancel endpoint, so a "cancelled" QR stays scannable until its expiry
+(`beam_expiry_sec`, 90–600 s). Three layers keep money from getting lost:
+
+1. **Every charge is written to a ledger** (`ko.beam.qr.charge`) the moment the POS
+   creates it. A 5-minute cron re-polls unresolved rows after their expiry passes.
+   Managers see it under **Point of Sale → Beam QR — สมุดรายการ**.
+2. **After staff cancel a QR, the till keeps watching that charge** until it expires.
+   If the customer pays the cancelled QR anyway, the till pops a loud alert with the
+   charge id, the payment line is flagged, and the ledger row (already stamped
+   `pos_cancelled` via `beam_qr_mark_cancelled`) turns into **ต้องตรวจสอบก่อนปิดรอบ**
+   until the money is attached to a bill or reconciled.
+3. **Manual confirm** ("ลูกค้าโอนแล้วแต่ระบบไม่ยืนยัน? บันทึก Manual"): available only
+   after the automatic path has ended (status `retry` — cancel first if Beam is down)
+   or when the paid-after-cancel alert fired. Staff must tick that they saw the money
+   in the bank app / Lighthouse and enter a reference (≥ 4 chars). The server asks
+   Beam one last time first — if Beam answers `SUCCEEDED` the bill closes with the
+   real charge id and no manual record; if the charge ended `EXPIRED`/`FAILED` the
+   manual save is refused. A true manual save writes `manual-qr:<ref>` on the payment
+   and stamps `manual_ref` on the ledger row.
+
+**End-of-day routine:** open **Beam QR — สมุดรายการ**, apply the filter
+**ต้องตรวจสอบก่อนปิดรอบ**. Empty list = every baht Beam received is attached to a
+bill. Anything listed: check Beam Lighthouse, then either refund the customer or
+record the payment before closing the session. Rows with a `manual_ref` should be
+cross-checked against Lighthouse the same day.

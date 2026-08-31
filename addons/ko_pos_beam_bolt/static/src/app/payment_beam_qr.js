@@ -8,6 +8,8 @@ const MAX_POLL_INTERVAL_MS = 15000;
 // Beam ไม่มี API ยกเลิก charge — QR ตายด้วย expiryTime เท่านั้น หลังหมดอายุ
 // เผื่อเวลาให้ระบบ Beam ปิดสถานะเองก่อนเราสรุปว่า "หมดเวลา"
 const EXPIRY_GRACE_MS = 20000;
+// จังหวะเฝ้า charge ที่ถูกยกเลิกจากหน้าร้าน (จนหมดอายุ)
+const CANCEL_WATCH_INTERVAL_MS = 5000;
 
 function makeIdempotencyKey() {
     if (globalThis.crypto?.randomUUID) {
@@ -47,6 +49,10 @@ export class PaymentBeamQr extends PaymentInterface {
         this.pollingResolve = null;
         this.cancelled = false;
         this.activeChargeId = null;
+        // Beam ไม่มี API ยกเลิก charge — หลังพนักงานกดยกเลิก ต้องเฝ้าใบเก่าต่อ
+        // จนหมดอายุ เผื่อลูกค้าเผลอโอนเข้า QR ที่ยกเลิกไปแล้ว
+        this.cancelWatchers = new Map();
+        this.paidAfterCancel = null;
     }
 
     async sendPaymentRequest(uuid) {
@@ -112,6 +118,9 @@ export class PaymentBeamQr extends PaymentInterface {
         line.transaction_id = chargeId;
 
         const expiryMs = response.qr_expiry ? Date.parse(response.qr_expiry) : NaN;
+        if (!Number.isNaN(expiryMs)) {
+            line.uiState.beam_qr_expiry_ms = expiryMs;
+        }
         this._setQrOnDisplays(line, {
             qrCode: "data:image/png;base64," + response.qr_image_base64,
             name: this.payment_method_id.name || "Beam QR",
@@ -166,14 +175,21 @@ export class PaymentBeamQr extends PaymentInterface {
             }
             this._showError(
                 _t(
-                    "ยกเลิกฝั่ง POS แล้ว แต่ QR เดิมยังสแกนได้จนหมดอายุ หากลูกค้าเผลอสแกนจ่ายภายหลัง ให้ตรวจสอบใน Beam Lighthouse"
+                    "ยกเลิกฝั่ง POS แล้ว แต่ QR เดิมยังสแกนได้จนหมดอายุ ระบบจะเฝ้ารายการนี้ต่อและแจ้งเตือนทันทีหากลูกค้าเผลอโอนเข้ามา"
                 )
             );
+            // ประทับในสมุดฝั่งเซิร์ฟเวอร์ว่าหน้าร้านเลิกรอรายการนี้แล้ว
+            // (ล้มเหลวก็ไม่เป็นไร — cron ยังเฝ้าจากแถวที่สร้างตอนออก QR)
+            this._callBeam("beam_qr_mark_cancelled", { charge_id: chargeId });
+            this._watchCancelledCharge(chargeId, line);
         }
 
         this.cancelled = true;
         this._finishPolling(false);
         this._setQrOnDisplays(line, null);
+        if (chargeId) {
+            line.uiState.beam_qr_last_charge_id = chargeId;
+        }
         line.transaction_id = "";
         delete line.uiState.beam_qr_charge_id;
         delete line.uiState.beam_qr_idempotency_key;
@@ -183,6 +199,96 @@ export class PaymentBeamQr extends PaymentInterface {
     close() {
         this.cancelled = true;
         this._finishPolling(false);
+        for (const timeoutId of this.cancelWatchers.values()) {
+            clearTimeout(timeoutId);
+        }
+        this.cancelWatchers.clear();
+    }
+
+    /**
+     * เฝ้า charge ที่ถูกยกเลิกจากหน้าร้านจนหมดอายุ — ถ้าลูกค้าเผลอโอนเข้า
+     * QR ใบเก่า ต้องแจ้งพนักงานทันที ไม่ใช่ไปเจอตอนปิดรอบ
+     */
+    _watchCancelledCharge(chargeId, line) {
+        if (!chargeId || this.cancelWatchers.has(chargeId)) {
+            return;
+        }
+        const amountText = this.env.utils.formatCurrency(line.amount);
+        const expiryMs = line.uiState?.beam_qr_expiry_ms;
+        const deadline =
+            (expiryMs || Date.now() + 10 * 60 * 1000) + EXPIRY_GRACE_MS;
+        const poll = async () => {
+            this.cancelWatchers.delete(chargeId);
+            const response = await this._callBeam("beam_qr_get_charge", {
+                charge_id: chargeId,
+            });
+            const status = chargeStatus(response);
+            if (status === "SUCCEEDED") {
+                line.uiState = line.uiState || {};
+                line.uiState.beam_qr_paid_after_cancel = chargeId;
+                // เก็บบน interface ด้วย — line อาจถูกลบไปแล้วตอนสลับช่องทาง
+                this.paidAfterCancel = { chargeId, amount: line.amount };
+                this._showError(
+                    _t(
+                        "ลูกค้าโอนเข้า QR ที่ยกเลิกไปแล้ว! รายการ %s ยอด %s — ห้ามเก็บเงินซ้ำ ใช้ปุ่ม \"บันทึกว่าลูกค้าโอนแล้ว\" เพื่อปิดบิลด้วยยอดนี้ หรือตรวจสอบใน Beam Lighthouse",
+                        chargeId,
+                        amountText
+                    )
+                );
+                return;
+            }
+            if (["FAILED", "EXPIRED", "CANCELED", "VOIDED"].includes(status)) {
+                return;
+            }
+            if (Date.now() > deadline) {
+                return;
+            }
+            this.cancelWatchers.set(chargeId, setTimeout(poll, CANCEL_WATCH_INTERVAL_MS));
+        };
+        this.cancelWatchers.set(chargeId, setTimeout(poll, CANCEL_WATCH_INTERVAL_MS));
+    }
+
+    /**
+     * พนักงานยืนยันเองว่าลูกค้าโอนแล้ว (ช่วง Beam API มีปัญหา)
+     * เซิร์ฟเวอร์จะถาม Beam ครั้งสุดท้ายก่อน — ถ้า Beam ยืนยันได้เอง
+     * จะปิดด้วย charge id จริงแทนการบันทึก Manual
+     */
+    async manualConfirm(order, line, manualRef) {
+        line.uiState = line.uiState || {};
+        const chargeId =
+            line.uiState.beam_qr_paid_after_cancel ||
+            line.uiState.beam_qr_charge_id ||
+            line.uiState.beam_qr_last_charge_id ||
+            (isChargeId(line.transaction_id) ? line.transaction_id : null) ||
+            this.paidAfterCancel?.chargeId ||
+            null;
+        const referenceId = `KO-${order?.uuid || "order"}-${line.uuid || "payment"}`
+            .replace(/[^A-Za-z0-9_-]/g, "")
+            .slice(0, 100);
+        const response = await this._callBeam("beam_qr_manual_confirm", {
+            charge_id: chargeId,
+            manual_ref: manualRef,
+            reference_id: referenceId,
+        });
+        if (!response || response.error) {
+            this._showError(response?.error || _t("บันทึกไม่สำเร็จ กรุณาลองใหม่"));
+            return false;
+        }
+        line.card_type = this.payment_method_id.name || "Beam QR";
+        if (chargeStatus(response) === "SUCCEEDED" && chargeId) {
+            // Beam ยืนยันเองได้ — ปิดแบบรายการปกติ ไม่ใช่ Manual
+            line.transaction_id = chargeId;
+            line.setReceiptInfo?.(_t("Beam: %s", chargeId));
+        } else {
+            const savedRef = response.manual_ref || manualRef;
+            line.transaction_id = `manual-qr:${savedRef}`;
+            line.payment_ref_no = savedRef;
+            line.setReceiptInfo?.(_t("ยืนยันโอน Manual: %s", savedRef));
+        }
+        line.setPaymentStatus("done");
+        delete line.uiState.beam_qr_paid_after_cancel;
+        this.paidAfterCancel = null;
+        return true;
     }
 
     _setQrOnDisplays(line, qrPaymentData) {
