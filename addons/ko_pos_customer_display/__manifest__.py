@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KO POS - Customer Display (จอลูกค้า)',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
     'category': 'Sales/Point of Sale',
     'summary': 'จอที่ 2 สำหรับลูกค้า: รายการออเดอร์สด, QR ชำระเงิน และสื่อโฆษณาเมื่อจอว่าง',
     'description': """

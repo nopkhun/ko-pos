@@ -1495,21 +1495,51 @@ menu's "Open in browser" / "เปิดในเบราว์เซอร์"
 Chrome/Safari. Also clear the site data afterwards — see the
 `8bc1ee4`-style asset hash note elsewhere in this file.
 
-**If a device genuinely cannot be updated** (an iPad that maxes out below iOS 17.4, an
-Android tablet with a frozen WebView), a polyfill is possible. It is **not deployed** —
-do not assume it exists. The shape that works:
+**For devices that cannot be updated far enough** — the owner's case is **Android 7**,
+where Google's last Chrome and WebView is **119** (Chrome 120 dropped Android 7.0/7.1),
+so `URL.canParse` (120), the `Set` set-theory methods (122) and `URL.parse` (126) stay
+missing even after a full update. `ko_pos_compat` (added 2026-09-06) back-fills them.
 
-- Put a plain script under `static/lib/`, **not** `static/src/`. Files under
-  `static/lib/**` are emitted verbatim; files under `static/src/**` are transpiled into
-  Odoo modules and only execute once the loader boots, which is too late. Verified
-  against the live bundle: `/web/static/lib/luxon/luxon.js` appears as a bare IIFE with
-  no `odoo.define` wrapper, while every `static/src` file is wrapped.
-- `('prepend', 'ko_pos_compat/static/lib/es2024_polyfill.js')` it into `web.assets_web`,
-  `web.assets_frontend` **and** `point_of_sale.assets_prod`, so it lands ahead of
-  `module_loader.js`.
-- Polyfill `Object.groupBy`, `Map.groupBy`, `Array.prototype.toSorted` and
-  `Array.prototype.toReversed` together — the bundle uses all four.
+Three things about that addon are load-bearing, so do not "tidy" them:
 
-A polyfill buys compatibility, not support: an out-of-date WebView is still an
-unpatched browser handling real payments. Replacing the device is the better answer
-whenever it is affordable.
+1. **The script lives in `static/lib/`, not `static/src/`.** A `static/lib` file is
+   emitted verbatim and executes the moment the bundle is parsed — before the module
+   loader boots anything. Verified against the live bundle: `/web/static/lib/luxon/luxon.js`
+   appears as a bare IIFE. (Odoo's own `web/static/src/polyfills/*.js` also come out bare,
+   because the transpiler only wraps files with ESM syntax — but that is an implementation
+   detail of the transpiler; `static/lib` is guaranteed.)
+2. **It is `('prepend', …)`-ed into four bundles:** `web.assets_web`,
+   `web.assets_frontend`, `point_of_sale._assets_pos` and
+   `point_of_sale.customer_display_assets`. `_assets_pos` is the shared base that flows
+   into both `assets_prod` and the debug bundle, so adding `assets_prod` as well would
+   only duplicate the file.
+3. **The whole body is wrapped in `try/catch`.** It runs first, ahead of everything, for
+   every user on every browser. If it ever throws, the entire system dies for everybody —
+   including the modern browsers where every one of its `def()` calls is a no-op.
+
+Test it with `node addons/ko_pos_compat/tests/test_ko_es_compat.mjs` (no flags). It runs
+42 cases against Node's real built-ins, deletes those built-ins, loads the polyfill, runs
+the same 42 cases again, and requires the results to be `deepStrictEqual`. That is the
+check that catches a polyfill which is *nearly* right — a `toSorted` that mutates, an
+`Object.groupBy` whose result has `Object.prototype`, a `Map.groupBy` that splits `-0`
+from `0`.
+
+**The CSS is the part a polyfill cannot save.** Odoo 19 core ships `:has()` (Chrome 105)
+270 times in the backend sheet and 209 times in the POS sheet, plus `dvh` units (108) and
+container queries (105). There is no shim for that — Chrome 105+ is a hard floor for the
+page to *look* right, on top of the Chrome 94 syntax floor for it to run at all.
+
+What we *could* fix was our own: `ko_pos_ui` and `ko_pos_customer_display` set
+`--ko-primary`, `--ko-primary-dark`, `--ko-primary-soft` and the three `--ko-station-*`
+colours with `oklch()`, plus one `color-mix()` outline — all Chrome 111+. Below that the
+whole KO colour scheme vanished. **The usual two-line fallback does not work here:** a
+custom property's value is not validated at parse time, so `--ko-primary: oklch(…)` is
+stored happily by Chrome 94 and only fails later, at `var()` time, by which point the
+earlier hex declaration has already been overridden. It has to be `@supports (color:
+oklch(…))`. Same trap for any declaration containing `var()` — an unsupported function
+there is *invalid at computed-value time*, which drops the property to `unset` rather
+than falling back.
+
+A polyfill buys compatibility, not support: an out-of-date WebView is still an unpatched
+browser handling real payments. Replacing the device is the better answer whenever it is
+affordable.

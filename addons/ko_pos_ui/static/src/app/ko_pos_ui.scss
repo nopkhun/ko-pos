@@ -32,9 +32,14 @@
 
 // KO POS — Complete Touch-First UI Theme
 .pos {
-    --ko-primary: oklch(0.5 0.15 190);
-    --ko-primary-dark: oklch(0.4 0.15 190);
-    --ko-primary-soft: oklch(0.5 0.15 190 / 0.07);
+    // สีชุดหลักประกาศเป็น sRGB ก่อน แล้วยกระดับเป็น oklch() ใน @supports ท้ายบล็อก
+    // custom property ไม่ถูกตรวจค่าตอน parse (เก็บ token ดิบไว้เฉย ๆ) จึงใช้เทคนิค
+    // "ประกาศซ้ำสองบรรทัด" แบบ property ปกติไม่ได้ — Chrome เก่าจะเก็บ oklch(...) ไว้
+    // แล้วไปพังตอน var() แทน ต้องกั้นด้วย @supports เท่านั้น
+    // ค่า hex แปลงจาก oklch เดิม (ลด chroma ให้อยู่ใน sRGB gamut) — oklch ต้อง Chrome 111+
+    --ko-primary: #00736e;
+    --ko-primary-dark: #005350;
+    --ko-primary-soft: rgba(0, 115, 110, 0.07);
     --ko-ink: #1c2426;
     --ko-muted: #8fa0a3;
     --ko-muted-2: #5b6d70;
@@ -50,12 +55,25 @@
     --ko-danger-bg: #fdeef1;
     --ko-tax: #7048b5;
     --ko-tax-bg: #f5f0fc;
-    --ko-station-hot: oklch(0.6 0.15 40);
-    --ko-station-cold: oklch(0.55 0.12 250);
-    --ko-station-drink: oklch(0.62 0.13 85);
+    --ko-station-hot: #c85b32;
+    --ko-station-cold: #3275b4;
+    --ko-station-drink: #a97f00;
     color: var(--ko-ink);
     background: var(--ko-canvas);
     font-family: "Prompt", -apple-system, "Noto Sans Thai", sans-serif;
+}
+
+// Chrome 111+ / Safari 15.4+ — คืนค่า oklch ตามดีไซน์เดิม ชนะบล็อกด้านบนเพราะมาทีหลัง
+// เบราว์เซอร์เก่ากว่านั้นจะข้ามทั้งก้อนแล้วใช้ hex ข้างบนแทน
+@supports (color: oklch(0.5 0.15 190)) {
+    .pos {
+        --ko-primary: oklch(0.5 0.15 190);
+        --ko-primary-dark: oklch(0.4 0.15 190);
+        --ko-primary-soft: oklch(0.5 0.15 190 / 0.07);
+        --ko-station-hot: oklch(0.6 0.15 40);
+        --ko-station-cold: oklch(0.55 0.12 250);
+        --ko-station-drink: oklch(0.62 0.13 85);
+    }
 }
 
 .pos button,
@@ -1248,7 +1266,14 @@
 
 .pos .ko-refund-reference-field input:focus {
     border-color: var(--ko-primary);
-    outline: 2px solid color-mix(in srgb, var(--ko-primary) 18%, transparent);
+    // color-mix() ต้อง Chrome 111+ และเพราะค่ามี var() อยู่ด้วย เบราว์เซอร์เก่าจะ
+    // "invalid at computed-value time" คือ outline หายไปเลย ไม่ตกมาใช้บรรทัดก่อนหน้า
+    // จึงต้องกั้นด้วย @supports ไม่ใช่ประกาศซ้ำเฉย ๆ
+    outline: 2px solid rgba(0, 115, 110, 0.18);
+
+    @supports (outline: 2px solid color-mix(in srgb, red 18%, transparent)) {
+        outline: 2px solid color-mix(in srgb, var(--ko-primary) 18%, transparent);
+    }
 }
 
 .pos .ko-refund-action-hint {
@@ -1726,6 +1751,7 @@
 .pos .ko-billed-status {
     font-size: 11px;
     font-weight: 500;
+    color: #006548; // fallback สำหรับ < Chrome 111 (ไม่มี var() จึงประกาศซ้ำได้ตรง ๆ)
     color: oklch(0.45 0.13 165);
 }
 

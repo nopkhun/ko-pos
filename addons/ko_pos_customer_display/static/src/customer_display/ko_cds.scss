@@ -33,9 +33,14 @@
 }
 
 .ko-cds {
-    --ko-primary: oklch(0.5 0.15 190);
-    --ko-primary-dark: oklch(0.4 0.15 190);
-    --ko-primary-soft: oklch(0.5 0.15 190 / 0.07);
+    // สีชุดหลักประกาศเป็น sRGB ก่อน แล้วยกระดับเป็น oklch() ใน @supports ท้ายบล็อก
+    // custom property ไม่ถูกตรวจค่าตอน parse (เก็บ token ดิบไว้เฉย ๆ) จึงใช้เทคนิค
+    // "ประกาศซ้ำสองบรรทัด" แบบ property ปกติไม่ได้ — Chrome เก่าจะเก็บ oklch(...) ไว้
+    // แล้วไปพังตอน var() แทน ต้องกั้นด้วย @supports เท่านั้น
+    // ค่า hex แปลงจาก oklch เดิม (ลด chroma ให้อยู่ใน sRGB gamut) — oklch ต้อง Chrome 111+
+    --ko-primary: #00736e;
+    --ko-primary-dark: #005350;
+    --ko-primary-soft: rgba(0, 115, 110, 0.07);
     --ko-ink: #1c2426;
     --ko-muted: #8fa0a3;
     --ko-muted-2: #5b6d70;
@@ -57,6 +62,15 @@
     // ฐานสเกลทั้งจอ: มือถือ ~16px, แท็บเล็ต ~20px, TV 4K ได้ถึง 34px
     font-size: clamp(16px, 2.6vmin, 34px);
     line-height: 1.4;
+}
+
+// Chrome 111+ / Safari 15.4+ — คืนค่า oklch ตามดีไซน์เดิม
+@supports (color: oklch(0.5 0.15 190)) {
+    .ko-cds {
+        --ko-primary: oklch(0.5 0.15 190);
+        --ko-primary-dark: oklch(0.4 0.15 190);
+        --ko-primary-soft: oklch(0.5 0.15 190 / 0.07);
+    }
 }
 
 // ---------------------------------------------------------------- header

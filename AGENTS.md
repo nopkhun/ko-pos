@@ -1103,6 +1103,30 @@ Working and confirmed against the live system:
       `ir.cron` / `ko.beam.qr.charge` (model allowlist), and the agent cannot log in to
       the backend, so live checks (QR on the till, cancel, ledger menu, cron firing)
       remain §9 item 11 — plus every open till/display needs one hard refresh.
+- **`ko_pos_compat` (19.0.1.0.0) — built and tested locally, NOT deployed.** Seventh
+  custom addon. Back-fills the JS built-ins Odoo 19 core calls but old Chromium/WebView
+  lacks, so the app stops dying with `TypeError: ... is not a function` on devices like
+  Android 7 (Google's last Chrome/WebView there is **119**). Covers Chrome 95–126:
+  `Object.groupBy`/`Map.groupBy`, `Array#toSorted`/`toReversed`/`toSpliced`/`with`,
+  `Array#findLast`/`findLastIndex`, `Promise.withResolvers`, `URL.canParse`/`URL.parse`,
+  `AbortSignal.timeout`/`any`, and the seven `Set` set-theory methods. The script lives
+  in `static/lib/` on purpose (never wrapped as an Odoo module, so it runs before the
+  module loader boots) and is `('prepend', …)`-ed into `web.assets_web`,
+  `web.assets_frontend`, `point_of_sale._assets_pos` and
+  `point_of_sale.customer_display_assets`. `auto_install: True`.
+  `addons/ko_pos_compat/tests/test_ko_es_compat.mjs` runs 42 cases twice — once against
+  Node's real built-ins, once with them deleted and the polyfill loaded — and requires
+  the two runs to match exactly; it also asserts the polyfill never overwrites a native
+  and never adds an enumerable key to a prototype. Run it with plain
+  `node addons/ko_pos_compat/tests/test_ko_es_compat.mjs`.
+- **`oklch()` / `color-mix()` fallbacks — built locally, NOT deployed.** Our own theme
+  used `oklch()` for `--ko-primary`, `--ko-primary-dark`, `--ko-primary-soft` and the
+  three `--ko-station-*` colours plus one `color-mix()` outline — all Chrome 111+. Below
+  that the custom properties resolved to nothing and the POS lost its colour scheme.
+  Both stylesheets now declare sRGB hex first and re-apply `oklch()` inside
+  `@supports (color: oklch(…))`, which is required (not the usual two-line fallback)
+  because custom-property values are not validated at parse time. `ko_pos_ui`
+  19.0.7.4.0, `ko_pos_customer_display` 19.0.1.2.0. Modern browsers render identically.
 
 ---
 
@@ -1161,12 +1185,19 @@ Working and confirmed against the live system:
    **set `beam_expiry_sec` = 90 on payment method id 12** (owner chose 90 s; MCP cannot
    write `pos.payment.method`, do it in the backend form: ตั้งค่า → วิธีชำระเงิน →
    QR Promptpay).
-12. **Decide the old-browser policy (opened 2026-09-05).** The owner hit
-   `TypeError: Object.groupBy is not a function` on kodoo.viakuma.com — Odoo 19 core
-   needs Chrome/Edge 117+, Safari 17.4+ (iOS 17.4), Firefox 119+. Establish which
-   devices and in-app browsers (LINE/Facebook WebViews are the usual culprit) staff
-   actually use, then either update/replace them or ship the `ko_pos_compat` polyfill
-   addon sketched in `docs/GOTCHAS.md`. **Nothing is deployed for this yet.**
+12. **Deploy the old-browser support (opened 2026-09-05, code ready 2026-09-06).**
+   `ko_pos_compat` 19.0.1.0.0 plus the `oklch()`/`color-mix()` `@supports` fallbacks in
+   `ko_pos_ui` 19.0.7.4.0 and `ko_pos_customer_display` 19.0.1.2.0 are written, unit
+   tested and pushed — **but never deployed and never run inside a real Odoo**. Before
+   deploying: confirm the module list picks `ko_pos_compat` up (it is `auto_install`,
+   deps `web` + `point_of_sale`) and that the deploy log shows it loading. After
+   deploying: hard-refresh every till and display (asset hashes change), then on the
+   Android 7 device check `typeof Object.groupBy` in the console reads `"function"`,
+   open a bill, and confirm the KO teal colour scheme is present rather than default.
+   Also read the device's real Chrome version from `chrome://version` — on Android 7 the
+   ceiling is 119, and the CSS floor for a correct-looking page is Chrome 105
+   (`:has()`, unfixable). If that device is below 105, the answer is a new device, not
+   more code.
 
 > ✅ Completed 2026-08-25: **the production trial**. The owner operated the POS and the
 > kitchen board end to end on the real machines — one dish per station, ส่งครัว, ready,
