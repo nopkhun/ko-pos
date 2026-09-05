@@ -1161,6 +1161,12 @@ Working and confirmed against the live system:
    **set `beam_expiry_sec` = 90 on payment method id 12** (owner chose 90 s; MCP cannot
    write `pos.payment.method`, do it in the backend form: ตั้งค่า → วิธีชำระเงิน →
    QR Promptpay).
+12. **Decide the old-browser policy (opened 2026-09-05).** The owner hit
+   `TypeError: Object.groupBy is not a function` on kodoo.viakuma.com — Odoo 19 core
+   needs Chrome/Edge 117+, Safari 17.4+ (iOS 17.4), Firefox 119+. Establish which
+   devices and in-app browsers (LINE/Facebook WebViews are the usual culprit) staff
+   actually use, then either update/replace them or ship the `ko_pos_compat` polyfill
+   addon sketched in `docs/GOTCHAS.md`. **Nothing is deployed for this yet.**
 
 > ✅ Completed 2026-08-25: **the production trial**. The owner operated the POS and the
 > kitchen board end to end on the real machines — one dish per station, ส่งครัว, ready,

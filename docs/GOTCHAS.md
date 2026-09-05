@@ -1446,3 +1446,70 @@ _charge_id_unique = models.Constraint('unique (charge_id)', 'ข้อควา�
 Caught on the 2026-08-31 deploy of `ko.beam.qr.charge` (fixed in
 `ko_pos_beam_bolt` 19.0.6.0.1). When reading deploy logs, treat any `odoo.registry`
 WARNING as a real defect, not noise.
+
+---
+
+### The whole backend dies with `Object.groupBy is not a function`, but only on one device
+
+**Symptom:** opening kodoo.viakuma.com raises Odoo's red error dialog on essentially every
+backend page:
+
+```
+OwlError: An error occured in the owl lifecycle
+Caused by: TypeError: Object.groupBy is not a function
+    at Proxy.get partition (.../web.assets_web.min.js)
+    at Composer.template
+```
+
+The server is healthy and everyone else sees nothing wrong.
+
+**Cause:** neither our code nor the server — the browser is too old. Odoo 19 core ships
+`Object.groupBy` (ES2024) inside `web.assets_web`, in `UseComposerActions.partition`,
+which builds the mail composer's action bar. The chatter sits on nearly every backend
+form view, so a missing `Object.groupBy` looks like a site-wide outage.
+
+`Object.groupBy` needs **Chrome/Edge 117+, Safari 17.4+ (iOS 17.4), Firefox 119+,
+Samsung Internet 24+**. Anything older crashes here.
+
+Two more traps live in the same bundle for the same class of browser — verified by
+grepping the served `web.assets_web.min.js` on 2026-09-05:
+
+| API | Where in the bundle | Needs |
+| --- | --- | --- |
+| `Object.groupBy` | `UseComposerActions.partition` (mail composer) | Chrome 117 / Safari 17.4 / FF 119 |
+| `Map.groupBy` | `analytic/views/analytic_search_model` | same baseline |
+| `Array.prototype.toSorted` | tax engine `flatten_taxes_and_sort_them` | Chrome 110 / Safari 16.4 / FF 115 |
+
+The `toSorted` one is the dangerous one: it is in the **tax** path, so an even older
+browser miscomputes POS totals rather than showing a dialog.
+
+**Confirm it in ten seconds.** On the failing device, open the browser console and type
+`typeof Object.groupBy`. `"undefined"` means the browser; `"function"` means look
+elsewhere. Cross-check by loading the same URL in a current desktop Chrome.
+
+**Fix:** update the browser. Suspect **in-app browsers** first — a link tapped inside
+LINE, Facebook, or Messenger opens in that app's own WebView (Android System WebView, or
+the WKWebView of whatever iOS the device is stuck on), which is routinely years behind
+the Chrome or Safari installed on the very same device. Tell staff to use the in-app
+menu's "Open in browser" / "เปิดในเบราว์เซอร์", or to bookmark the URL in real
+Chrome/Safari. Also clear the site data afterwards — see the
+`8bc1ee4`-style asset hash note elsewhere in this file.
+
+**If a device genuinely cannot be updated** (an iPad that maxes out below iOS 17.4, an
+Android tablet with a frozen WebView), a polyfill is possible. It is **not deployed** —
+do not assume it exists. The shape that works:
+
+- Put a plain script under `static/lib/`, **not** `static/src/`. Files under
+  `static/lib/**` are emitted verbatim; files under `static/src/**` are transpiled into
+  Odoo modules and only execute once the loader boots, which is too late. Verified
+  against the live bundle: `/web/static/lib/luxon/luxon.js` appears as a bare IIFE with
+  no `odoo.define` wrapper, while every `static/src` file is wrapped.
+- `('prepend', 'ko_pos_compat/static/lib/es2024_polyfill.js')` it into `web.assets_web`,
+  `web.assets_frontend` **and** `point_of_sale.assets_prod`, so it lands ahead of
+  `module_loader.js`.
+- Polyfill `Object.groupBy`, `Map.groupBy`, `Array.prototype.toSorted` and
+  `Array.prototype.toReversed` together — the bundle uses all four.
+
+A polyfill buys compatibility, not support: an out-of-date WebView is still an
+unpatched browser handling real payments. Replacing the device is the better answer
+whenever it is affordable.
