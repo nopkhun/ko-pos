@@ -1568,3 +1568,52 @@ than falling back.
 A polyfill buys compatibility, not support: an out-of-date WebView is still an unpatched
 browser handling real payments. Replacing the device is the better answer whenever it is
 affordable.
+
+---
+
+### A deploy looks like it did nothing, because `/web/assets/any/…` serves a stale bundle
+
+**Symptom:** the deploy action says success, the log proves the module installed, and yet
+
+```
+curl https://kodoo.viakuma.com/web/assets/any/web.assets_web.min.js | grep ko_pos_compat
+```
+
+finds nothing, and the byte count is *identical* to before the deploy. It reads like the
+asset pipeline silently ignored your addon.
+
+**Cause:** `any` is not "the current one". Odoo resolves that path to whatever
+`ir.attachment` copy of the bundle already exists and returns it verbatim — an old
+generation, with the old size, HTTP 200, no warning. The real bundle had already been
+regenerated under a new hash; the check was reading a ghost.
+
+**Fix — ask Odoo for the canonical URL instead of guessing one.** Any *wrong* hash gets a
+303 whose `Location` is the current one:
+
+```bash
+curl -s -o /dev/null -D - https://kodoo.viakuma.com/web/assets/0/point_of_sale.assets_prod.min.js | grep -i ^location
+```
+
+Then fetch that URL and grep it. For public pages you can also just read the `<script>`
+and `<link>` tags out of `/web/login` — but note Odoo 19 splits the frontend into
+`web.assets_frontend_minimal` + `web.assets_frontend_lazy`, so an addon added to
+`web.assets_frontend` shows up in the **`_lazy`** bundle, not in a bundle of that name.
+
+Caught on the 2026-09-05 `ko_pos_compat` deploy (action 113155240). The bundle hash for
+`web.assets_web` moved `8bc1ee4` → `a3fcf4c` at that deploy; `any` kept serving `8bc1ee4`.
+
+**Worth doing while you are there.** Once you have the canonical URL you can verify the
+shipped, *minified* code rather than the source you wrote:
+
+```bash
+# cut the polyfill back out of the served bundle and run the repo's own test against it
+python3 - <<'EOF'
+s = open('bundle.js').read()
+i = s.index('/* /ko_pos_compat/static/lib/ko_es_compat.js */')
+open('served.js','w').write(s[i:s.index('/* /', i+10)])
+EOF
+KO_POLYFILL=served.js node test_served.mjs
+```
+
+That is the difference between "the file is in the bundle" and "the code the till will
+actually run behaves like the real built-ins".

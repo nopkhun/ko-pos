@@ -1103,7 +1103,7 @@ Working and confirmed against the live system:
       `ir.cron` / `ko.beam.qr.charge` (model allowlist), and the agent cannot log in to
       the backend, so live checks (QR on the till, cancel, ledger menu, cron firing)
       remain §9 item 11 — plus every open till/display needs one hard refresh.
-- **`ko_pos_compat` (19.0.1.1.0) — built and tested locally, NOT deployed.** Seventh
+- **`ko_pos_compat` (19.0.1.1.0) — DEPLOYED 2026-09-05, action `113155240`.** Seventh
   custom addon. Back-fills the JS built-ins Odoo 19 core calls but old Chromium/WebView
   lacks, so the app stops dying with `TypeError: ... is not a function` on devices like
   Android 7 (Google's last Chrome/WebView there is **119**). Covers Chrome 95–126:
@@ -1124,7 +1124,7 @@ Working and confirmed against the live system:
   browsers below Chrome 108. That file is **appended** while the JS is prepended, because
   two of those core rules contain `var()` and therefore survive parsing and must be beaten
   later in the cascade rather than earlier.
-- **`oklch()` / `color-mix()` fallbacks — built locally, NOT deployed.** Our own theme
+- **`oklch()` / `color-mix()` fallbacks — DEPLOYED 2026-09-05, action `113155240`.** Our own theme
   used `oklch()` for `--ko-primary`, `--ko-primary-dark`, `--ko-primary-soft` and the
   three `--ko-station-*` colours plus one `color-mix()` outline — all Chrome 111+. Below
   that the custom properties resolved to nothing and the POS lost its colour scheme.
@@ -1132,6 +1132,24 @@ Working and confirmed against the live system:
   `@supports (color: oklch(…))`, which is required (not the usual two-line fallback)
   because custom-property values are not validated at parse time. `ko_pos_ui`
   19.0.7.4.0, `ko_pos_customer_display` 19.0.1.2.0. Modern browsers render identically.
+- **Deploy 2026-09-05 verified end to end (action `113155240`).** `addons-init` echoed
+  `ko_pos_ui` 19.0.7.4.0, `ko_pos_customer_display` 19.0.1.2.0, `ko_pos_compat`
+  19.0.1.1.0 and `KDS_SECURITY_PRESENT=yes`; `odoo-upgrade` logged
+  `module.button_install on ['KO POS - Old Browser Compatibility …']`,
+  `Loading module ko_pos_compat (91/91)` … `loaded`, the Thai signal
+  `applied Thai override translations from 57 files`, `Modules loaded.` and a clean
+  `Initiating shutdown`; the `odoo` service came up with `MASTER_PW_LINES=1`,
+  `/mnt/extra-addons` in its addons paths and werkzeug on 8069, and served a real user
+  login a minute later. **The module count is now 91**, not the 89 this document used to
+  imply — the 2026-09-04 deploys (14 of them, undocumented here) had already moved it
+  to 90 before `ko_pos_compat` made 91.
+  Beyond the log, the shipped assets were checked directly: `ko_pos_compat` is the
+  **first** file in `web.assets_web`, `point_of_sale.assets_prod` and
+  `web.assets_frontend_lazy` (byte offset 5); the minified copy cut back out of the
+  served bundle passes all 42 equivalence cases; and in the POS stylesheet the hex
+  fallbacks sit before the `@supports (color: oklch(…))` block while our
+  `@supports not (height: 100dvh)` rules sit after core's `dvh` ones — the order the
+  cascade needs. Backend bundle hash moved `8bc1ee4` → `a3fcf4c`.
 
 ---
 
@@ -1190,24 +1208,24 @@ Working and confirmed against the live system:
    **set `beam_expiry_sec` = 90 on payment method id 12** (owner chose 90 s; MCP cannot
    write `pos.payment.method`, do it in the backend form: ตั้งค่า → วิธีชำระเงิน →
    QR Promptpay).
-12. **Deploy the old-browser support (opened 2026-09-05, code ready 2026-09-06).**
-   `ko_pos_compat` 19.0.1.0.0 plus the `oklch()`/`color-mix()` `@supports` fallbacks in
-   `ko_pos_ui` 19.0.7.4.0 and `ko_pos_customer_display` 19.0.1.2.0 are written, unit
-   tested and pushed — **but never deployed and never run inside a real Odoo**. Before
-   deploying: confirm the module list picks `ko_pos_compat` up (it is `auto_install`,
-   deps `web` + `point_of_sale`) and that the deploy log shows it loading. After
-   deploying: hard-refresh every till and display (asset hashes change), then on the
-   Android 7 device check `typeof Object.groupBy` in the console reads `"function"`,
-   open a bill, and confirm the KO teal colour scheme is present rather than default.
-   **The device is known: Chrome 101.0.4951.61 on Android 7** (owner reported
-   2026-09-06). That clears the Chrome 94 ES2022 syntax floor, so with `ko_pos_compat`
-   the JS gap is fully covered. What it does not clear is `:has()` (105), `dvh` (108) and
-   `oklch()` (111) — `dvh` and `oklch()` are handled by this change, and `:has()` costs
-   six cosmetic POS rules (see `docs/GOTCHAS.md`), so Chrome 101 is expected to be
-   usable. Still push the device to Chrome 119 in the Play Store when possible — that is
-   Android 7's ceiling and it removes the `:has()` gap and most of the polyfill surface.
-   Note the in-app browser inside LINE uses **Android System WebView**, updated
-   separately from Chrome; both need updating.
+12. **Confirm the Android 7 till in person (deploy done 2026-09-05).** The code is live
+   and log- and asset-verified (§8); what is *not* verified is the device itself. On the
+   Chrome 101.0.4951.61 / Android 7 machine, after a **hard refresh**: console
+   `typeof Object.groupBy` must read `"function"`, the backend must open without the Owl
+   error dialog, a bill must open, and the KO teal scheme must be present rather than
+   default Odoo colours. Every other till and customer display needs one hard refresh
+   too — asset hashes changed. Then push that device to Chrome 119 in the Play Store
+   (Android 7's ceiling; also update **Android System WebView** separately, which is what
+   LINE's in-app browser uses) — not required any more, but 101 is April 2022 and this
+   device handles money.
+13. **The deploy key rotation in `deploy-rotate/` was never deployed.** `VPS_getProjectContentsV1`
+   on 2026-09-05 shows production still running the compose with the SSH private key
+   embedded inline, identical to the 2026-08-27 file. `deploy-rotate/vps-compose-git-nokey.yaml`
+   and `vps-compose-rotate-step1.yaml` (dated 2026-09-03) move that key to
+   `/run/secrets/ko_pos_deploy_key` on the VPS. Until that lands, every deploy sends the
+   private key through the Hostinger API as plain text inside `content`, and it sits in
+   any agent transcript that performed one. Finish the rotation, then rotate the key
+   itself on GitHub since the old one must be treated as exposed.
 
 > ✅ Completed 2026-08-25: **the production trial**. The owner operated the POS and the
 > kitchen board end to end on the real machines — one dish per station, ส่งครัว, ready,
