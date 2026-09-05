@@ -1103,7 +1103,7 @@ Working and confirmed against the live system:
       `ir.cron` / `ko.beam.qr.charge` (model allowlist), and the agent cannot log in to
       the backend, so live checks (QR on the till, cancel, ledger menu, cron firing)
       remain §9 item 11 — plus every open till/display needs one hard refresh.
-- **`ko_pos_compat` (19.0.1.0.0) — built and tested locally, NOT deployed.** Seventh
+- **`ko_pos_compat` (19.0.1.1.0) — built and tested locally, NOT deployed.** Seventh
   custom addon. Back-fills the JS built-ins Odoo 19 core calls but old Chromium/WebView
   lacks, so the app stops dying with `TypeError: ... is not a function` on devices like
   Android 7 (Google's last Chrome/WebView there is **119**). Covers Chrome 95–126:
@@ -1119,6 +1119,11 @@ Working and confirmed against the live system:
   the two runs to match exactly; it also asserts the polyfill never overwrites a native
   and never adds an enumerable key to a prototype. Run it with plain
   `node addons/ko_pos_compat/tests/test_ko_es_compat.mjs`.
+  It also ships `static/src/ko_css_compat.scss`, which re-declares core's `dvh` heights
+  (bottom sheet, POS modal cap) in `vh` inside `@supports not (height: 100dvh)` for
+  browsers below Chrome 108. That file is **appended** while the JS is prepended, because
+  two of those core rules contain `var()` and therefore survive parsing and must be beaten
+  later in the cascade rather than earlier.
 - **`oklch()` / `color-mix()` fallbacks — built locally, NOT deployed.** Our own theme
   used `oklch()` for `--ko-primary`, `--ko-primary-dark`, `--ko-primary-soft` and the
   three `--ko-station-*` colours plus one `color-mix()` outline — all Chrome 111+. Below
@@ -1194,10 +1199,15 @@ Working and confirmed against the live system:
    deploying: hard-refresh every till and display (asset hashes change), then on the
    Android 7 device check `typeof Object.groupBy` in the console reads `"function"`,
    open a bill, and confirm the KO teal colour scheme is present rather than default.
-   Also read the device's real Chrome version from `chrome://version` — on Android 7 the
-   ceiling is 119, and the CSS floor for a correct-looking page is Chrome 105
-   (`:has()`, unfixable). If that device is below 105, the answer is a new device, not
-   more code.
+   **The device is known: Chrome 101.0.4951.61 on Android 7** (owner reported
+   2026-09-06). That clears the Chrome 94 ES2022 syntax floor, so with `ko_pos_compat`
+   the JS gap is fully covered. What it does not clear is `:has()` (105), `dvh` (108) and
+   `oklch()` (111) — `dvh` and `oklch()` are handled by this change, and `:has()` costs
+   six cosmetic POS rules (see `docs/GOTCHAS.md`), so Chrome 101 is expected to be
+   usable. Still push the device to Chrome 119 in the Play Store when possible — that is
+   Android 7's ceiling and it removes the `:has()` gap and most of the polyfill surface.
+   Note the in-app browser inside LINE uses **Android System WebView**, updated
+   separately from Chrome; both need updating.
 
 > ✅ Completed 2026-08-25: **the production trial**. The owner operated the POS and the
 > kitchen board end to end on the real machines — one dish per station, ส่งครัว, ready,

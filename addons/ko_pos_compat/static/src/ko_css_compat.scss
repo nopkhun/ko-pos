@@ -1,0 +1,37 @@
+// KO POS — CSS fallback สำหรับเบราว์เซอร์ที่ยังไม่รู้จักหน่วย dvh (ก่อน Chrome 108)
+//
+// Odoo 19 core ตั้งความสูงของ bottom sheet และ modal ของ POS ด้วยหน่วย dvh
+// โดยไม่มี fallback ถ้าเบราว์เซอร์ไม่รู้จักหน่วยนี้ ผลคือ:
+//   .o_bottom_sheet          -> height หายไป กลายเป็น auto  (แผ่นเลื่อนขึ้นสูงไม่ถูก)
+//   .pos .modal-dialog       -> max-height หายไป            (หน้าต่างล้นจอ)
+//   .pos .modal-content      -> เหมือนกัน
+//
+// ทำไมต้อง @supports not (...) แทนที่จะประกาศซ้ำสองบรรทัด:
+// สองกฎของ bottom sheet มี var() อยู่ข้างใน (`var(--dismiss-height, 50dvh)`)
+// declaration ที่มี var() จะ "ถูกต้อง" ตอน parse เสมอ แล้วค่อยไปพังตอนคำนวณค่า
+// แปลว่ามันยังอยู่ในลำดับ cascade ไม่ได้ถูกทิ้งไป การประกาศซ้ำจึงไม่ช่วย —
+// ต้องเขียนกฎใหม่ที่มาทีหลังและ specificity เท่ากันเพื่อทับ
+// ด้วยเหตุนี้ไฟล์นี้จึงถูก append (ไม่ใช่ prepend เหมือนไฟล์ JS)
+//
+// เบราว์เซอร์ที่รู้จัก dvh จะข้ามทั้งก้อน ไม่มีผลใด ๆ กับของเดิม
+// วัด: ต่างกันแค่ vh (ความสูง viewport แบบคงที่) กับ dvh (หักแถบ URL ที่ยุบ-ยืดได้)
+// บนแท็บเล็ตที่เปิดเต็มจอ ค่าทั้งสองเท่ากันอยู่แล้ว
+
+@supports not (height: 100dvh) {
+    .o_bottom_sheet {
+        height: 100vh;
+    }
+
+    .o_bottom_sheet .o_bottom_sheet_dismiss {
+        height: var(--dismiss-height, 50vh);
+    }
+
+    .o_bottom_sheet .o_bottom_sheet_spacer {
+        height: calc(100vh - var(--sheet-height, 50vh));
+    }
+
+    .pos .modal-dialog,
+    .pos .modal-content {
+        max-height: 92vh;
+    }
+}

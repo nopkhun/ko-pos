@@ -1524,10 +1524,35 @@ check that catches a polyfill which is *nearly* right — a `toSorted` that muta
 `Object.groupBy` whose result has `Object.prototype`, a `Map.groupBy` that splits `-0`
 from `0`.
 
-**The CSS is the part a polyfill cannot save.** Odoo 19 core ships `:has()` (Chrome 105)
-270 times in the backend sheet and 209 times in the POS sheet, plus `dvh` units (108) and
-container queries (105). There is no shim for that — Chrome 105+ is a hard floor for the
-page to *look* right, on top of the Chrome 94 syntax floor for it to run at all.
+**The CSS needs a closer look than a raw grep gives you.** Counting `:has(` in the
+bundles says 270 in the backend sheet and 209 in the POS sheet, which reads like a wall.
+It is not. Group the selectors by family before you panic:
+
+| bundle | `:has()` rules | of which FullCalendar | actually relevant |
+| --- | --- | --- | --- |
+| `web.assets_web` | 186 | 112 (`o_calendar_renderer`) | ~74, mostly tooltips / mail action list / form + list views |
+| `point_of_sale.assets_prod` | 142 | 112 | **6** |
+| `web.assets_frontend` | 14 | 0 | 14, all minor |
+
+All **six** POS-relevant ones are cosmetic: a bottom-sheet dismiss transition, hiding a
+cog dropdown inside a modal, two `::before` corner radii on `.orderline.has-change`, a
+`min-height` on image-less product cards, and floor-screen bottom padding. Nothing that
+stops an order being taken. So `:has()` is a *polish* floor, not a usability floor —
+`Chrome 105+` is worth having, but Chrome 101 still runs the POS.
+
+`dvh` (Chrome 108) is the one that genuinely hurt, and it *is* fixable, so
+`ko_pos_compat` fixes it. Core sets `.o_bottom_sheet { height: 100dvh }`,
+`.pos .modal-dialog` / `.modal-content { max-height: 92dvh }` and two bottom-sheet
+`var(--x, 50dvh)` heights, none with a fallback; below Chrome 108 the sheet collapses to
+`height: auto` and the POS modals lose their height cap. `static/src/ko_css_compat.scss`
+re-declares them in `vh` inside `@supports not (height: 100dvh)`.
+
+That file is **appended**, while the JS is prepended — and the difference matters. A
+declaration containing `var()` is syntactically valid at parse time no matter what unit
+hides inside it, so core's `height: var(--dismiss-height, 50dvh)` stays in the cascade
+and only fails later, at computed-value time. You cannot beat it by declaring earlier;
+you have to declare *later* at equal specificity. (The two `dvh` declarations without
+`var()` are dropped at parse, so those would have worked either way.)
 
 What we *could* fix was our own: `ko_pos_ui` and `ko_pos_customer_display` set
 `--ko-primary`, `--ko-primary-dark`, `--ko-primary-soft` and the three `--ko-station-*`
