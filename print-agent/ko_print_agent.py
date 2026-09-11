@@ -30,6 +30,7 @@ import argparse
 import base64
 import configparser
 import io
+import ipaddress
 import logging
 import logging.handlers
 import signal
@@ -63,7 +64,7 @@ except ImportError:  # pragma: no cover
     sys.exit(1)
 
 
-AGENT_VERSION = "1.0.1"
+AGENT_VERSION = "1.1.1"
 
 DEFAULT_POLL_INTERVAL = 1.0
 DEFAULT_LOG_FILE = "ko_print_agent.log"
@@ -77,6 +78,13 @@ BACKOFF_MAX_SECONDS = 30
 PRINTER_CONNECT_TIMEOUT = 5  # seconds - just for establishing the TCP connection
 DEFAULT_PRINTER_SEND_TIMEOUT = 30  # seconds - ini-configurable, see [agent] printer_send_timeout
 HTTP_TIMEOUT = 10  # seconds
+
+# Defense in depth: a compromised/malicious Odoo session could otherwise
+# enqueue a job with an arbitrary host/port and turn this agent into an
+# internal port-scanner / raw TCP writer. See validate_destination().
+DEFAULT_ALLOWED_PORTS = "9100"
+DEFAULT_ALLOW_LOOPBACK = False
+DEFAULT_ALLOW_HOSTNAMES = False
 
 RASTER_WIDTH_80MM = 576
 RASTER_WIDTH_58MM = 384
@@ -96,6 +104,10 @@ class Config:
     log_file: str
     image_impl: str
     printer_send_timeout: float
+    allow_loopback: bool
+    allow_hostnames: bool
+    allowed_ports: set
+    allowed_hosts_networks: list
     ini_path: Path
 
 
@@ -104,6 +116,41 @@ def base_dir() -> Path:
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parent
+
+
+def _parse_allowed_ports(raw: str) -> set:
+    """Parse a comma-separated list of ports, e.g. '9100,9101'."""
+    ports = set()
+    for item in (raw or "").split(","):
+        item = item.strip()
+        if not item:
+            continue
+        try:
+            port = int(item)
+        except ValueError:
+            print(f"[WARN] Ignoring invalid entry in allowed_ports: {item!r}")
+            continue
+        if 1 <= port <= 65535:
+            ports.add(port)
+        else:
+            print(f"[WARN] Ignoring out-of-range port in allowed_ports: {item!r}")
+    return ports
+
+
+def _parse_allowed_hosts(raw: str) -> list:
+    """Parse a comma-separated list of IPs / CIDR networks, e.g.
+    '192.168.1.50,192.168.1.0/24'. Bare IPs become single-address networks.
+    """
+    networks = []
+    for item in (raw or "").split(","):
+        item = item.strip()
+        if not item:
+            continue
+        try:
+            networks.append(ipaddress.ip_network(item, strict=False))
+        except ValueError:
+            print(f"[WARN] Ignoring invalid entry in allowed_hosts: {item!r}")
+    return networks
 
 
 def load_config(ini_path: Optional[Path] = None) -> Config:
@@ -130,6 +177,18 @@ def load_config(ini_path: Optional[Path] = None) -> Config:
         "agent", "printer_send_timeout", fallback=DEFAULT_PRINTER_SEND_TIMEOUT
     )
 
+    # --- Destination allowlist (defense in depth - see validate_destination) ---
+    allow_loopback = parser.getboolean("agent", "allow_loopback", fallback=DEFAULT_ALLOW_LOOPBACK)
+    allow_hostnames = parser.getboolean(
+        "agent", "allow_hostnames", fallback=DEFAULT_ALLOW_HOSTNAMES
+    )
+    allowed_ports = _parse_allowed_ports(
+        parser.get("agent", "allowed_ports", fallback=DEFAULT_ALLOWED_PORTS)
+    )
+    allowed_hosts_networks = _parse_allowed_hosts(
+        parser.get("agent", "allowed_hosts", fallback="")
+    )
+
     if not odoo_url:
         raise SystemExit("Config error: [odoo] url is empty / ไม่ได้ตั้งค่า [odoo] url")
     if not token or token == "PASTE_TOKEN_HERE":
@@ -152,6 +211,10 @@ def load_config(ini_path: Optional[Path] = None) -> Config:
         log_file=log_file,
         image_impl=image_impl,
         printer_send_timeout=printer_send_timeout,
+        allow_loopback=allow_loopback,
+        allow_hostnames=allow_hostnames,
+        allowed_ports=allowed_ports,
+        allowed_hosts_networks=allowed_hosts_networks,
         ini_path=path,
     )
 
@@ -203,6 +266,17 @@ class OdooAuthError(OdooError):
     pass
 
 
+class OdooJobNotSent(OdooError):
+    """
+    Raised for a 404 response from /ko_print/agent/ack whose body reports
+    error "not_sent" (or "not_found"): the server's authoritative way of
+    saying this job is no longer in state 'sent' - it was already acked
+    (e.g. our own ack landed once before but we never saw the response),
+    it was requeued and reclaimed by a later poll, or the id is unknown.
+    This is NOT a network/Odoo-outage error and must not be treated as one.
+    """
+
+
 # One shared session (connection keep-alive) for all Odoo calls, instead of
 # opening a brand new TCP+TLS connection on every single poll/ack/ping.
 _http_session = requests.Session()
@@ -221,6 +295,14 @@ def _odoo_post(cfg: Config, path: str, body: dict) -> dict:
 
     if resp.status_code == 401:
         raise OdooAuthError(f"401 Unauthorized on {path}")
+    if resp.status_code == 404 and path.endswith("/ack"):
+        try:
+            payload = resp.json()
+        except ValueError:
+            payload = {}
+        if payload.get("error") in ("not_sent", "not_found"):
+            raise OdooJobNotSent(str(payload.get("error")))
+        raise OdooError(f"HTTP 404 on {path}: {resp.text[:300]}")
     if resp.status_code >= 400:
         raise OdooError(f"HTTP {resp.status_code} on {path}: {resp.text[:300]}")
 
@@ -255,6 +337,18 @@ def ack_job(cfg: Config, job_id: Any, status: str, error: Optional[str] = None) 
         body["error"] = error[:500]
     try:
         _odoo_post(cfg, "/ko_print/agent/ack", body)
+    except OdooJobNotSent:
+        # The job is already settled server-side (already acked, requeued
+        # and reclaimed, or unknown) - this is expected/benign, not an
+        # error to retry and not an Odoo outage, so it gets its own quiet
+        # INFO line instead of the WARNING below, and must never feed the
+        # backoff/reconnect-state-change logic in run_loop (it doesn't -
+        # this exception never leaves ack_job either way).
+        log.info(
+            "Job %s: ack ignored by server (not_sent) / "
+            "งาน %s: server ไม่รับ ack (งานนี้ไม่ได้อยู่ในสถานะ sent แล้ว)",
+            job_id, job_id,
+        )
     except OdooError as e:
         # Acking is best-effort - don't let a failed ack crash the loop.
         # The job will likely be retried/re-queued by Odoo on the next poll.
@@ -335,6 +429,99 @@ def build_test_image() -> "Image.Image":
 
 
 # ---------------------------------------------------------------------------
+# Security: destination allowlist (defense in depth)
+# ---------------------------------------------------------------------------
+#
+# The job's host/port come from Odoo, which this agent otherwise trusts.
+# But if an Odoo session/token were ever compromised, a malicious job could
+# point this agent at an arbitrary host:port on the shop's LAN (or beyond),
+# turning it into an internal port-scanner or a raw-TCP-write primitive
+# (it will happily send arbitrary bytes to whatever it connects to). Server
+# side validation is the primary fix; this is a second, independent layer
+# that runs locally no matter what Odoo sends.
+
+class DestinationNotAllowed(Exception):
+    """Raised when a job's host/port fails the destination allowlist."""
+
+
+def validate_destination(cfg: Config, host: Any, port: Any) -> str:
+    """
+    Check a job's requested printer destination against the configured
+    allowlist, and return the IP address string that should actually be
+    connected to.
+
+    Rules (see ko_print_agent.example.ini for the matching config keys):
+      - port must be an int in 1..65535, AND in [agent] allowed_ports
+        (default: just 9100 - the standard raw ESC/POS port).
+      - host must parse as an IPv4/IPv6 address. Plain hostnames are
+        rejected by default; set [agent] allow_hostnames = true to permit
+        them, in which case the hostname is resolved *once*, here, and every
+        check below runs against the resolved IP (not the original
+        hostname) - the caller then connects to that same resolved IP, so a
+        hostname can't be validated against one address and DNS-rebound to
+        a different one before the actual connection is made.
+      - the resolved address must be private (RFC1918 / ipaddress.is_private)
+        or link-local. Loopback is rejected unless [agent] allow_loopback =
+        true (only needed for local testing against tools/fake_printer.py).
+        Public/global addresses are always rejected.
+      - if [agent] allowed_hosts is set (comma-separated IPs/CIDRs), the
+        address must additionally match one of those networks.
+
+    Raises DestinationNotAllowed (with a human-readable reason) on any
+    failure; never raises for any other reason (bad input just fails the
+    checks above and raises DestinationNotAllowed too).
+    """
+    # --- port -----------------------------------------------------------
+    if not isinstance(port, int) or isinstance(port, bool) or not (1 <= port <= 65535):
+        raise DestinationNotAllowed(f"invalid port {port!r}")
+    if port not in cfg.allowed_ports:
+        raise DestinationNotAllowed(
+            f"port {port} is not in allowed_ports ({sorted(cfg.allowed_ports)})"
+        )
+
+    # --- host: must be an IP, or a hostname if explicitly permitted ------
+    if not host or not isinstance(host, str):
+        raise DestinationNotAllowed(f"invalid host {host!r}")
+
+    ip: Optional[Any] = None
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        ip = None
+
+    if ip is None:
+        if not cfg.allow_hostnames:
+            raise DestinationNotAllowed(
+                f"hostnames are not allowed (host={host!r}); "
+                f"set allow_hostnames = true in the ini to permit this"
+            )
+        try:
+            addrinfo = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+        except OSError as e:
+            raise DestinationNotAllowed(f"could not resolve host {host!r}: {e}") from e
+        if not addrinfo:
+            raise DestinationNotAllowed(f"could not resolve host {host!r}: no results")
+        ip = ipaddress.ip_address(addrinfo[0][4][0])
+
+    # --- loopback / private / link-local / public -------------------------
+    if ip.is_loopback:
+        if not cfg.allow_loopback:
+            raise DestinationNotAllowed(
+                f"loopback address {ip} not allowed; "
+                f"set allow_loopback = true in the ini (only needed for local testing)"
+            )
+    elif not (ip.is_private or ip.is_link_local):
+        raise DestinationNotAllowed(f"address {ip} is not private/link-local (public IPs are never allowed)")
+
+    # --- optional extra allowlist -----------------------------------------
+    if cfg.allowed_hosts_networks:
+        if not any(ip in net for net in cfg.allowed_hosts_networks):
+            raise DestinationNotAllowed(f"address {ip} does not match allowed_hosts")
+
+    return str(ip)
+
+
+# ---------------------------------------------------------------------------
 # Printing
 # ---------------------------------------------------------------------------
 
@@ -390,11 +577,28 @@ def process_job(cfg: Config, job: dict) -> None:
         open_cashdrawer = bool(job.get("open_cashdrawer"))
         origin = job.get("origin") or "?"
 
+        # Defense in depth: never even attempt to connect to a destination
+        # that isn't on the allowlist, no matter what Odoo sent us. This is
+        # checked BEFORE the "Job ..." info log below and before any image
+        # is decoded, so a rejected job never reaches send_to_printer / the
+        # network at all - "never printed" per the security requirement.
+        try:
+            resolved_host = validate_destination(cfg, host, port)
+        except DestinationNotAllowed as e:
+            log.warning(
+                "Job %s: destination REJECTED (%s) - host=%s port=%s origin=%s "
+                "/ งาน %s: ปลายทางไม่ได้รับอนุญาต (%s) เครื่อง=%s พอร์ต=%s ที่มา=%s",
+                job_id, e, host, port, origin,
+                job_id, e, host, port, origin,
+            )
+            ack_job(cfg, job_id, "error", error=f"destination_not_allowed: {e}")
+            return
+
         log.info(
             "Job %s: host=%s:%s paper=%smm cut=%s drawer=%s origin=%s "
             "/ งาน %s: เครื่อง %s:%s กระดาษ %smm ตัด=%s เปิดลิ้นชัก=%s ที่มา=%s",
-            job_id, host, port, paper_width, cut, open_cashdrawer, origin,
-            job_id, host, port, paper_width, cut, open_cashdrawer, origin,
+            job_id, resolved_host, port, paper_width, cut, open_cashdrawer, origin,
+            job_id, resolved_host, port, paper_width, cut, open_cashdrawer, origin,
         )
 
         image = None
@@ -403,7 +607,7 @@ def process_job(cfg: Config, job: dict) -> None:
             image = prepare_receipt_image(png_bytes, paper_width)
 
         send_to_printer(
-            host, port, image, cut, open_cashdrawer, cfg.image_impl,
+            resolved_host, port, image, cut, open_cashdrawer, cfg.image_impl,
             send_timeout=cfg.printer_send_timeout,
         )
 

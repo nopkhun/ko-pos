@@ -10,9 +10,22 @@ Implements:
 
 Fixed bearer token: "testtoken"
 
-Serves exactly two jobs, in order, then empty polls forever after:
+Serves six jobs, in order, then empty polls forever after:
     1. A generated receipt image (Pillow) sized for 80mm paper, cut=True.
     2. A drawer-only job: no image, open_cashdrawer=True, cut=False.
+    3. A job pointed at a PUBLIC IP (8.8.8.8) - the agent's destination
+       allowlist (see validate_destination() in ko_print_agent.py) must
+       reject this and ack status=error, NOT attempt to connect to it.
+    4. A job pointed at the real printer host but port 22 (not in the
+       default allowed_ports=9100) - must also be rejected/acked error.
+    5 & 6. The SAME job id ("dup-1") delivered twice, to simulate a
+       requeue-and-reclaim. The first ack is accepted (200); the SECOND
+       ack for that id is rejected with 404 {"ok": false, "error":
+       "not_sent"} - the agent's ack_job() must treat that as "already
+       settled" (one INFO log line, no retry, not an Odoo outage).
+Jobs #3 and #4 exist to prove the agent's defense-in-depth destination
+check works: even though this mock "Odoo" hands out an arbitrary
+host/port, the agent must never actually connect to either of them.
 
 Use --paper-width 58 to make job #1 target 58mm paper instead (to test the
 58mm resize path in the agent).
@@ -36,9 +49,10 @@ from PIL import Image, ImageDraw, ImageFont
 TOKEN = "testtoken"
 
 STATE = {
-    "queue": [],       # filled in main()
-    "acks": [],        # list of (job_id, status, error) received
+    "queue": [],           # filled in main()
+    "acks": [],            # list of (job_id, status, error) received
     "poll_count": 0,
+    "acked_job_ids": set(),  # ids already acked once - a repeat gets 404 not_sent
 }
 
 
@@ -125,6 +139,50 @@ def make_jobs(
         "open_cashdrawer": True,
         "origin": "mock_odoo test job 2 (drawer only)",
     })
+
+    # --- Security test jobs: a malicious/compromised Odoo could hand out
+    # any host/port. The agent's destination allowlist must reject both of
+    # these (ack status=error, reason destination_not_allowed) and must
+    # NEVER open a connection to either address. -------------------------
+    jobs.append({
+        "id": 3,
+        "host": "8.8.8.8",  # public IP - must be rejected, agent must not connect
+        "port": printer_port,
+        "paper_width": paper_width,
+        "image_png_b64": None,
+        "cut": False,
+        "open_cashdrawer": False,
+        "origin": "mock_odoo SECURITY test job 3 (public IP - must be rejected)",
+    })
+    jobs.append({
+        "id": 4,
+        "host": printer_host,  # a valid/allowed host...
+        "port": 22,            # ...but a disallowed port - must be rejected
+        "paper_width": paper_width,
+        "image_png_b64": None,
+        "cut": False,
+        "open_cashdrawer": False,
+        "origin": "mock_odoo SECURITY test job 4 (port 22 - must be rejected)",
+    })
+
+    # --- Duplicate-ack test: the SAME job id delivered twice (simulates a
+    # requeue-and-reclaim). The agent will print+ack it twice; this server
+    # accepts the first ack (200) and rejects the second with 404 not_sent -
+    # proving the agent's ack_job() treats that as "already settled" (one
+    # INFO log line, no retry, no outage/backoff). Cheap job (no image). ---
+    dup_job = {
+        "id": "dup-1",
+        "host": printer_host,
+        "port": printer_port,
+        "paper_width": paper_width,
+        "image_png_b64": None,
+        "cut": False,
+        "open_cashdrawer": True,
+        "origin": "mock_odoo DUPLICATE-ACK test job (delivered twice)",
+    }
+    jobs.append(dup_job)
+    jobs.append(dict(dup_job))  # same "id" -> second ack must get 404 not_sent
+
     return jobs
 
 
@@ -176,6 +234,17 @@ class Handler(BaseHTTPRequestHandler):
             job_id = body.get("job_id")
             status = body.get("status")
             error = body.get("error")
+
+            if job_id in STATE["acked_job_ids"]:
+                # Mirrors the real server: a job no longer in state 'sent'
+                # (already acked here, or requeued/unknown) is rejected with
+                # 404 not_sent instead of 200 - the agent must treat this as
+                # "already settled", not as an Odoo outage, and not retry.
+                print(f"[mock_odoo] ACK job_id={job_id} status={status} -> 404 not_sent (already acked before)")
+                self._send_json(404, {"ok": False, "error": "not_sent"})
+                return
+
+            STATE["acked_job_ids"].add(job_id)
             STATE["acks"].append((job_id, status, error))
             print(f"[mock_odoo] ACK job_id={job_id} status={status} error={error!r}")
             self._send_json(200, {"ok": True})
