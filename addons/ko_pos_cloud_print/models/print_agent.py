@@ -8,6 +8,13 @@ from odoo import api, fields, models
 # expected to poll roughly every 2 s, so 20 s tolerates a few missed polls
 # without letting a dead agent swallow receipts.
 ONLINE_WINDOW_SECONDS = 20
+# How often an agent's heartbeat is actually written. The agent polls every
+# couple of seconds; writing last_seen on every one of those would be a row
+# update per poll per shop, for no extra information.
+TOUCH_THROTTLE_SECONDS = 5
+# `secrets.token_urlsafe(32)` is always 43 characters. Anything else cannot be
+# one of our tokens, so it is rejected before the database is touched at all.
+TOKEN_LENGTH = 43
 
 
 def generate_token():
@@ -89,6 +96,11 @@ class KoPrintAgent(models.Model):
         """
         if not token or not isinstance(token, str):
             return self.browse()
+        if len(token) != TOKEN_LENGTH:
+            # Cheap rejection of anything that is not shaped like a token, so a
+            # scanner cannot make us scan the table on every probe. The caller
+            # returns the same 401 body either way.
+            return self.browse()
         agents = self.sudo().search([])
         for agent in agents:
             if agent.token and hmac.compare_digest(agent.token, token):
@@ -96,11 +108,27 @@ class KoPrintAgent(models.Model):
         return self.browse()
 
     def _touch(self, ip=None, agent_version=None):
-        """Record that we just heard from this agent."""
+        """Record that we just heard from this agent.
+
+        Throttled: an agent polling every two seconds would otherwise write this
+        row thirty times a minute while saying nothing new. The write is skipped
+        only when the heartbeat is recent *and* the address and version are
+        unchanged, so a restart on a new IP or a new build still lands at once.
+        """
         self.ensure_one()
-        vals = {'last_seen': fields.Datetime.now()}
+        now = fields.Datetime.now()
+        version = str(agent_version)[:64] if agent_version else None
+        if (
+            self.last_seen
+            and (now - self.last_seen).total_seconds() < TOUCH_THROTTLE_SECONDS
+            and (not ip or ip == self.last_ip)
+            and (not version or version == self.agent_version)
+        ):
+            return False
+        vals = {'last_seen': now}
         if ip:
             vals['last_ip'] = ip
-        if agent_version:
-            vals['agent_version'] = str(agent_version)[:64]
+        if version:
+            vals['agent_version'] = version
         self.sudo().write(vals)
+        return True

@@ -156,6 +156,11 @@ class KoPrintJob(models.Model):
         }
 
     def _ack(self, status, error=None):
+        """Close a job the agent was actually handed.
+
+        Guarded by the caller against a job that is not in 'sent': a replayed or
+        stale ack must never mark a freshly queued receipt as printed.
+        """
         self.ensure_one()
         if status == 'done':
             self.sudo().write({'state': 'done', 'error': False})

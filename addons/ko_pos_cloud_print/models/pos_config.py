@@ -8,7 +8,7 @@ class PosConfig(models.Model):
     ko_receipt_printer_id = fields.Many2one(
         'pos.printer',
         string='Receipt Printer (KO Print Agent)',
-        domain="[('printer_type', '=', 'ko_cloud')]",
+        domain="[('printer_type', '=', 'ko_cloud'), ('company_id', '=', company_id)]",
         help='Customer receipts are printed silently on this printer through the '
              'shop print agent. Kitchen tickets keep using the preparation '
              'printers configured under Preparation.',

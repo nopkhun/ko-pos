@@ -19,6 +19,22 @@ export const KO_PRINT_JOB_URL = "/ko_print/job";
 const KO_PIXEL_RATIO = 2;
 
 /**
+ * Strip the control characters that break the SVG serialisation html-to-image
+ * builds the canvas from. Core's `render_service` does this in its own
+ * `sanitizeNodeText`, which it does not export, so it is repeated here.
+ */
+function koSanitizeNodeText(element) {
+    if (element.nodeType === Node.TEXT_NODE) {
+        // eslint-disable-next-line no-control-regex
+        element.textContent = element.textContent.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+        return;
+    }
+    for (const child of element.childNodes) {
+        koSanitizeNodeText(child);
+    }
+}
+
+/**
  * Same contract as core's `htmlToCanvas`, with a pixel ratio we choose.
  *
  * It has to clone into `.render-container` exactly the way core does: the
@@ -33,6 +49,7 @@ async function koHtmlToCanvas(el, options = {}) {
     if (options.addClass) {
         clone.classList.add(...options.addClass.split(" "));
     }
+    koSanitizeNodeText(clone);
     container.textContent = "";
     container.appendChild(clone);
     try {
@@ -99,7 +116,13 @@ export class KoCloudPrinter extends BasePrinter {
             let canvas;
             try {
                 canvas = await koHtmlToCanvas(el, { addClass: "pos-receipt-print" });
-            } catch {
+            } catch (renderError) {
+                if (!document.querySelector(".render-container")) {
+                    // Core's htmlToCanvas dereferences that same container
+                    // without checking, so falling back would only swap a
+                    // readable message for an opaque TypeError.
+                    throw renderError;
+                }
                 // Never lose a receipt over a rendering detail: fall back to the
                 // core 1x path, which is known to work everywhere.
                 canvas = await htmlToCanvas(el, { addClass: "pos-receipt-print" });
@@ -119,7 +142,10 @@ export class KoCloudPrinter extends BasePrinter {
                 return this.getResultsError(printResult);
             }
         }
-        return { successful: true };
+        return {
+            successful: true,
+            warningCode: this.getResultWarningCode(printResult),
+        };
     }
 
     /**
@@ -207,6 +233,12 @@ export class KoCloudPrinter extends BasePrinter {
             body = _t("This printer has no print agent assigned. Set one under Point of Sale > Configuration > Printers.");
         } else if (reason === "not_a_cloud_printer" || reason === "no_printer") {
             body = _t("This printer is not configured to use a KO print agent.");
+        } else if (reason === "image_too_large") {
+            body = _t("The receipt image is too large to send. Please print it through the browser instead.");
+        } else if (reason === "printer_not_in_config") {
+            body = _t("This printer does not belong to this point of sale.");
+        } else if (reason === "no_config") {
+            body = _t("This point of sale could not be identified. Please reload the session.");
         } else if (reason === "nothing_to_print") {
             body = _t("There was nothing to send to the printer.");
         } else {

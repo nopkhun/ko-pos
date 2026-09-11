@@ -3,9 +3,14 @@
     <data noupdate="0">
         <!--
           One shop's print agent must never be handed another shop's receipts, and
-          a cashier must never see another company's print history. Both models
+          a manager must never see another company's print history. Both models
           carry a stored company_id (the job's is related from its agent), so a
           plain global company rule is enough.
+
+          Neither rule has a "no company" escape branch: every agent has a
+          required company_id, and a job takes its company from its required
+          agent, so a row with company_id unset cannot exist. A branch for it
+          would only be a hole nobody could see through.
         -->
         <record id="rule_ko_print_agent_company" model="ir.rule">
             <field name="name">KO print agent: multi-company</field>
@@ -18,7 +23,7 @@
             <field name="name">KO print job: multi-company</field>
             <field name="model_id" ref="model_ko_print_job"/>
             <field name="global" eval="True"/>
-            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
         </record>
     </data>
 </odoo>

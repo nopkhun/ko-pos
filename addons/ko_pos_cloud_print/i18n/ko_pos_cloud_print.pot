@@ -1,0 +1,510 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* ko_pos_cloud_print
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0-20260817\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-11 08:45+0000\n"
+"PO-Revision-Date: 2026-09-11 08:45+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields.selection,name:ko_pos_cloud_print.selection__ko_print_job__paper_width__58
+#: model:ir.model.fields.selection,name:ko_pos_cloud_print.selection__pos_printer__ko_paper_width__58
+msgid "58 mm"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields.selection,name:ko_pos_cloud_print.selection__ko_print_job__paper_width__80
+#: model:ir.model.fields.selection,name:ko_pos_cloud_print.selection__pos_printer__ko_paper_width__80
+msgid "80 mm"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__active
+msgid "Active"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,help:ko_pos_cloud_print.field_pos_printer__ko_host
+msgid "Address of the ESC/POS printer on the shop network, e.g. 192.168.1.50."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_job_search
+msgid "Agent"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__name
+msgid "Agent Name"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__agent_version
+msgid "Agent Version"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_agent_form
+msgid "Archived"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__attempts
+msgid "Attempts"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#. odoo-python
+#: code:addons/ko_pos_cloud_print/models/pos_printer.py:0
+msgid "Choose a print agent for \"%s\"."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__company_id
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__company_id
+msgid "Company"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model,name:ko_pos_cloud_print.model_res_config_settings
+msgid "Config Settings"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_agent_form
+msgid "Configuration"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_agent_form
+msgid ""
+"Copy the token into the shop agent configuration file. It is a\n"
+"                        password: anyone holding it can read this shop's print jobs.\n"
+"                        The agent counts as online while it has pinged within the last\n"
+"                        20 seconds."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_job_list
+msgid "Created"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__create_uid
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__create_uid
+msgid "Created by"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__create_date
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__create_date
+msgid "Created on"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,help:ko_pos_cloud_print.field_pos_config__ko_receipt_printer_id
+#: model:ir.model.fields,help:ko_pos_cloud_print.field_res_config_settings__pos_ko_receipt_printer_id
+msgid ""
+"Customer receipts are printed silently on this printer through the shop "
+"print agent. Kitchen tickets keep using the preparation printers configured "
+"under Preparation."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__cut
+msgid "Cut Paper"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__display_name
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__display_name
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_pos_config__display_name
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_pos_printer__display_name
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_res_config_settings__display_name
+msgid "Display Name"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#. odoo-python
+#: code:addons/ko_pos_cloud_print/models/pos_printer.py:0
+msgid "Enter the printer IP address for \"%s\"."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__error
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_job_form
+msgid "Error"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.actions.act_window,help:ko_pos_cloud_print.action_ko_print_job
+msgid ""
+"Every receipt and kitchen ticket sent through a print agent shows up\n"
+"                here. Jobs are deleted automatically after 7 days."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields.selection,name:ko_pos_cloud_print.selection__ko_print_job__state__error
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_job_search
+msgid "Failed"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__id
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__id
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_pos_config__id
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_pos_printer__id
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_res_config_settings__id
+msgid "ID"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_job_form
+msgid "Image"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__image
+msgid "Image (PNG)"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model,name:ko_pos_cloud_print.model_ko_print_agent
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.res_config_settings_view_form_ko_cloud_print
+msgid "KO Print Agent"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields.selection,name:ko_pos_cloud_print.selection__pos_printer__printer_type__ko_cloud
+msgid "KO Print Agent (ESC/POS over network)"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model,name:ko_pos_cloud_print.model_ko_print_job
+msgid "KO Print Job"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.actions.server,name:ko_pos_cloud_print.ir_cron_ko_print_job_gc_ir_actions_server
+msgid "KO Print: remove old print jobs"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.res_config_settings_view_form_ko_cloud_print
+msgid ""
+"Kitchen tickets are not configured here — they keep using the\n"
+"                        preparation printers under \"Preparation\"."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__last_ip
+msgid "Last IP Address"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__last_seen
+msgid "Last Seen"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__write_uid
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__write_uid
+msgid "Last Updated by"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__write_date
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__write_date
+msgid "Last Updated on"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.actions.act_window,help:ko_pos_cloud_print.action_ko_print_job
+msgid "No print job yet"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__is_online
+msgid "Online"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__open_cashdrawer
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_pos_config__ko_cashdrawer
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_res_config_settings__pos_ko_cashdrawer
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.res_config_settings_view_form_ko_cloud_print
+msgid "Open Cash Drawer"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,help:ko_pos_cloud_print.field_ko_print_job__origin
+msgid "Order name, or \"kitchen\" for a preparation ticket."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__origin
+msgid "Origin"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__paper_width
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_pos_printer__ko_paper_width
+msgid "Paper Width"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,help:ko_pos_cloud_print.field_ko_print_agent__token
+msgid "Paste this into the shop agent configuration. Treat it as a password."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__config_id
+msgid "Point of Sale"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model,name:ko_pos_cloud_print.model_pos_config
+msgid "Point of Sale Configuration"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model,name:ko_pos_cloud_print.model_pos_printer
+msgid "Point of Sale Printer"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__agent_id
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_pos_printer__ko_agent_id
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_agent_form
+msgid "Print Agent"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.actions.act_window,name:ko_pos_cloud_print.action_ko_print_agent
+#: model:ir.ui.menu,name:ko_pos_cloud_print.menu_ko_print_agent
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_agent_list
+msgid "Print Agents"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_job_form
+msgid "Print Job"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.actions.act_window,name:ko_pos_cloud_print.action_ko_print_job
+#: model:ir.ui.menu,name:ko_pos_cloud_print.menu_ko_print_job
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_job_list
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_job_search
+msgid "Print Jobs"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#. odoo-javascript
+#: code:addons/ko_pos_cloud_print/static/src/app/ko_cloud_printer.js:0
+msgid "Print agent offline — printing through the browser instead."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.res_config_settings_view_form_ko_cloud_print
+msgid ""
+"Print receipts silently on an ESC/POS network printer through the shop print"
+" agent"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields.selection,name:ko_pos_cloud_print.selection__ko_print_job__state__done
+msgid "Printed"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__printer_id
+msgid "Printer"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__host
+msgid "Printer Host"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_pos_printer__ko_host
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_pos_printer_form_ko_cloud
+msgid "Printer IP / Host"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__port
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_pos_printer__ko_port
+msgid "Printer Port"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_pos_printer__printer_type
+msgid "Printer Type"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#. odoo-javascript
+#: code:addons/ko_pos_cloud_print/static/src/app/ko_cloud_printer.js:0
+msgid "Printing failed"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields.selection,name:ko_pos_cloud_print.selection__ko_print_job__state__queued
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_agent_form
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_job_search
+msgid "Queued"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__job_count
+msgid "Queued Jobs"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.res_config_settings_view_form_ko_cloud_print
+msgid "Receipt Printer"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_pos_config__ko_receipt_printer_id
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_res_config_settings__pos_ko_receipt_printer_id
+msgid "Receipt Printer (KO Print Agent)"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_agent_form
+msgid "Regenerate token"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.actions.act_window,help:ko_pos_cloud_print.action_ko_print_agent
+msgid "Register the PC that prints for this shop"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,help:ko_pos_cloud_print.field_pos_config__ko_cashdrawer
+#: model:ir.model.fields,help:ko_pos_cloud_print.field_res_config_settings__pos_ko_cashdrawer
+msgid "Send a drawer-kick pulse to the receipt printer when a receipt prints."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields.selection,name:ko_pos_cloud_print.selection__ko_print_job__state__sent
+msgid "Sent to Agent"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_job__state
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_agent_form
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_job_search
+msgid "Status"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,help:ko_pos_cloud_print.field_pos_printer__ko_agent_id
+msgid "The PC in the shop that will actually talk to this printer."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.actions.act_window,help:ko_pos_cloud_print.action_ko_print_agent
+msgid ""
+"The print agent is a small program running on a PC in the shop. It asks\n"
+"                Odoo for print jobs and sends them to the thermal printers on the local\n"
+"                network, so a POS served over HTTPS can still print silently."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#. odoo-javascript
+#: code:addons/ko_pos_cloud_print/static/src/app/ko_cloud_printer.js:0
+msgid "The print job could not be queued. Please try again."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#. odoo-javascript
+#: code:addons/ko_pos_cloud_print/static/src/app/ko_cloud_printer.js:0
+msgid ""
+"The receipt image is too large to send. Please print it through the browser "
+"instead."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_agent_form
+msgid ""
+"The shop agent will stop working until it is reconfigured with the new "
+"token. Continue?"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#. odoo-javascript
+#: code:addons/ko_pos_cloud_print/static/src/app/ko_cloud_printer.js:0
+msgid ""
+"The shop print agent is not responding. Check that the PC running it is "
+"switched on and connected to the shop network, then try again."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#. odoo-javascript
+#: code:addons/ko_pos_cloud_print/static/src/app/ko_cloud_printer.js:0
+msgid "There was nothing to send to the printer."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#. odoo-javascript
+#: code:addons/ko_pos_cloud_print/static/src/app/ko_cloud_printer.js:0
+msgid "This point of sale could not be identified. Please reload the session."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#. odoo-javascript
+#: code:addons/ko_pos_cloud_print/static/src/app/ko_cloud_printer.js:0
+msgid "This printer does not belong to this point of sale."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#. odoo-javascript
+#: code:addons/ko_pos_cloud_print/static/src/app/ko_cloud_printer.js:0
+msgid ""
+"This printer has no print agent assigned. Set one under Point of Sale > "
+"Configuration > Printers."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#. odoo-javascript
+#: code:addons/ko_pos_cloud_print/static/src/app/ko_cloud_printer.js:0
+msgid "This printer is not configured to use a KO print agent."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_job_search
+msgid "Today"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.fields,field_description:ko_pos_cloud_print.field_ko_print_agent__token
+msgid "Token"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model:ir.model.constraint,message:ko_pos_cloud_print.constraint_ko_print_agent_token_unique
+msgid "Two print agents cannot share one token."
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_pos_printer_form_ko_cloud
+msgid "e.g. 192.168.1.50"
+msgstr ""
+
+#. module: ko_pos_cloud_print
+#: model_terms:ir.ui.view,arch_db:ko_pos_cloud_print.view_ko_print_agent_form
+msgid "e.g. Front counter PC"
+msgstr ""

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.fields import Domain
 
 from .print_job import PAPER_WIDTHS
 
@@ -14,6 +15,7 @@ class PosPrinter(models.Model):
     )
     ko_agent_id = fields.Many2one(
         'ko.print.agent', string='Print Agent',
+        check_company=True,
         help='The PC in the shop that will actually talk to this printer.',
     )
     ko_host = fields.Char(
@@ -23,7 +25,7 @@ class PosPrinter(models.Model):
     ko_port = fields.Integer(string='Printer Port', default=9100)
     ko_paper_width = fields.Selection(PAPER_WIDTHS, string='Paper Width', default='80')
 
-    @api.constrains('printer_type', 'ko_agent_id', 'ko_host')
+    @api.constrains('printer_type', 'ko_agent_id', 'ko_host', 'company_id')
     def _check_ko_cloud_settings(self):
         for printer in self:
             if printer.printer_type != 'ko_cloud':
@@ -32,6 +34,10 @@ class PosPrinter(models.Model):
                 raise ValidationError(_('Choose a print agent for "%s".', printer.name))
             if not printer.ko_host:
                 raise ValidationError(_('Enter the printer IP address for "%s".', printer.name))
+        # `check_company=True` only narrows the dropdown in the UI; pos.printer
+        # does not set _check_company_auto, so nothing would stop one company's
+        # printer being pointed at another company's agent through the ORM.
+        self._check_company(['ko_agent_id'])
 
     @api.model
     def _load_pos_data_fields(self, config):
@@ -53,4 +59,7 @@ class PosPrinter(models.Model):
             return domain
         # OR it onto whatever core (or another module) decided, rather than
         # replacing that domain and quietly dropping the preparation printers.
-        return ['|', ('id', '=', config.ko_receipt_printer_id.id)] + list(domain)
+        return Domain.OR([
+            Domain(domain),
+            Domain('id', '=', config.ko_receipt_printer_id.id),
+        ])
