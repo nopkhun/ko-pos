@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_pos_printer_form_ko_cloud" model="ir.ui.view">
+        <field name="name">pos.printer.form.inherit.ko.cloud.print</field>
+        <field name="model">pos.printer</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_printer_form"/>
+        <field name="arch" type="xml">
+            <!-- Core shows the Epson IP for epson_epos and the proxy IP for iot.
+                 Neither belongs on a ko_cloud printer, so hide both explicitly:
+                 their own invisible expressions only test for their own type,
+                 which is already false here, but being explicit survives a core
+                 change to those conditions. -->
+            <field name="epson_printer_ip" position="attributes">
+                <attribute name="invisible">printer_type != 'epson_epos'</attribute>
+            </field>
+            <field name="proxy_ip" position="attributes">
+                <attribute name="invisible">printer_type != 'iot'</attribute>
+            </field>
+            <field name="epson_printer_ip" position="after">
+                <field name="ko_agent_id"
+                       invisible="printer_type != 'ko_cloud'"
+                       required="printer_type == 'ko_cloud'"
+                       options="{'no_create_edit': True}"/>
+                <field name="ko_host"
+                       string="Printer IP / Host"
+                       placeholder="e.g. 192.168.1.50"
+                       invisible="printer_type != 'ko_cloud'"
+                       required="printer_type == 'ko_cloud'"/>
+                <field name="ko_port" invisible="printer_type != 'ko_cloud'"/>
+                <field name="ko_paper_width" invisible="printer_type != 'ko_cloud'"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_pos_printer_list_ko_cloud" model="ir.ui.view">
+        <field name="name">pos.printer.list.inherit.ko.cloud.print</field>
+        <field name="model">pos.printer</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_printer"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="printer_type"/>
+                <field name="ko_host" optional="show"/>
+                <field name="ko_agent_id" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>

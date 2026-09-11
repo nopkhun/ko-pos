@@ -1,0 +1,261 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* ko_pos_cloud_print
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: KO\n"
+"Language-Team: Thai\n"
+"Language: th_TH\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. module: ko_pos_cloud_print
+msgid "KO Print Agent"
+msgstr "ตัวแทนพิมพ์ KO"
+
+#. module: ko_pos_cloud_print
+msgid "KO Print Agent (ESC/POS over network)"
+msgstr "ตัวแทนพิมพ์ KO (ESC/POS ผ่านเครือข่าย)"
+
+#. module: ko_pos_cloud_print
+msgid "Print Agents"
+msgstr "ตัวแทนพิมพ์"
+
+#. module: ko_pos_cloud_print
+msgid "Print Agent"
+msgstr "ตัวแทนพิมพ์"
+
+#. module: ko_pos_cloud_print
+msgid "Agent Name"
+msgstr "ชื่อตัวแทนพิมพ์"
+
+#. module: ko_pos_cloud_print
+msgid "Token"
+msgstr "รหัสเชื่อมต่อ (Token)"
+
+#. module: ko_pos_cloud_print
+msgid "Paste this into the shop agent configuration. Treat it as a password."
+msgstr "คัดลอกไปใส่ในไฟล์ตั้งค่าของโปรแกรมตัวแทนพิมพ์ที่ร้าน ถือเป็นรหัสผ่าน อย่าเปิดเผย"
+
+#. module: ko_pos_cloud_print
+msgid "Regenerate token"
+msgstr "สร้างรหัสเชื่อมต่อใหม่"
+
+#. module: ko_pos_cloud_print
+msgid ""
+"The shop agent will stop working until it is reconfigured with the new token."
+" Continue?"
+msgstr "ตัวแทนพิมพ์ที่ร้านจะหยุดทำงานจนกว่าจะตั้งค่ารหัสใหม่ ต้องการทำต่อหรือไม่?"
+
+#. module: ko_pos_cloud_print
+msgid "Last Seen"
+msgstr "ติดต่อล่าสุด"
+
+#. module: ko_pos_cloud_print
+msgid "Last IP Address"
+msgstr "IP ล่าสุด"
+
+#. module: ko_pos_cloud_print
+msgid "Agent Version"
+msgstr "เวอร์ชันตัวแทนพิมพ์"
+
+#. module: ko_pos_cloud_print
+msgid "Online"
+msgstr "ออนไลน์"
+
+#. module: ko_pos_cloud_print
+msgid "Status"
+msgstr "สถานะ"
+
+#. module: ko_pos_cloud_print
+msgid "Configuration"
+msgstr "ตั้งค่า"
+
+#. module: ko_pos_cloud_print
+msgid "Queued"
+msgstr "รอพิมพ์"
+
+#. module: ko_pos_cloud_print
+msgid "Queued Jobs"
+msgstr "งานพิมพ์ที่รออยู่"
+
+#. module: ko_pos_cloud_print
+msgid "Print Jobs"
+msgstr "งานพิมพ์"
+
+#. module: ko_pos_cloud_print
+msgid "Print Job"
+msgstr "งานพิมพ์"
+
+#. module: ko_pos_cloud_print
+msgid "Sent to Agent"
+msgstr "ส่งให้ตัวแทนพิมพ์แล้ว"
+
+#. module: ko_pos_cloud_print
+msgid "Printed"
+msgstr "พิมพ์แล้ว"
+
+#. module: ko_pos_cloud_print
+msgid "Failed"
+msgstr "ไม่สำเร็จ"
+
+#. module: ko_pos_cloud_print
+msgid "Attempts"
+msgstr "จำนวนครั้งที่ลอง"
+
+#. module: ko_pos_cloud_print
+msgid "Origin"
+msgstr "ที่มา"
+
+#. module: ko_pos_cloud_print
+msgid "Order name, or \"kitchen\" for a preparation ticket."
+msgstr "ชื่อออเดอร์ หรือ \"kitchen\" สำหรับใบสั่งครัว"
+
+#. module: ko_pos_cloud_print
+msgid "Image (PNG)"
+msgstr "ภาพใบเสร็จ (PNG)"
+
+#. module: ko_pos_cloud_print
+msgid "Image"
+msgstr "ภาพใบเสร็จ"
+
+#. module: ko_pos_cloud_print
+msgid "Error"
+msgstr "ข้อผิดพลาด"
+
+#. module: ko_pos_cloud_print
+msgid "Cut Paper"
+msgstr "ตัดกระดาษ"
+
+#. module: ko_pos_cloud_print
+msgid "Open Cash Drawer"
+msgstr "เปิดลิ้นชักเก็บเงิน"
+
+#. module: ko_pos_cloud_print
+msgid "Paper Width"
+msgstr "ความกว้างกระดาษ"
+
+#. module: ko_pos_cloud_print
+msgid "58 mm"
+msgstr "58 มม."
+
+#. module: ko_pos_cloud_print
+msgid "80 mm"
+msgstr "80 มม."
+
+#. module: ko_pos_cloud_print
+msgid "Printer Host"
+msgstr "ที่อยู่เครื่องพิมพ์"
+
+#. module: ko_pos_cloud_print
+msgid "Printer IP / Host"
+msgstr "IP เครื่องพิมพ์"
+
+#. module: ko_pos_cloud_print
+msgid "Printer Port"
+msgstr "พอร์ตเครื่องพิมพ์"
+
+#. module: ko_pos_cloud_print
+msgid "Address of the ESC/POS printer on the shop network, e.g. 192.168.1.50."
+msgstr "ที่อยู่ของเครื่องพิมพ์ ESC/POS ในเครือข่ายของร้าน เช่น 192.168.1.50"
+
+#. module: ko_pos_cloud_print
+msgid "The PC in the shop that will actually talk to this printer."
+msgstr "เครื่องคอมพิวเตอร์ที่ร้านซึ่งจะเป็นตัวส่งงานไปยังเครื่องพิมพ์นี้"
+
+#. module: ko_pos_cloud_print
+msgid "Receipt Printer (KO Print Agent)"
+msgstr "เครื่องพิมพ์ใบเสร็จ (ตัวแทนพิมพ์ KO)"
+
+#. module: ko_pos_cloud_print
+msgid "Receipt Printer"
+msgstr "เครื่องพิมพ์ใบเสร็จ"
+
+#. module: ko_pos_cloud_print
+msgid ""
+"Customer receipts are printed silently on this printer through the shop print"
+" agent. Kitchen tickets keep using the preparation printers configured under "
+"Preparation."
+msgstr ""
+"ใบเสร็จลูกค้าจะถูกพิมพ์อัตโนมัติที่เครื่องนี้ผ่านตัวแทนพิมพ์ที่ร้าน "
+"ส่วนใบสั่งครัวยังใช้เครื่องพิมพ์ครัวที่ตั้งไว้ในหัวข้อ \"เตรียมอาหาร\" เหมือนเดิม"
+
+#. module: ko_pos_cloud_print
+msgid "Send a drawer-kick pulse to the receipt printer when a receipt prints."
+msgstr "สั่งเปิดลิ้นชักเก็บเงินทุกครั้งที่พิมพ์ใบเสร็จ"
+
+#. module: ko_pos_cloud_print
+msgid ""
+"Print receipts silently on an ESC/POS network printer through the shop print "
+"agent"
+msgstr "พิมพ์ใบเสร็จอัตโนมัติผ่านเครื่องพิมพ์ ESC/POS ในเครือข่ายร้าน โดยใช้ตัวแทนพิมพ์"
+
+#. module: ko_pos_cloud_print
+msgid ""
+"Kitchen tickets are not configured here — they keep using the\n"
+"                        preparation printers under \"Preparation\"."
+msgstr "ใบสั่งครัวไม่ได้ตั้งค่าที่นี่ — ยังใช้เครื่องพิมพ์ครัวในหัวข้อ \"เตรียมอาหาร\" เหมือนเดิม"
+
+#. module: ko_pos_cloud_print
+msgid "Choose a print agent for \"%s\"."
+msgstr "กรุณาเลือกตัวแทนพิมพ์สำหรับ \"%s\""
+
+#. module: ko_pos_cloud_print
+msgid "Enter the printer IP address for \"%s\"."
+msgstr "กรุณากรอก IP ของเครื่องพิมพ์สำหรับ \"%s\""
+
+#. module: ko_pos_cloud_print
+msgid "Two print agents cannot share one token."
+msgstr "ตัวแทนพิมพ์สองตัวใช้รหัสเชื่อมต่อเดียวกันไม่ได้"
+
+#. module: ko_pos_cloud_print
+msgid "KO Print: remove old print jobs"
+msgstr "KO Print: ลบงานพิมพ์เก่า"
+
+#. module: ko_pos_cloud_print
+msgid "Register the PC that prints for this shop"
+msgstr "เพิ่มเครื่องคอมพิวเตอร์ที่ใช้พิมพ์ให้ร้านนี้"
+
+#. module: ko_pos_cloud_print
+msgid "No print job yet"
+msgstr "ยังไม่มีงานพิมพ์"
+
+#. module: ko_pos_cloud_print
+msgid "Printing failed"
+msgstr "พิมพ์ไม่สำเร็จ"
+
+#. module: ko_pos_cloud_print
+msgid "Print agent offline — printing through the browser instead."
+msgstr "ตัวแทนพิมพ์ออฟไลน์ พิมพ์ผ่านเบราว์เซอร์แทน"
+
+#. module: ko_pos_cloud_print
+msgid ""
+"The shop print agent is not responding. Check that the PC running it is "
+"switched on and connected to the shop network, then try again."
+msgstr ""
+"ตัวแทนพิมพ์ที่ร้านไม่ตอบสนอง กรุณาตรวจสอบว่าเครื่องคอมพิวเตอร์ที่รันโปรแกรมเปิดอยู่ "
+"และเชื่อมต่อ Wi-Fi ของร้านแล้ว จากนั้นลองใหม่อีกครั้ง"
+
+#. module: ko_pos_cloud_print
+msgid ""
+"This printer has no print agent assigned. Set one under Point of Sale > "
+"Configuration > Printers."
+msgstr ""
+"เครื่องพิมพ์นี้ยังไม่ได้กำหนดตัวแทนพิมพ์ ตั้งค่าได้ที่ การขายหน้าร้าน > ตั้งค่า > เครื่องพิมพ์"
+
+#. module: ko_pos_cloud_print
+msgid "This printer is not configured to use a KO print agent."
+msgstr "เครื่องพิมพ์นี้ไม่ได้ตั้งค่าให้ใช้ตัวแทนพิมพ์ KO"
+
+#. module: ko_pos_cloud_print
+msgid "There was nothing to send to the printer."
+msgstr "ไม่มีข้อมูลที่จะส่งไปยังเครื่องพิมพ์"
+
+#. module: ko_pos_cloud_print
+msgid "The print job could not be queued. Please try again."
+msgstr "ไม่สามารถส่งงานพิมพ์เข้าคิวได้ กรุณาลองใหม่อีกครั้ง"

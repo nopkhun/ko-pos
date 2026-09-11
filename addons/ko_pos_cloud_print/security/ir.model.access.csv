@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ko_print_agent_pos_user,ko.print.agent.pos.user,model_ko_print_agent,point_of_sale.group_pos_user,1,0,0,0
+access_ko_print_agent_pos_manager,ko.print.agent.pos.manager,model_ko_print_agent,point_of_sale.group_pos_manager,1,1,1,1
+access_ko_print_job_pos_user,ko.print.job.pos.user,model_ko_print_job,point_of_sale.group_pos_user,1,0,1,0
+access_ko_print_job_pos_manager,ko.print.job.pos.manager,model_ko_print_job,point_of_sale.group_pos_manager,1,1,1,1

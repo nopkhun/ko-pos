@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_ko_print_job_list" model="ir.ui.view">
+        <field name="name">ko.print.job.list</field>
+        <field name="model">ko.print.job</field>
+        <field name="arch" type="xml">
+            <list string="Print Jobs" create="false" edit="false"
+                  decoration-danger="state == 'error'"
+                  decoration-muted="state == 'done'"
+                  decoration-info="state == 'sent'">
+                <field name="create_date" string="Created"/>
+                <field name="origin"/>
+                <field name="agent_id"/>
+                <field name="printer_id" optional="hide"/>
+                <field name="host"/>
+                <field name="port" optional="hide"/>
+                <field name="paper_width" optional="hide"/>
+                <field name="open_cashdrawer" optional="hide"/>
+                <field name="attempts"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'done'"
+                       decoration-danger="state == 'error'"/>
+                <field name="config_id" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ko_print_job_form" model="ir.ui.view">
+        <field name="name">ko.print.job.form</field>
+        <field name="model">ko.print.job</field>
+        <field name="arch" type="xml">
+            <!-- Troubleshooting only. Nothing here is meant to be edited by hand:
+                 a job is produced by the POS and consumed by the shop agent. -->
+            <form string="Print Job" create="false" edit="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="agent_id"/>
+                            <field name="printer_id"/>
+                            <field name="host"/>
+                            <field name="port"/>
+                            <field name="paper_width"/>
+                        </group>
+                        <group>
+                            <field name="state"/>
+                            <field name="attempts"/>
+                            <field name="cut"/>
+                            <field name="open_cashdrawer"/>
+                            <field name="origin"/>
+                            <field name="config_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Error" invisible="state != 'error'">
+                        <field name="error" nolabel="1"/>
+                    </group>
+                    <group string="Image" invisible="not image">
+                        <field name="image" widget="image" nolabel="1" options="{'zoom': true}"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ko_print_job_search" model="ir.ui.view">
+        <field name="name">ko.print.job.search</field>
+        <field name="model">ko.print.job</field>
+        <field name="arch" type="xml">
+            <search string="Print Jobs">
+                <field name="origin"/>
+                <field name="agent_id"/>
+                <field name="host"/>
+                <filter name="filter_queued" string="Queued" domain="[('state', '=', 'queued')]"/>
+                <filter name="filter_error" string="Failed" domain="[('state', '=', 'error')]"/>
+                <separator/>
+                <filter name="filter_today" string="Today"
+                        domain="[('create_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <group>
+                    <filter name="group_agent" string="Agent" domain="[]" context="{'group_by': 'agent_id'}"/>
+                    <filter name="group_state" string="Status" domain="[]" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ko_print_job" model="ir.actions.act_window">
+        <field name="name">Print Jobs</field>
+        <field name="res_model">ko.print.job</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_ko_print_job_search"/>
+        <field name="context">{'search_default_filter_today': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No print job yet
+            </p><p>
+                Every receipt and kitchen ticket sent through a print agent shows up
+                here. Jobs are deleted automatically after 7 days.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_ko_print_job"
+              name="Print Jobs"
+              parent="point_of_sale.menu_point_config_product"
+              action="action_ko_print_job"
+              sequence="71"/>
+
+</odoo>
