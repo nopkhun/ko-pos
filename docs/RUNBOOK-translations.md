@@ -160,6 +160,37 @@ cat $(ls patch/thai_v2/*.b64 | LC_ALL=C sort) | tr -d '\n' | base64 -d > rebuilt
 md5sum rebuilt.tar.gz patch.tar.gz     # must match
 ```
 
+## Step 4b — Our own modules translate themselves, outside this pipeline
+
+Everything above is about overriding **Odoo's** wording. A string that our own addon owns
+(`ko_pos_cloud_print`'s field labels, menus, and POS toasts, for instance) belongs in that
+addon's own `i18n/` directory, which Odoo loads on `-i`/`-u` like any other module:
+
+```
+addons/ko_pos_cloud_print/i18n/ko_pos_cloud_print.pot   ← exported template
+addons/ko_pos_cloud_print/i18n/th_TH.po                 ← 84 entries, 122 occurrences, 0 untranslated
+```
+
+Two rules:
+
+1. **Do not hand-write these files.** A `.po` whose entries carry no `#:` occurrence line
+   is dropped entry by entry, in silence — no warning, no error, just English UI. That
+   happened here once already (`GOTCHAS.md`). Generate the `.pot` with a real
+   `odoo … --modules=<module> i18n export` against a database that has the module
+   installed, then fill in `msgstr` only.
+2. **This is not part of `ko_pos_thai_lang`.** Nothing here is added to
+   `i18n_overrides/`, so the deploy success signal is unchanged:
+
+   ```
+   ko_pos_thai_lang: applied Thai override translations from 57 files
+   ```
+
+   **57 stays 57** when a module ships its own translations. If that number moves because
+   of a change like this, something went into the wrong directory.
+
+To verify a module's own translation after `-u`, read a label back in `th_TH` (see Step 5)
+rather than trusting the file — e.g. the cloud-print menu must read **ตัวแทนพิมพ์**.
+
 ## Step 5 — Deploy, verify, and update the docs
 
 Follow `RUNBOOK-deploy.md`. The check that matters:

@@ -5,10 +5,15 @@
 > verified against the running production system, not inferred.
 >
 > **สรุปภาษาไทย:** โปรเจคนี้คือระบบ POS ร้านอาหาร (Odoo 19) รันจริงบน Hostinger VPS ที่
-> https://kodoo.viakuma.com — ใช้งานจริงแล้ว มี addon ของเราเอง 6 ตัว และระบบคำแปลไทย
-> "ฉบับร้านอาหาร" ที่เขียนเอง อ่านหัวข้อ *Do not break these* ก่อนแก้อะไรทั้งสิ้น
+> https://kodoo.viakuma.com — ใช้งานจริงแล้ว มี addon ของเราเอง 9 ตัว (8 ตัว deploy แล้ว +
+> `ko_pos_cloud_print` ที่ยังรออนุมัติ) และระบบคำแปลไทย "ฉบับร้านอาหาร" ที่เขียนเอง
+> อ่านหัวข้อ *Do not break these* ก่อนแก้อะไรทั้งสิ้น
 
-- **Last verified:** 2026-08-29 (customer display 19.0.1.1.0 deploy — action 111784152)
+- **Last verified in production:** 2026-09-05 (`ko_pos_compat` 19.0.1.1.0 + oklch fallbacks
+  — action 113155240)
+- **Last change in the repo:** 2026-09-11 — `ko_pos_cloud_print` + `print-agent/` on branch
+  `feat/cloud-print` (`f1aad69`, `cd9c27b`, `037be03`). **Not deployed, not pushed to `main`,
+  never run against a real printer.** See §8 and §9.
 - **Status:** LIVE in production. A real restaurant will use this.
 - **Owner:** Nop (Thai speaker — user-facing strings and all UI copy must be natural Thai)
 
@@ -41,8 +46,9 @@ successfully" is not verification — it only means containers started. See §6.
 
 ## 1. What this is
 
-An Odoo 19 restaurant point-of-sale deployment for a Thai restaurant, with six
-custom addons and a hand-built Thai translation layer that replaces Odoo's stock
+An Odoo 19 restaurant point-of-sale deployment for a Thai restaurant, with nine
+custom addons (eight of them deployed; `ko_pos_cloud_print` is built but awaiting the
+owner's go-ahead) and a hand-built Thai translation layer that replaces Odoo's stock
 Thai with real Thai restaurant vocabulary.
 
 | Thing | Value |
@@ -84,7 +90,10 @@ pydeps-init (python:3.13-slim, one-shot)
         ↓ (service_completed_successfully)
 odoo-upgrade (odoo:19, one-shot)
   └─ uses an explicit --addons-path ending in /mnt/extra-addons
-  └─ -d kopos --stop-after-init -i/-u <6 modules> --load-language=th_TH
+  └─ -d kopos --stop-after-init -i/-u <module list> --load-language=th_TH
+      (8 modules as of 2026-09-05; the list is pinned by hand in the Compose file,
+       so a new addon that is not added to BOTH -i and -u is copied but never
+       installed — docs/RUNBOOK-deploy.md §2a)
   └─ this is where translations actually land in the database
         ↓ (service_completed_successfully)
 odoo (odoo:19, long-running)
@@ -103,9 +112,10 @@ under `addons/` and push `main` before deploying.
 
 ---
 
-## 3. The seven custom addons
+## 3. The nine custom addons
 
-All live under `addons/` in the repo.
+All live under `addons/` in the repo. Eight are installed in production; the ninth
+(`ko_pos_cloud_print`) is built and tested but not deployed — see §8.
 
 | Module | Purpose |
 | --- | --- |
@@ -116,6 +126,8 @@ All live under `addons/` in the repo.
 | `ko_pos_thai_lang` | The Thai translation override layer — see §5. Depends on all four above. |
 | `ko_pos_ui` | Touch-first restaurant POS interface: list-first Sell screen, current-order panel, prices, payment emphasis, responsive tablet/mobile layout. Presentation only; it does not change order, tax, or payment logic. |
 | `ko_pos_customer_display` | จอลูกค้า (customer display) on top of Odoo 19's built-in one: Thai KO layout that auto-adapts portrait/landscape/TV, table/queue/customer chips, and an ad slideshow (images **and muted videos**, `ko.cds.media`) that plays when the screen is idle. See `docs/RUNBOOK-customer-display.md` |
+| `ko_pos_compat` | Old-browser compatibility: a plain `static/lib/` polyfill prepended to every bundle for the JS built-ins Odoo 19 calls but Chrome 95–126 (Android 7's ceiling is Chrome 119) lacks, plus `dvh` and `oklch()` CSS fallbacks. `auto_install: True`. |
+| `ko_pos_cloud_print` | **Not deployed yet.** Silent thermal printing from any browser: the POS renders the receipt to a PNG, posts it to Odoo as a `ko.print.job`, and a Python agent on a PC in the shop (`print-agent/`) polls for jobs and pushes ESC/POS raster over TCP 9100. Adds `printer_type = ko_cloud` on `pos.printer` and a receipt printer + cash drawer on `pos.config`. KDS stays untouched. See `docs/RUNBOOK-cloud-print.md` |
 
 ### Plus one third-party addon in the same directory
 
@@ -129,13 +141,21 @@ See `docs/RUNBOOK-mcp.md`. It is the reason `pydeps-init` exists (§2).
 ## 4. Repository layout (`nopkhun/ko-pos`, branch `main`)
 
 ```
-addons/                    ← deployment source of truth (all 6 modules). addons-init
-                              copies this directory into /mnt/extra-addons.
+addons/                    ← deployment source of truth (all our modules + mcp_server).
+                              addons-init copies this directory into /mnt/extra-addons.
+                              Being copied ≠ being installed: the module list in the
+                              odoo-upgrade command decides that (docs/RUNBOOK-deploy.md §2a).
+print-agent/               ← the shop-side Python print agent for ko_pos_cloud_print.
+                              NOT an Odoo addon and never deployed to the VPS — it is
+                              copied to the Windows PC in the restaurant. Owner-facing
+                              install guide: print-agent/README.th.md
 addons.tar.gz              ← ⚠️ historical since 2026-08-23. NOT read by deployment.
                               Kept as a convenience snapshot only; a repacked tarball
                               is NOT a deploy. Do not reintroduce a fallback to it.
 AGENTS.md                  ← this file
-docs/                      ← runbooks (deploy, translations, pos-ui, kds) + GOTCHAS
+docs/                      ← runbooks (deploy, translations, pos-ui, kds, customer
+                              display, beam-bolt, orders-refunds, mcp, cloud-print)
+                              + GOTCHAS
 ```
 
 **Why the flip:** an agent session can only push *text* through the GitHub MCP, so a
@@ -185,6 +205,14 @@ odoo.addons.ko_pos_thai_lang.models.thai_lang: ko_pos_thai_lang: applied Thai ov
 
 If the file count is wrong, the patch pipeline silently under-delivered. Investigate
 before believing anything else in the logs.
+
+**Our own modules are not part of this pipeline.** A string an addon of ours owns lives in
+that addon's own `i18n/` (`<module>.pot` + `th_TH.po`, exported with `odoo … i18n export`,
+never hand-written — a `.po` without `#:` occurrence lines is dropped in silence, see
+`docs/GOTCHAS.md`). `ko_pos_cloud_print` is the first module to ship one. **The success
+signal above stays at 57 files** when a module translates itself; a moved count means
+something landed in `i18n_overrides/` that should not have. See
+`docs/RUNBOOK-translations.md` Step 4b.
 
 ### What a `.po` override can and cannot fix
 
@@ -267,10 +295,22 @@ means containers started. Verify the translation count line from §5 and check t
    `--addons-path` that includes `/mnt/extra-addons`, and `addons-init` must finish with
    `chmod -R a+rX /mnt/extra-addons`. The `odoo:19` image pulled on 2026-08-22 did not
    include the mounted path automatically; see `docs/GOTCHAS.md`.
+11. **A new addon is not deployed until it is in the `odoo-upgrade` module list.**
+   `addons-init` copies every directory under `addons/`, but Odoo installs only what the
+   one-shot `odoo-upgrade` command names after `-i` / `-u`, and that list is pinned by hand
+   in the Compose file inside `deploy-secrets.zip`. Add the module to **both** flags, or the
+   deploy log will look perfect while nothing of yours exists in the database.
+   `docs/RUNBOOK-deploy.md` §2a.
+12. **Never let a print job name its own destination.** `/ko_print/job` reads the host, port
+   and paper width from the `pos.printer` record, never from the request body, and only
+   accepts a printer the caller's own POS declares. The shop agent is a process inside the
+   restaurant's LAN: a body-supplied host would make this endpoint an open relay into it.
+   The agent refuses non-private addresses and unlisted ports as a second line of defence —
+   keep both. See `docs/RUNBOOK-cloud-print.md` §9.
 
 ---
 
-## 8. Current state (verified 2026-08-29)
+## 8. Current state (latest entry 2026-09-11)
 
 Working and confirmed against the live system:
 
@@ -1103,8 +1143,9 @@ Working and confirmed against the live system:
       `ir.cron` / `ko.beam.qr.charge` (model allowlist), and the agent cannot log in to
       the backend, so live checks (QR on the till, cancel, ledger menu, cron firing)
       remain §9 item 11 — plus every open till/display needs one hard refresh.
-- **`ko_pos_compat` (19.0.1.1.0) — DEPLOYED 2026-09-05, action `113155240`.** Seventh
-  custom addon. Back-fills the JS built-ins Odoo 19 core calls but old Chromium/WebView
+- **`ko_pos_compat` (19.0.1.1.0) — DEPLOYED 2026-09-05, action `113155240`.** Eighth
+  custom addon (this entry said "seventh" until 2026-09-11; the §3 table has always
+  listed seven others, and `ko_pos_compat` made eight). Back-fills the JS built-ins Odoo 19 core calls but old Chromium/WebView
   lacks, so the app stops dying with `TypeError: ... is not a function` on devices like
   Android 7 (Google's last Chrome/WebView there is **119**). Covers Chrome 95–126:
   `Object.groupBy`/`Map.groupBy`, `Array#toSorted`/`toReversed`/`toSpliced`/`with`,
@@ -1150,6 +1191,75 @@ Working and confirmed against the live system:
   fallbacks sit before the `@supports (color: oklch(…))` block while our
   `@supports not (height: 100dvh)` rules sit after core's `dvh` ones — the order the
   cascade needs. Backend bundle hash moved `8bc1ee4` → `a3fcf4c`.
+
+- **`ko_pos_cloud_print` 19.0.1.0.0 + `print-agent/` — BUILT 2026-09-11, NOT DEPLOYED.**
+  Ninth custom addon, on branch `feat/cloud-print`: commits `f1aad69` (the addon),
+  `cd9c27b` (the shop-side Python agent) and `037be03` (the security review fixes).
+  Nothing of this is on `main`, in production, or on a real printer yet.
+  - *The problem.* Odoo is on a cloud VPS behind HTTPS; the thermal printers are on the
+    shop's WiFi. The browser cannot open a socket to them and neither can Odoo, so the only
+    thing that worked was Ctrl+P on every bill. The routes that would normally solve this
+    were each checked and rejected: Odoo 19 **Community** ships no `pos_epson_printer` and
+    no IoT support; core's ePOS path posts from the *browser* over HTTPS straight to the
+    printer, which the **EASY PRINT ES-8803WA** cannot answer (generic ESC/POS on TCP 9100,
+    no ePOS, no HTTPS); and browser-side tricks (kiosk printing, QZ Tray) cover only part of
+    a floor that mixes Windows Chrome, Android 7 Chrome 119, Sunmi D2s Plus and an iPad.
+  - *The shape.* POS renders the receipt to a canvas exactly the way core's `BasePrinter`
+    already does for the Epson path → PNG → `POST /ko_print/job` (`auth='user'`) → a
+    `ko.print.job` queued for a `ko.print.agent` → a Python agent on the shop PC (Windows
+    Task Scheduler) polls `/ko_print/agent/{ping,poll,ack}` with
+    `Authorization: Bearer <token>` → ESC/POS raster over TCP 9100. Every connection at the
+    shop is outbound; no port is opened into the restaurant.
+  - *Configuration.* `pos.printer.printer_type` gains `ko_cloud` with `ko_agent_id` /
+    `ko_host` / `ko_port` / `ko_paper_width`; `pos.config` gains `ko_receipt_printer_id`
+    (the customer receipt printer) and `ko_cashdrawer`. **Kitchen tickets keep using the
+    existing `printer_ids` mechanism** — `createPrinter` returning a `KoCloudPrinter` is the
+    whole integration — and the receipt printer is filtered back out of the preparation
+    printers so bills do not print in the kitchen or kitchen tickets at the till.
+    Receipts render at `pixelRatio` 2 (core hard-codes 1) so Thai tone marks survive the
+    upscale to 576 dots.
+  - *Offline behaviour is deliberate.* An agent counts as online while `last_seen` is under
+    **20 s** old. If it is not, `/ko_print/job` answers `agent_offline` and **creates no
+    job**: a queue of receipts that all print an hour late is worse than no receipt. The POS
+    falls back to browser printing with a Thai toast, for the customer receipt only.
+  - *Security, after the review in `037be03`.* Manager-only ACLs on both models — cashiers
+    cannot read or create a print job through the ORM at all; jobs exist only through the
+    controller, which `sudo()`s after checking the printer's company against the caller's,
+    that `config_id` resolves under the caller's own record rules, and that the printer is
+    one that POS actually declares. **Host, port and paper width always come from the
+    printer record, never from the request body** (the original code would have turned the
+    agent into an open relay onto the shop LAN). Images must be real PNG ≤ 2 MB of base64;
+    a token must be exactly 43 characters and is compared with `hmac.compare_digest`; `ack`
+    is accepted only for a job in state `sent`, so a replay cannot mark a fresh receipt
+    printed; jobs stuck in `sent` for 60 s are requeued up to 3 attempts and then parked as
+    `error`; a daily cron deletes jobs older than 7 days; `_touch` is throttled to 5 s. The
+    agent itself refuses any destination that is not a private address or whose port is not
+    in `allowed_ports`.
+  - *Traps it cost, all now in `docs/GOTCHAS.md`:* an ORM write is invisible to raw SQL in
+    the same transaction without `env.flush_all()` (the requeue never reached
+    `FOR UPDATE SKIP LOCKED`); `pos.config._load_pos_data_fields` returns `[]`, which means
+    **all** fields, so appending to it breaks the POS; the POS relational layer silently
+    drops a many2one whose target record was not loaded; a QA database without demo data has
+    no `pos.config` at all; a hand-written `.po` with no `#:` occurrence lines is ignored
+    entry by entry in silence; and `check_company=True` enforces nothing on `pos.printer`,
+    which does not set `_check_company_auto`.
+  - *Verified:* **0 failed, 0 error(s) of 24 tests** on a disposable Odoo 19 + Postgres 17
+    stack, covering ORM create denied to a cashier, another company's printer, a printer not
+    attached to that POS, oversized and non-PNG payloads, an ack on a job that was never
+    sent, a short token, and host/port in the body being ignored. A browser pass on the same
+    stack confirmed the POS loads with no new console error, `createPrinter` and
+    `hardwareProxy.printer` resolve to `KoCloudPrinter` on both a shop and a restaurant
+    config, the canvas is 2x, and a receipt, a drawer kick and a kitchen ticket each reached
+    a simulated agent as a real PNG and were acknowledged. Translations were regenerated by
+    a real `i18n export` (84 entries, 122 occurrences, 0 untranslated) and the menu reads
+    **ตัวแทนพิมพ์** after `-u` with `th_TH`; the `ko_pos_thai_lang` signal is untouched at
+    **57 files**.
+  - **Not verified — do not claim otherwise:** never deployed (it is not in the
+    `odoo-upgrade` module list yet), never printed on the ES-8803WA or any physical printer,
+    never run on Android 7 / Sunmi D2s Plus / iPad, the PyInstaller `.exe` has never been
+    built or run on Windows, no production token has been issued, and there is no Traefik
+    rate limit on `/ko_print/agent/`. Operating instructions:
+    `docs/RUNBOOK-cloud-print.md`; shop install guide: `print-agent/README.th.md`.
 
 ---
 
@@ -1226,6 +1336,30 @@ Working and confirmed against the live system:
    private key through the Hostinger API as plain text inside `content`, and it sits in
    any agent transcript that performed one. Finish the rotation, then rotate the key
    itself on GitHub since the old one must be treated as exposed.
+14. **Ship `ko_pos_cloud_print` (branch `feat/cloud-print`, nothing on `main` yet).** In
+   order, none of it done:
+   1. **Owner approval, then the Compose change.** Add `ko_pos_cloud_print` to **both** the
+      `-i` and the `-u` list of the `odoo-upgrade` service in
+      `deploy_real/vps-compose-git.yaml` (inside `deploy-secrets.zip`) and add a
+      `DEPLOYED_ko_pos_cloud_print` echo to `addons-init`. Without this the deploy copies
+      the directory and installs nothing — `docs/RUNBOOK-deploy.md` §2a.
+   2. **Test on a physical printer.** Nothing has ever been printed: Thai legibility at
+      576 dots on the EASY PRINT ES-8803WA, the paper cut, and the cash-drawer pulse are all
+      still theory.
+   3. **Test all four device classes** that key orders — Windows Chrome, Android 7
+      Chrome 119, Sunmi D2s Plus, iPad Safari — because the whole design rests on
+      canvas → PNG behaving the same on each.
+   4. **Issue the production agent token** (Point of Sale ▸ Configuration ▸ Print Agents →
+      the token is generated with the record) and record it in `CREDENTIALS.local.md`. It
+      does not exist yet; there is a placeholder note in `docs/RUNBOOK-cloud-print.md` §3.
+      Anyone holding it can read that shop's receipt images.
+   5. **Rate-limit `/ko_print/agent/` at Traefik.** A wrong token is rejected cheaply, but
+      nothing limits how often one can be tried. Traefik is shared with other projects on
+      this VPS — §7 rule 4 still applies, so plan the middleware carefully rather than
+      editing a router.
+   6. **Build and run the Windows `.exe`.** `print-agent/build/build_windows.ps1` and
+      `install_service.ps1` have never been executed on a real Windows machine; the Task
+      Scheduler install path is unproven.
 
 > ✅ Completed 2026-08-25: **the production trial**. The owner operated the POS and the
 > kitchen board end to end on the real machines — one dish per station, ส่งครัว, ready,
