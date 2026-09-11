@@ -78,6 +78,35 @@ refresh:
 3. Both install/update module lists include `ko_pos_ui`.
 4. The Compose is no more than 8,192 characters and contains no `patch/thai` handling.
 
+### 2a. A new addon must be added to the `odoo-upgrade` module list, by hand
+
+`addons-init` copies **every** directory under `addons/` into `/mnt/extra-addons`, so a new
+module *appears* on the server after any deploy. That is not an installation. Odoo only
+installs what the one-shot `odoo-upgrade` service names:
+
+```
+command: --addons-path=…,/mnt/extra-addons -d kopos --stop-after-init --no-http
+         -i ko_pos_setup,ko_pos_thai_receipt,ko_pos_kds,ko_pos_beam_bolt,ko_pos_thai_lang,ko_pos_ui,ko_pos_customer_display,ko_pos_compat
+         -u ko_pos_setup,ko_pos_thai_receipt,ko_pos_kds,ko_pos_beam_bolt,ko_pos_thai_lang,ko_pos_ui,ko_pos_customer_display,ko_pos_compat
+         --load-language=th_TH
+```
+
+That line lives in `deploy_real/vps-compose-git.yaml` inside `deploy-secrets.zip` (local
+only, never in the repo). **Add the module to both `-i` and `-u`** — `-i` installs it the
+first time, `-u` keeps it upgraded afterwards — and keep the list comma-separated with no
+spaces.
+
+> **Pending: `ko_pos_cloud_print`.** The cloud-print addon (branch `feat/cloud-print`,
+> commits `f1aad69` / `cd9c27b` / `037be03`) is **not** in that list yet. Until it is added
+> to both `-i` and `-u`, a deploy will copy the directory and silently install nothing:
+> no `ko.print.agent` menu, no `ko_cloud` printer type, no `/ko_print/*` routes. It also
+> needs `pos_restaurant`, which is already installed. See `RUNBOOK-cloud-print.md`.
+> A deploy of this addon needs the owner's approval first.
+
+While editing that line, also add an echo for the new module in `addons-init` (the
+`DEPLOYED_<module>` lines) so the next deploy log proves which version landed, and check
+the Compose is still under 8,192 characters.
+
 ### 3. Poll until the action finishes
 
 `VPS_getActionDetailsV1` with `virtualMachineId: 973354` and the `id` returned by the
@@ -105,12 +134,16 @@ Check, in order:
    ```
    addons ready:
    ko_pos_beam_bolt
+   ko_pos_compat
+   ko_pos_customer_display
    ko_pos_kds
    ko_pos_setup
    ko_pos_thai_lang
    ko_pos_thai_receipt
    ko_pos_ui
    ```
+   (`ko_pos_cloud_print` joins this list once it is deployed — see step 2a. A directory
+   showing up here only means it was copied, not that it was installed.)
    (Since the 2026-08-23 refactor the patch pipeline is gone — `addons-init` only
    clones, copies `addons/`, echoes the deployed manifest versions, and chmods. If you
    ever reintroduce shell logic here, remember the `$$VAR` rule from check 1.)

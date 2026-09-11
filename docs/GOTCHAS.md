@@ -1617,3 +1617,143 @@ KO_POLYFILL=served.js node test_served.mjs
 
 That is the difference between "the file is in the bundle" and "the code the till will
 actually run behaves like the real built-ins".
+
+---
+
+### A row the ORM just wrote is invisible to the raw SQL on the next line
+
+**Symptom:** `ko.print.job._requeue_stuck()` sets a stuck job back to `queued`, the very
+next statement selects `WHERE state = 'queued' … FOR UPDATE SKIP LOCKED`, and the job is
+not in the result. Print jobs a crashed agent had taken were never handed back — they sat
+in `sent` forever while the log showed the requeue running.
+
+**Cause:** Odoo's ORM batches writes in memory and flushes them when *it* decides to.
+`cr.execute()` goes straight to PostgreSQL and sees only what has actually been sent. The
+`UPDATE` was still in the ORM's cache, so the raw `SELECT` read the pre-update rows.
+
+**Fix:** `self.env.flush_all()` immediately before any raw SQL that must see ORM work done
+earlier in the same transaction. See `ko_pos_cloud_print/models/print_job.py`
+`_claim_for_agent`, which flushes right before the `FOR UPDATE SKIP LOCKED` select.
+
+**Also worth knowing:** the reverse trap exists too — write through the ORM (not raw SQL)
+when something else depends on `write_date`. `_requeue_stuck` finds lost jobs by
+`write_date < now - 60s`, and a raw `UPDATE` would not move it.
+
+---
+
+### Adding one field to `_load_pos_data_fields` broke the whole POS
+
+**Symptom:** after `return super()._load_pos_data_fields(config) + ['my_field']` on
+`pos.config`, the POS loads with almost nothing configured — screens blank, features that
+read other `pos.config` fields silently off.
+
+**Cause:** core's `pos.config._load_pos_data_fields` returns **`[]`**, and an empty field
+list means *read every field*, not *read no fields*. Appending turns "all fields" into
+"exactly the two you named", and everything else arrives `undefined`.
+
+**Fix:** only extend a list that is already non-empty:
+
+```python
+fields_list = super()._load_pos_data_fields(config)
+if not fields_list:
+    return fields_list          # [] already means "everything"
+return fields_list + ['ko_receipt_printer_id', 'ko_cashdrawer']
+```
+
+Other models (`pos.printer` for one) return a real explicit list, where plain appending is
+correct. Check what the parent actually returns before you add to it.
+
+---
+
+### A many2one loaded into the POS is `false` in the browser, with no error anywhere
+
+**Symptom:** `pos.config.ko_receipt_printer_id` is set in the backend, the field is in
+`_load_pos_data_fields`, and in the POS `this.config.ko_receipt_printer_id` is falsy.
+Nothing is logged on either side.
+
+**Cause:** the POS relational layer resolves a many2one against the records it has
+actually loaded. If the *target* record is not in the loaded data, it does not keep the id
+and does not warn — the field is simply dropped. Core only loads the `pos.printer` records
+listed in `config.printer_ids` (the preparation printers), and a customer receipt printer
+is usually not one of them.
+
+**Fix:** widen the target model's load domain, then take the extra record back out of
+wherever core would misuse it:
+
+- `pos.printer._load_pos_data_domain` ORs `config.ko_receipt_printer_id` onto core's
+  domain with `Domain.OR` (**do not replace** the domain — that drops the kitchen
+  printers);
+- core then treats every loaded printer as a preparation printer, so `processServerData`
+  filters the receipt printer back out of `unwatched.printers` unless it really is in
+  `printer_ids`. Without that filter, every kitchen ticket also prints at the cashier.
+
+---
+
+### A disposable QA database has no shop at all — `pos.config` is empty
+
+**Symptom:** a test or a browser QA pass on a freshly created Odoo 19 database finds no
+POS to open: `self.env['pos.config'].search([], limit=1)` is empty, `/pos/ui` has nothing
+to load, and per-shop logic is never exercised — the run "passes" while proving nothing.
+
+**Cause:** the shops the POS normally opens with are **demo data**. Create the database
+`--without-demo` and `point_of_sale` installs its models with no `pos.config` row at all.
+
+**Fix:** create the QA database **with demo data**, or have the test create its own config
+and never assume one exists:
+
+```python
+cls.config = cls.env['pos.config'].search([], limit=1)
+if not cls.config:
+    cls.config = cls.env['pos.config'].create({'name': 'QA shop'})
+```
+
+`ko_pos_kds/tests/test_kds.py` does exactly that; `ko_pos_cloud_print`'s tests always
+create their own. Related but different: a bare `--without-demo` database also throws the
+generic "Oops!" dialog at `/pos/ui` (its own entry above).
+
+---
+
+### A hand-written `.po` translates nothing, and Odoo never complains
+
+**Symptom:** the module ships `i18n/th_TH.po`, the file parses, `-u` with
+`--load-language=th_TH` runs clean, and every string in the UI is still English.
+
+**Cause:** Odoo's importer keys model/field terms on the **`#:` occurrence line**
+(`model:ir.model.fields,field_description:…`), not on the `msgid` alone. A file written by
+hand with only `msgid`/`msgstr` pairs has nothing to attach the translations to, so every
+entry is dropped in silence. There is no warning and no error count.
+
+**Fix:** never hand-write the file. Export it from a database that has the module
+installed (`odoo … --modules=<module> i18n export`), which produces a real `.pot` with
+occurrence lines, then translate the `msgstr` values only. `ko_pos_cloud_print/i18n/`
+was regenerated this way in `037be03`: 84 entries with 122 `#:` occurrences, 0
+untranslated. Verify after `-u` by reading a field label back in `th_TH`, not by looking
+at the file.
+
+(The `ko_pos_thai_lang` override layer is a separate mechanism with the same rule — see
+`RUNBOOK-translations.md` Step 2.)
+
+---
+
+### `check_company=True` on a `pos.printer` field enforces nothing
+
+**Symptom:** a `pos.printer` in company A can be saved pointing at a `ko.print.agent` in
+company B through the ORM, an import, or a data file — even though the field is declared
+`check_company=True` and the dropdown in the form only ever offers company A.
+
+**Cause:** `check_company=True` is only half the mechanism. The actual validation runs from
+`_check_company()`, which core calls automatically only on models that set
+`_check_company_auto = True`. `pos.printer` does not. So the flag narrows the UI domain and
+that is all it does.
+
+**Fix:** call it yourself from a constraint:
+
+```python
+@api.constrains('printer_type', 'ko_agent_id', 'ko_host', 'company_id')
+def _check_ko_cloud_settings(self):
+    ...
+    self._check_company(['ko_agent_id'])
+```
+
+Before assuming a `check_company` field is safe on any model, grep that model (and its
+parents) for `_check_company_auto`.

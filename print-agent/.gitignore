@@ -1,0 +1,8 @@
+captures/
+__pycache__/
+*.pyc
+*.log
+ko_print_agent.ini
+dist/
+build/venv/
+*.spec
